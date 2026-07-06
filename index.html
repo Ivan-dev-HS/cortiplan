@@ -815,6 +815,9 @@ function estrategiaCanotex(txt){
       // Verticales: RECOGIDO:Nº 2 → número de apertura 1-10
       const aperturaM=resto.match(/RECOGIDO:?\s*N?[ºo°]?\s*(\d{1,2})/i);
       const apertura=aperturaM?aperturaM[1]:'';
+      // Color de guía/sistema: "COLOR GUIA:BCO", "COLOR GUIA:NEGRA"…
+      const colorGuiaM=resto.match(/COLOR\s*GU[IÍ]A\s*:\s*([A-ZÀ-ÿ]+)/i);
+      const colorGuia=colorGuiaM?colorGuiaM[1]:'';
       const caidaM=resto.match(/CAIDA:\s*([A-Z]+)/i),sopM2=resto.match(/SOP:([A-Z]+)/i);
 
       // Recoger bloque de líneas siguiente (hasta siguiente producto/estancia)
@@ -933,6 +936,7 @@ function estrategiaCanotex(txt){
         ondaCm:ondaCm||'',
         apertura:apertura||'',
         mandoBrisa:mandoBrisa||'',
+        colorGuia:colorGuia||'',
       });
       dbg(`  ✅ #${results.length} [${currentEstancia||'?'}] ${tipo} ${ancho}×${alto}`,'ok');
       i=j;continue;
@@ -1158,6 +1162,32 @@ function estrategiaNumerica(lines){const results=[];let currentEst='';lines.forE
 function estrategiaLibre(lines){const results=[];lines.forEach(line=>{const m=line.match(/(\d{2,3}(?:[.,]\d+)?)\s*[xX×]\s*(\d{2,3}(?:[.,]\d+)?)/);if(m&&parseFloat(m[1])>50&&parseFloat(m[2])>50)results.push({estancia:`Cortina ${results.length+1}`,ancho:m[1].replace(',','.'),alto:m[2].replace(',','.'),hojas:'1',recogida:'D',tejido:'',sistema:'',tipo:''});});return results.slice(0,20);}
 function extractField(txt,pat){const m=(txt||'').match(pat);return(m&&m[1]!=null)?String(m[1]).trim().replace(/\s+/g,' '):'';}
 function normalizeRecogida(raw){const r=(raw||'').trim().toUpperCase();if(/^IZ$|IZQ|ESQ|IZQUI/.test(r))return'IZQ';if(/CEN|CENT/.test(r))return'CEN';if(/LAT/.test(r))return'D';return'D';}
+
+// Normaliza colores de sistemas, incluyendo abreviaturas de los presupuestos
+function normalizaColorSis(v){
+  if(!v)return'';
+  const s=String(v).toUpperCase().trim();
+  const MAPA={
+    'BCO':'Blanco','BCA':'Blanco','BLANCO':'Blanco','BLANCA':'Blanco',
+    'NGR':'Negro','NEGRO':'Negro','NEGRA':'Negro',
+    'GRS':'Gris','GRIS':'Gris','GRIS ANODIZADO':'Gris anodizado','ANODIZADO':'Gris anodizado',
+    'PLT':'Plata','PLATA':'Plata',
+    'INOX':'Inox','ACERO':'Acero','CROMO':'Cromo',
+    'ALU':'Aluminio','ALUMINIO':'Aluminio',
+    'NIQUEL':'Níquel','NÍQUEL':'Níquel','NIKEL':'Níquel','NIKEL MATE':'Níquel mate',
+    'ANTRACITA':'Antracita','GRAFITO':'Grafito','PLOMO':'Plomo',
+    'BRONCE':'Bronce','DORADO':'Dorado','ORO':'Dorado','COBRE':'Cobre',
+    'MARRON':'Marrón','MARRÓN':'Marrón','BEIGE':'Beige','CREMA':'Crema',
+    'MARFIL':'Marfil','HUESO':'Hueso','NACAR':'Nácar','NÁCAR':'Nácar','ARENA':'Arena',
+  };
+  if(MAPA[s])return MAPA[s];
+  // Buscar cualquier color conocido dentro del texto
+  for(const k of Object.keys(MAPA)){
+    if(new RegExp('\\b'+k+'\\b','i').test(s))return MAPA[k];
+  }
+  return'';
+}
+
 function normalizaTipo(raw){if(!raw)return'';const lo=raw.toLowerCase();const MAP=[{k:['onda'],v:'Onda Perfecta'},{k:['pala','tabla'],v:'Palas/Tablas'},{k:['paquetto'],v:'Paquetto'},{k:['brisa','dia y noche','día y noche'],v:'Brisa'},{k:['vertical','lama'],v:'Vertical'},{k:['enroll','estor','roman'],v:'Enrollable'},{k:['ollado','ojal'],v:'Ollados'},{k:['anilla','barra'],v:'Barra con Anillas'},{k:['panel'],v:'Panel Japonés'},{k:['tapic','tapiz','tapizado'],v:'Tapiceria'}];for(const{k,v}of MAP)if(k.some(x=>lo.includes(x)))return v;return raw;}
 function isEnroll(tipo){const t=(tipo||'').toLowerCase();return t.includes('enrollable')||t.includes('estor')||t.includes('roman');}
 function setVal(id,val){const el=$(id);if(el&&val&&val.trim())el.value=val.trim();}
@@ -1169,12 +1199,12 @@ function addCortina(d={}){
   const tipo=normalizaTipo(d.tipo||'');
   const hojasIni=d.hojas||'1';
   const recIni=(parseInt(hojasIni)||1)>=2?'CEN':(d.recogida||'D');
-  const c={id,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',hojas:hojasIni,recogida:recIni,tejido:d.tejido||'',sistema:d.sistema||'',tipo,extra:d.extra||'',metros:d.metros||'',caida:d.caida||'',soporte:d.soporte||'',codigo:d.codigo||'',motorizada:d.motorizada||false,ondaCm:d.ondaCm||'',esTapiceria:d.esTapiceria||false,apertura:d.apertura||'',mandoBrisa:d.mandoBrisa||'cadena'};
+  const c={id,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',hojas:hojasIni,recogida:recIni,tejido:d.tejido||'',sistema:d.sistema||'',tipo,extra:d.extra||'',metros:d.metros||'',caida:d.caida||'',soporte:d.soporte||'',codigo:d.codigo||'',motorizada:d.motorizada||false,ondaCm:d.ondaCm||'',esTapiceria:d.esTapiceria||false,apertura:d.apertura||'',mandoBrisa:d.mandoBrisa||'cadena',colorGuia:d.colorGuia||''};
   STATE.cortinas.push(c);
   if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'){
     STATE.lcnt++;
     const corrIni=(c.tipo||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
-    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia,ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:'',soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
+    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia,ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'',soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
   }
   renderPcard(c,STATE.cortinas.length-1);
   if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa')renderLinea(STATE.lineas[STATE.lineas.length-1],STATE.lineas.length-1);
@@ -2117,19 +2147,15 @@ async function generarCorte(){
       const partida=anchNum>270?'2':'1';
 
       // Color: campo color del operario; si está vacío, extraer color del sistema
-      const colorSistema=(()=>{
-        const s=l.sistema||'';
-        // Busca patrones tipo "Blanco", "Negro", "Plata", "Marrón"… al final del sistema
-        const m=s.match(/\b(blanco|negro|plata|marrón|marron|gris|beige|crema|aluminio|dorado|bronce|cobre|blanca|negra|inox)\b/i);
-        return m?m[0]:'';
-      })();
-      const colorFinal=l.color||(colorSistema)||'';
+      const colorSistema=normalizaColorSis(l.sistema)||normalizaColorSis(l.tejido)||'';
+      const colorFinal=l.color||colorSistema||'';
 
       // Sistema limpio: sin el color si lo extrajimos
       const sistemaLimpio=(()=>{
-        const s=l.sistema||'';
-        if(!colorSistema)return s.substring(0,16);
-        return s.replace(new RegExp('\\b'+colorSistema+'\\b','i'),'').replace(/\s{2,}/g,' ').trim().substring(0,16);
+        let s=l.sistema||'';
+        // Quitar palabras de color del nombre del sistema (ya van en su columna)
+        s=s.replace(/\b(blanco|blanca|bco|bca|negro|negra|ngr|plata|plt|marr[oó]n|gris|grs|beige|crema|aluminio|alu|dorado|oro|bronce|cobre|inox|acero|cromo|n[ií]quel|nikel|antracita|grafito|plomo|marfil|hueso|n[aá]car|arena|anodizado)\b/gi,'').replace(/\s{2,}/g,' ').trim();
+        return s.substring(0,16);
       })();
 
       const vals=[
