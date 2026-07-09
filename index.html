@@ -1020,10 +1020,16 @@ function calcularCorrederas(anchoHoja,onda){
   return Math.ceil(base+(base%2===0?2:3));
 }
 function calcularCorrederasTexto(ancho,hojas,ondaCm){
-  const nH=parseInt(hojas)||1;
-  const anchoHoja=parseFloat(ancho)/nH;
-  // Detectar tamaño de onda: "6cm" → 6, "8cm" → 8, default 8
   const ondaSize=ondaCm?parseInt(ondaCm):8;
+  // Ancho compuesto "158-142"/"158+142" → cada parte es una hoja, por separado
+  const partes=String(ancho||'').split(/[-+]/).map(x=>parseFloat(x.replace(',','.'))||0).filter(x=>x>0);
+  if(!partes.length)return'';
+  if(partes.length>=2){
+    return partes.map(a=>calcularCorrederas(a,ondaSize)+'G').join(' - ');
+  }
+  // Medida única: repartir entre las hojas
+  const nH=parseInt(hojas)||1;
+  const anchoHoja=partes[0]/nH;
   const g=calcularCorrederas(anchoHoja,ondaSize);
   return Array(nH).fill(g+'G').join(' - ');
 }
@@ -2311,14 +2317,28 @@ async function generarCorte(){
       const tl0=(l.tipo||'').toLowerCase();
       const isPaq=tl0.includes('paquetto')||(tl0.includes('estor')&&!tl0.includes('enroll'));
       const paqData=isPaq?calcularPaquetto(l.ancho):{caidas:null,soportes:null};
-      // Ganchos onda perfecta: ancho/paso + 1 por hoja; si 2 hojas se dividen entre dos
-      const anchoOP=parseFloat((l.ancho||'0').replace(',','.'))||0;
+      // Ganchos onda perfecta: floor(ancho/paso); si el cociente es par → +2, si impar → +3.
+      // Ancho compuesto "158-142" o "158+142" → cada parte es una hoja, ganchos por separado.
+      const anchoStr=String(l.ancho||'');
+      const partesOP=anchoStr.split(/[-+]/).map(x=>parseFloat(x.replace(',','.'))||0).filter(x=>x>0);
       const nHojasOP=parseInt(l.hojas)||1;
+      function ganchosDeHoja(anchoHoja,paso){
+        const div=Math.floor(anchoHoja/paso);
+        return div+(div%2===0?2:3);
+      }
       function ganchosOP(paso){
-        if(!anchoOP)return'—';
-        const total=Math.round(anchoOP/paso)+nHojasOP;
-        if(nHojasOP>=2){const mitad=Math.round(total/2);return mitad+'gch-'+mitad+'gch';}
-        return total+'gch';
+        if(!partesOP.length)return'—';
+        if(partesOP.length>=2){
+          // Una medida por hoja: cada una por separado
+          return partesOP.map(a=>ganchosDeHoja(a,paso)+'gch').join('-');
+        }
+        // Medida única
+        if(nHojasOP>=2){
+          // Repartir el ancho entre las hojas y calcular cada una
+          const porHoja=partesOP[0]/nHojasOP;
+          return Array(nHojasOP).fill(0).map(()=>ganchosDeHoja(porHoja,paso)+'gch').join('-');
+        }
+        return ganchosDeHoja(partesOP[0],paso)+'gch';
       }
       const corrLabel=isPaq
         ?(paqData.caidas+' caídas')
