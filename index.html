@@ -553,7 +553,7 @@ async function processPDF(file){
   const pageStarts=[]; // índice de línea donde empieza cada página
 
   // Línea incompleta: termina con campo abierto, código de producto o palabra clave sin cerrar
-  const INCOMPLETE_RE=/^(UD\.|TEJIDO:|SISTEMA\s+DE|MEDIDA:|CORTOP|CORTPA|CORTPLADO|PAQUETTO|P\d{2}[A-Z])|[-:]\s*$|(TEJIDO|SISTEMA|RECOG|MANDO|CONFEC|COLOR|SOPORT|CORREDER|MANUAL|MEDIDA|ANCHO|ALTO)\s*:?\s*$/i;
+  const INCOMPLETE_RE=/^(UD\.|TEJIDO:|SISTEMA\s+DE|MEDIDA:|CORTOP|CORTPLADO|CORTPLA|CORTPA|PAQUETTO|P\d{2}[A-Z])|[-:]\s*$|(TEJIDO|SISTEMA|RECOG|MANDO|CONFEC|COLOR|SOPORT|CORREDER|MANUAL|MEDIDA|ANCHO|ALTO)\s*:?\s*$/i;
   // Continuación: empieza con minúscula, conector, color, tejido, sistema o término común de continuación
   const CONTINUATION_RE=/^(DOBLE\s+TEJIDO|CONFECCIONA|PERFECTA|ENROLLABLE|CADENA|SISTEMA|MANUAL|MANAUL|GUIA|GUÍA|BLANCA?|NACAR|GRIS|BEIGE|NEGRO|BLANCO|C\/|DE\s+|CON\s+|SIN\s+|Y\s+[A-Z]|ONDA|BARRA|PROFESIONAL|1\s*VÍA|1\s*VIA|CUERDA|MOTORIZ|PLISADO|VARILLA|PERFOR|REFORZ)/i;
 
@@ -745,7 +745,7 @@ function parsear(rawLines,skipClientExtract=false){
     // Un campo clave acabado en ':' sin valor → unir con la siguiente línea
     const fieldNoVal=/^(TEJIDO|SISTEMA|MEDIDA|COLOR|RECOG|MANDO|CONFEC|SOPORT)\s*:\s*$/i.test(cur);
     // Línea que es solo un código sin datos (CORTOP, CORTPA…) seguida de nombre de estancia
-    const soloCode=/^(CORTOP|CORTPA|CORTPLADO|PAQUETTO|P05C|P04C|ESTOR)\s*$/i.test(cur);
+    const soloCode=/^(CORTOP|CORTPLADO|CORTPLA|CORTPA|PAQUETTO|P05C|P04C|ESTOR)\s*$/i.test(cur);
     if((fieldNoVal||soloCode)&&nxt){
       rawJoined.push(cur+' '+nxt);
       ri++; // saltar siguiente
@@ -779,9 +779,9 @@ function extraerCliente(lines,txt){
 
 /* ─── ESTRATEGIA CANOTEX ─── */
 function estrategiaCanotex(txt){
-  if(!/CANOTEX|PRESUPUESTO|CORTOP|CORTPA|CORTPLADO|PAQUETTO|P05C/i.test(txt))return[];
+  if(!/CANOTEX|PRESUPUESTO|CORTOP|CORTPLADO|CORTPLA|CORTPA|PAQUETTO|P05C/i.test(txt))return[];
   const results=[];
-  const CODIGOS=/^(CORTOP|CORTPA|CORTPLADO|CORTPLEG|PAQUETTO|[A-Z]{1,6}\d{2}[A-Z]{1,2}\d{1,2}|ESTOR|ENROLLABLE|ROMANO?|PANEL)/i;
+  const CODIGOS=/^(CORTOP|CORTPLADO|CORTPLA|CORTPA|CORTPLEG|PAQUETTO|[A-Z]{1,6}\d{2}[A-Z]{1,2}\d{1,2}|ESTOR|ENROLLABLE|ROMANO?|PANEL)/i;
   const CODIGOS_ENROLL=/^[A-Z]{1,6}\d{2}[A-Z]{1,2}\d{1,2}|^ESTOR|^ENROLLABLE/i;
   const NO_EST=/^(REF\.?\s*(CASA|INFINITUM|PEDIDO)|PAGAMENT|BRUTO|BASE|I\.V|RECARGO|ACEPTACI|SUMA|TOTAL|NOMBRE|FIRMA|TRANSFERENCIA|FECHA|TELÉFONO|AGENTE|CÓD\.|N\.I\.F|PRESUPUESTO|CANOTEX|PENEDES|LLEIDA|SEGÚN|INFO@|UD\.|TEJIDO|SISTEMA|MEDIDA|ARTÍCULO|CÓDIGO|DESCRIPCI|CANTIDAD|PRECIO|CIF\.|INSCRITA|NOTA:)/i;
   function esEstancia(l){
@@ -1041,9 +1041,10 @@ function normalizaTipoCanotex(codigo,udDesc,sistema){
   if(d.includes('presilla'))return'Presilla';
   if(d.includes('plegon encarado')||d.includes('plegón encarado'))return'Plegón Encarado';
   if(d.includes('plegon')||d.includes('plegón'))return'Plegón';
-  if(c==='CORTPLEG'||d.includes('plisado')||d.includes('palas'))return'Palas/Tablas';
-  if(c==='CORTPA'||(d.includes('plana')&&!d.includes('doble')))return'Plana';
+  // Códigos Canotex de cortinas planas/palas (el orden importa: CORTPLADO antes que CORTPLA):
   if(c==='CORTPLADO'||d.includes('doble tejido'))return'Plana Doble Tejido';
+  if(c==='CORTPLA'||(d.includes('plana')&&!d.includes('doble')))return'Plana';
+  if(c==='CORTPA'||c==='CORTPLEG'||d.includes('plisado')||d.includes('palas')||d.includes('tablas'))return'Palas/Tablas';
   if(c==='PAQUETTO'||d.includes('paquetto'))return'Paquetto';
   // Brisa (día y noche vertical): código BRISA o descripción
   if(c==='BRISA'||d.includes('dia y noche')||d.includes('día y noche'))return'Brisa';
@@ -1336,10 +1337,18 @@ function renderPcard(c,idx){
   // Campos condicionales según tipo
   let extras='';
   if(esVertBri){
-    extras+=`<div class="r2">
-      <div class="fld"><label>Apertura Nº (1-10)</label><input type="text" inputmode="numeric" value="${he(c.apertura||'')}" placeholder="2" oninput="updCortina('${c.id}','apertura',this.value)"></div>
-      ${esBrisa?`<div class="fld"><label>Accionamiento</label><select onchange="updCortina('${c.id}','mandoBrisa',this.value)"><option value="cadena"${(c.mandoBrisa||'cadena')==='cadena'?' selected':''}>Cadena</option><option value="tirador"${c.mandoBrisa==='tirador'?' selected':''}>Tiradores</option></select></div>`:'<div></div>'}
-    </div>`;
+    const APERTURAS=[
+      ['1','1 · Izda · Mando izda'],['2','2 · Izda · Mando dcha'],
+      ['3','3 · Dcha · Mando dcha'],['4','4 · Dcha · Mando izda'],
+      ['5','5 · Doble centro · Mando dcha'],['6','6 · Doble centro · Mando izda'],
+      ['7','7 · Doble centro · Mando doble'],['8','8 · Doble extremos · Mando dcha'],
+      ['9','9 · Doble extremos · Mando izda'],['10','10 · Doble extremos · Mando doble'],
+    ];
+    const optsAp=APERTURAS.map(([v,t])=>`<option value="${v}"${String(c.apertura)===v?' selected':''}>${t}</option>`).join('');
+    extras+=`<div class="fld"><label>Nº de recogida (apertura)</label><select onchange="updCortina('${c.id}','apertura',this.value)"><option value="">-- Seleccionar --</option>${optsAp}</select></div>`;
+    if(esBrisa){
+      extras+=`<div class="fld"><label>Accionamiento</label><select onchange="updCortina('${c.id}','mandoBrisa',this.value)"><option value="cadena"${(c.mandoBrisa||'cadena')==='cadena'?' selected':''}>Cadena</option><option value="tirador"${c.mandoBrisa==='tirador'?' selected':''}>Tiradores</option></select></div>`;
+    }
   }
   if(isEnroll(c.tipo)){
     extras+=`<div class="r2">
@@ -1591,29 +1600,63 @@ function svgBrisa(p,u){
   const bandY=(MT+CH*0.16).toFixed(1);
   paneles+=`<line x1="${ML}" y1="${bandY}" x2="${(ML+CW).toFixed(1)}" y2="${bandY}" stroke="#111" stroke-width="1"/>`;
 
-  let mando='';
-  if(esTirador){
-    // Dos tiradores finos colgando de los extremos de la tela
-    const t1=(ML+3).toFixed(1),t2=(ML+CW-3).toFixed(1),tEnd=(MT+CH*0.72).toFixed(1);
-    mando=`<line x1="${t1}" y1="${MT}" x2="${t1}" y2="${tEnd}" stroke="#111" stroke-width="2.4" stroke-linecap="round"/>
-           <line x1="${t2}" y1="${MT}" x2="${t2}" y2="${tEnd}" stroke="#111" stroke-width="2.4" stroke-linecap="round"/>`;
-  }else{
-    // Cadena en el lado derecho, fuera del cabezal, con contrapeso
-    const cx=(ML+CW+12).toFixed(1),cEnd=MT+CH*0.68;
-    mando=`<line x1="${cx}" y1="${(MT-6).toFixed(1)}" x2="${cx}" y2="${cEnd.toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/>
-           <rect x="${(parseFloat(cx)-2.5).toFixed(1)}" y="${cEnd.toFixed(1)}" width="5" height="11" rx="2.5" fill="none" stroke="#111" stroke-width="1.3"/>`;
+  // Lado del mando según nº de apertura (catálogo Canotex):
+  // 1:izda 2:dcha 3:dcha 4:izda 5:dcha 6:izda 7:doble 8:dcha 9:izda 10:doble
+  let apM=parseInt(p.apertura)||0;
+  if(!apM){apM=p.recogida==='IZQ'?1:p.recogida==='CEN'?5:3;}
+  const mandoLadoB={1:'izq',2:'dcha',3:'dcha',4:'izq',5:'dcha',6:'izq',7:'doble',8:'dcha',9:'izq',10:'doble'}[apM]||'dcha';
+
+  function cadena(lado){
+    const cEnd=MT+CH*0.68;
+    const draw=(cx)=>`<line x1="${cx.toFixed(1)}" y1="${(MT-6).toFixed(1)}" x2="${cx.toFixed(1)}" y2="${cEnd.toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/><rect x="${(cx-2.5).toFixed(1)}" y="${cEnd.toFixed(1)}" width="5" height="11" rx="2.5" fill="none" stroke="#111" stroke-width="1.3"/>`;
+    let o='';
+    if(lado==='izq'||lado==='doble')o+=draw(ML-12);
+    if(lado==='dcha'||lado==='doble')o+=draw(ML+CW+12);
+    return o;
+  }
+  function tiradores(lado){
+    const tEnd=(MT+CH*0.72).toFixed(1);
+    const draw=(tx)=>`<line x1="${tx.toFixed(1)}" y1="${MT}" x2="${tx.toFixed(1)}" y2="${tEnd}" stroke="#111" stroke-width="2.4" stroke-linecap="round"/>`;
+    let o='';
+    if(lado==='izq'||lado==='doble')o+=draw(ML+3);
+    if(lado==='dcha'||lado==='doble')o+=draw(ML+CW-3);
+    // Si es un solo lado, poner ambos tiradores en los extremos igualmente (estética día/noche)
+    if(lado==='izq')o+=draw(ML+CW-3);
+    if(lado==='dcha')o+=draw(ML+3);
+    return o;
+  }
+  let mando=esTirador?tiradores(mandoLadoB):cadena(mandoLadoB);
+
+  // Flecha(s) de recogido según apertura Nº 1-10 (igual que las verticales)
+  let ap=parseInt(p.apertura)||0;
+  if(!ap){ap=p.recogida==='IZQ'?1:p.recogida==='CEN'?5:3;}
+  function flechaB(x1,x2,dir){
+    const fy=(MT+CH*0.5).toFixed(1);
+    const mk=dir==='izq'?`marker-start="url(#al${u})"`:`marker-end="url(#ar${u})"`;
+    return `<line x1="${x1.toFixed(1)}" y1="${fy}" x2="${x2.toFixed(1)}" y2="${fy}" stroke="#111" stroke-width="2.5" ${mk}/>`;
+  }
+  let flechas='';
+  if(ap>=1&&ap<=2){
+    flechas=flechaB(ML+CW*0.10,ML+CW*0.42,'izq');
+  } else if(ap>=3&&ap<=4){
+    flechas=flechaB(ML+CW*0.58,ML+CW*0.90,'dcha');
+  } else if(ap>=5&&ap<=7){
+    flechas=flechaB(ML+CW*0.34,ML+CW*0.47,'dcha')+flechaB(ML+CW*0.53,ML+CW*0.66,'izq');
+  } else {
+    flechas=flechaB(ML+CW*0.08,ML+CW*0.30,'izq')+flechaB(ML+CW*0.70,ML+CW*0.92,'dcha');
   }
 
   // Cotas: la de alto se desplaza si hay cadena a la derecha
   const aY=(MT-24).toFixed(1),mx=(ML+CW/2).toFixed(1);
-  const rxOff=esTirador?12:22;
+  const cadenaDcha=!esTirador&&(mandoLadoB==='dcha'||mandoLadoB==='doble');
+  const rxOff=cadenaDcha?22:12;
   const rx=(ML+CW+rxOff).toFixed(1),rx2=(ML+CW+rxOff+3).toFixed(1),vy=(MT+CH/2).toFixed(1);
   const cotasB=`<line x1="${cabX.toFixed(1)}" y1="${aY}" x2="${(cabX+cabW).toFixed(1)}" y2="${aY}" stroke="#111" stroke-width="1.2" marker-start="url(#al${u})" marker-end="url(#ar${u})"/>
   <text x="${mx}" y="${(parseFloat(aY)-4).toFixed(1)}" text-anchor="middle" font-size="12" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(p.ancho)}</text>
   <line x1="${rx}" y1="${MT}" x2="${rx}" y2="${(MT+CH).toFixed(1)}" stroke="#111" stroke-width="1.2" marker-start="url(#arv${u})" marker-end="url(#ar${u})"/>
   <text x="${rx2}" y="${(parseFloat(vy)+4).toFixed(1)}" text-anchor="start" font-size="12" fill="#111" font-family="Arial" font-weight="bold">${fmtCm((p.alto||'')+(p.extra?' '+p.extra:''))}</text>`;
 
-  return svgBase(u,`${cabezal}${sops}${paneles}${mando}${cotasB}`);
+  return svgBase(u,`${cabezal}${sops}${paneles}${mando}${flechas}${cotasB}`);
 }
 
 function svgVertical(p,u){
