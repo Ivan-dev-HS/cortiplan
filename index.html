@@ -987,7 +987,7 @@ function estrategiaCanotex(txt){
         sistema:esTap?'':sistemaFinal,
         tipo, codigo,
         caida:esTap?'':(caidaM&&caidaM[1]?caidaM[1]:''),
-        soporte:esTap?'':(sopM2&&sopM2[1]?sopM2[1]:(sopDesc||'')),
+        soporte:esTap?'':((sopM2&&sopM2[1]?sopM2[1]:(sopDesc||''))||'T'),
         esTapiceria:esTap,
         ondaCm:ondaCm||'',
         apertura:apertura||'',
@@ -2298,9 +2298,19 @@ async function generarCorte(){
         return s.substring(0,16);
       })();
 
+      // Estor: nº de varillas ((alto-5)/20 - 1) para observaciones
+      const _tlE=(l.tipo||'').toLowerCase();
+      const esEstorC=_tlE.includes('estor')&&!_tlE.includes('enroll');
+      let obsFinal=l.obs||'';
+      if(esEstorC){
+        const _aE=parseFloat(String(l.alto||'0').replace(',','.'))||0;
+        if(_aE){const _nvE=Math.max(1,Math.round((_aE-5)/20)-1);
+          const _txtV=_nvE+' varillas';
+          obsFinal=obsFinal?obsFinal+' · '+_txtV:_txtV;}
+      }
       const vals=[
-        // Col 0: TIPO DE SISTEMA → sistema/mecanismo
-        sistemaLimpio,
+        // Col 0: TIPO DE SISTEMA → "Estor" si es estor, si no el sistema
+        esEstorC?'Estor':sistemaLimpio,
         (l.ancho&&l.alto)?l.ancho+'x'+l.alto+'H':(l.ancho||l.alto||''), // Medida
         partida,                                                           // Envío Partido (2 si >270)
         colorFinal,                                                        // Color (campo color + color sistema)
@@ -2318,7 +2328,7 @@ async function generarCorte(){
         corrLabel,                                                        // Correderas / Caídas paquetto
         l.manual==='CUERDA'?'Cuerda':'Manual',                           // Manual/Cuerda
         (l.recogida?{'D':'Derecha','IZQ':'Izquierda','CEN':'Central'}[l.recogida]||l.recogida:''), // Mando
-        l.obs||'',                                                        // Observaciones
+        obsFinal,                                                         // Observaciones (+ varillas si estor)
         l.unidades||'1',                                                  // Unidades
       ];
       vals.forEach((val,ci)=>{
