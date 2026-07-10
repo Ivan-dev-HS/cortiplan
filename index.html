@@ -300,7 +300,7 @@ input, select, textarea { font-family: inherit; }
 .ficha-draw { border-right: 1.5px solid #c7d5e8; min-height: 130px; background: #f7f9fc; display: flex; align-items: center; justify-content: center; padding: 18px 8px 8px; overflow: visible; position: relative; }
 .ficha-draw svg { display: block; width: 100%; height: auto; max-height: 100%; }
 .ficha-datos { display: flex; flex-direction: column; }
-.fdat-row { display: grid; grid-template-columns: 100px 1fr; border-bottom: 1px solid #edf0f8; min-height: 24px; max-height: 26px; overflow: hidden; }
+.fdat-row { display: grid; grid-template-columns: 92px 1fr; border-bottom: 1px solid #edf0f8; min-height: 24px; }
 .fdat-row:last-child { border-bottom: none; }
 .fdat-k { background: #f3f5fb; font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #7a8a9a; padding: 0 8px; display: flex; align-items: center; border-right: 1px solid #dde4f0; }
 .fdat-v { font-size: 13px; font-weight: 800; color: #1c3a6e; padding: 3px 9px; display: flex; align-items: center; flex-wrap: wrap; gap: 3px; }
@@ -1401,7 +1401,7 @@ function limpiarTodo(){['cnom','ctel','cdir','cpob','cpre','cfec','notas','kref'
 function revokeObjUrl(){if(STATE.objectUrl){URL.revokeObjectURL(STATE.objectUrl);STATE.objectUrl=null;}}
 
 /* ═══ SVG ═══ */
-const SV={W:310,H:195,ML:14,MR:62,MT:36,MB:14};
+const SV={W:310,H:205,ML:14,MR:62,MT:46,MB:14};
 SV.CW=SV.W-SV.ML-SV.MR; // 234
 SV.CH=SV.H-SV.MT-SV.MB; // 145
 function uid(){return ++STATE.svgUid;}
@@ -1416,9 +1416,9 @@ function cotas(u,aw,ah){
   const rx=(ML+CW+13).toFixed(1),rx2=(ML+CW+16).toFixed(1),vy=(MT+CH/2).toFixed(1);
   return`
   <line x1="${ML}" y1="${aY}" x2="${(ML+CW).toFixed(1)}" y2="${aY}" stroke="#111" stroke-width="1.2" marker-start="url(#al${u})" marker-end="url(#ar${u})"/>
-  <text x="${mx}" y="${(parseFloat(aY)-4).toFixed(1)}" text-anchor="middle" font-size="12" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(aw)}</text>
+  <text x="${mx}" y="${(parseFloat(aY)-4).toFixed(1)}" text-anchor="middle" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(aw)}</text>
   <line x1="${rx}" y1="${MT}" x2="${rx}" y2="${(MT+CH).toFixed(1)}" stroke="#111" stroke-width="1.2" marker-start="url(#arv${u})" marker-end="url(#ar${u})"/>
-  <text x="${rx2}" y="${(parseFloat(vy)+4).toFixed(1)}" text-anchor="start" font-size="12" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(ah)}</text>`;}
+  <text x="${rx2}" y="${(parseFloat(vy)+4).toFixed(1)}" text-anchor="start" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(ah)}</text>`;}
 
 // "cm" pegado al número; si la anotación es TT/ACB/T.T usa esa unidad en vez de cm
 function fmtCm(v){
@@ -1470,7 +1470,7 @@ function svgOndaPerfecta(p,u){
   if(p.ancho){
     try{
       const t=calcularCorrederasTexto(p.ancho,p.hojas,p.ondaCm);
-      if(t)gchTxt=`<text x="${(ML+CW/2).toFixed(1)}" y="${(MT+CH*0.32).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="bold" fill="#555" font-family="Arial">${t}</text>`;
+      if(t)gchTxt=`<text x="${(ML+CW/2).toFixed(1)}" y="${(MT+CH*0.32).toFixed(1)}" text-anchor="middle" font-size="14.3" font-weight="bold" fill="#555" font-family="Arial">${t}</text>`;
     }catch(e){}
   }
   return svgBase(u,`${rail}${sopL}${sopR}${tL}${tR}${tela}${divs}${ondas}${gchTxt}${recArrow(u,p.recogida,p.hojas)}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);}
@@ -1510,13 +1510,13 @@ function svgPaquetto(p,u){
       const vy=(MT+CH*vi/5).toFixed(1);
       varillas+=`<line x1="${(ML+3).toFixed(1)}" y1="${vy}" x2="${(ML+CW-3).toFixed(1)}" y2="${vy}" stroke="#333" stroke-width="1"/>`;
     }
-    if(nV)cintasTxt=`<text x="${(ML+CW/2).toFixed(1)}" y="${(MT+CH*0.5+4).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="bold" fill="#555" font-family="Arial">${nV} varillas</text>`;
+    if(nV)cintasTxt=`<text x="${(ML+CW/2).toFixed(1)}" y="${(MT+CH*0.5+4).toFixed(1)}" text-anchor="middle" font-size="14.3" font-weight="bold" fill="#555" font-family="Arial">${nV} varillas</text>`;
   }else{
     // Cintas del paquetto (caídas) en el centro
     try{
       const pq=calcularPaquetto(p.ancho);
       if(pq&&pq.caidas){
-        cintasTxt=`<text x="${(ML+CW/2).toFixed(1)}" y="${(MT+CH*0.32).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="bold" fill="#555" font-family="Arial">${pq.caidas} caídas</text>`;
+        cintasTxt=`<text x="${(ML+CW/2).toFixed(1)}" y="${(MT+CH*0.32).toFixed(1)}" text-anchor="middle" font-size="14.3" font-weight="bold" fill="#555" font-family="Arial">${pq.caidas} caídas</text>`;
       }
     }catch(e){}
   }
@@ -1543,9 +1543,9 @@ function svgEnrollable(p,u){
   const rx=(ML+CW+14).toFixed(1),rx2=(ML+CW+17).toFixed(1),vy=(MT+CH/2).toFixed(1);
   const cotasStr=`
   <line x1="${ML}" y1="${aY}" x2="${(ML+CW).toFixed(1)}" y2="${aY}" stroke="#111" stroke-width="1.2" marker-start="url(#al${u})" marker-end="url(#ar${u})"/>
-  <text x="${mx}" y="${(parseFloat(aY)-4).toFixed(1)}" text-anchor="middle" font-size="12" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(p.ancho)}</text>
+  <text x="${mx}" y="${(parseFloat(aY)-4).toFixed(1)}" text-anchor="middle" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(p.ancho)}</text>
   <line x1="${rx}" y1="${MT}" x2="${rx}" y2="${(MT+CH).toFixed(1)}" stroke="#111" stroke-width="1.2" marker-start="url(#arv${u})" marker-end="url(#ar${u})"/>
-  <text x="${rx2}" y="${(parseFloat(vy)+4).toFixed(1)}" text-anchor="start" font-size="12" fill="#111" font-family="Arial" font-weight="bold">${fmtCm((p.alto||'')+(p.extra?' '+p.extra:''))}</text>`;
+  <text x="${rx2}" y="${(parseFloat(vy)+4).toFixed(1)}" text-anchor="start" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${fmtCm((p.alto||'')+(p.extra?' '+p.extra:''))}</text>`;
   return`<svg width="100%" height="auto" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;max-height:100%">${mkDefs(u)}${tube}${sopL}${sopR}${tSopL}${tSopR}${tela}${barra}${cadena}${cotasStr}</svg>`;
 }
 function svgOllados(p,u){
@@ -1658,9 +1658,9 @@ function svgBrisa(p,u){
   const rxOff=cadenaDcha?22:12;
   const rx=(ML+CW+rxOff).toFixed(1),rx2=(ML+CW+rxOff+3).toFixed(1),vy=(MT+CH/2).toFixed(1);
   const cotasB=`<line x1="${cabX.toFixed(1)}" y1="${aY}" x2="${(cabX+cabW).toFixed(1)}" y2="${aY}" stroke="#111" stroke-width="1.2" marker-start="url(#al${u})" marker-end="url(#ar${u})"/>
-  <text x="${mx}" y="${(parseFloat(aY)-4).toFixed(1)}" text-anchor="middle" font-size="12" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(p.ancho)}</text>
+  <text x="${mx}" y="${(parseFloat(aY)-4).toFixed(1)}" text-anchor="middle" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(p.ancho)}</text>
   <line x1="${rx}" y1="${MT}" x2="${rx}" y2="${(MT+CH).toFixed(1)}" stroke="#111" stroke-width="1.2" marker-start="url(#arv${u})" marker-end="url(#ar${u})"/>
-  <text x="${rx2}" y="${(parseFloat(vy)+4).toFixed(1)}" text-anchor="start" font-size="12" fill="#111" font-family="Arial" font-weight="bold">${fmtCm((p.alto||'')+(p.extra?' '+p.extra:''))}</text>`;
+  <text x="${rx2}" y="${(parseFloat(vy)+4).toFixed(1)}" text-anchor="start" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${fmtCm((p.alto||'')+(p.extra?' '+p.extra:''))}</text>`;
 
   return svgBase(u,`${cabezal}${sops}${paneles}${mando}${flechas}${cotasB}`);
 }
@@ -1749,9 +1749,9 @@ function svgConSop(p){
   // bajados para alinearse con la cota de anchura del dibujo
   const sopX=294;
   const sisTxt=conSistema
-    ?`<text x="${sopX}" y="10" text-anchor="start" font-size="8.5" font-weight="bold" fill="#5a6a82" font-family="Arial">${he(p.sistema).substring(0,22)}</text>`
+    ?`<text x="${sopX}" y="13" text-anchor="start" font-size="12" font-weight="bold" fill="#5a6a82" font-family="Arial">${he(p.sistema).substring(0,22)}</text>`
     :'';
-  const txt=`<text x="${sopX}" y="${conSistema?23:14}" text-anchor="start" font-size="11" font-weight="bold" fill="#1c3a6e" font-family="Arial">SOP: ${sop||'____'}</text>`;
+  const txt=`<text x="${sopX}" y="${conSistema?28:14}" text-anchor="start" font-size="11" font-weight="bold" fill="#1c3a6e" font-family="Arial">SOP: ${sop||'____'}</text>`;
   return s.replace('</svg>',sisTxt+txt+'</svg>');
 }
 
@@ -1877,7 +1877,7 @@ function cabCliente(){return`<div class="cli-box"><div class="cli-box-tit">Datos
     </div>`).join('');
 
     const pie=ultima
-      ?`<div class="hoja-pie"><div class="notas-box"><div class="nt">Notas para el operario</div><div class="nc">${notas?he(notas).replace(/\n/g,'<br>'):'—'}</div></div><div class="firma-box"><div style="flex:1"></div><div class="firma-lin"></div><div class="firma-lbl">Firma del operario</div></div></div><div class="hoja-resumen"><div class="resumen-item"><strong>${cortinas.length}</strong>Cortinas totales</div><div class="resumen-item"><strong>${cortinas.reduce((a,c)=>a+parseInt(c.hojas||1),0)}</strong>Hojas totales</div>${pre?`<div class="resumen-item"><strong>${he(pre)}</strong>Nº Presupuesto</div>`:''}</div>`
+      ?`<div class="hoja-pie"><div class="notas-box"><div class="nt">Notas para el operario</div><div class="nc">${notas?he(notas).replace(/\n/g,'<br>'):'—'}</div></div><div class="firma-box"><div style="flex:1"></div><div class="firma-lin"></div><div class="firma-lbl">Firma del operario</div></div></div>`
       :`<div class="cont-lbl">Hoja ${gi+1}/${nH} · continúa >></div>`;
 
     return`<div class="hoja"><div class="hoja-cab ${STATE.hayInstalacion?'':'sin-inst'}"><div class="hoja-marca-wrap">${cabCliente()}<div class="hoja-docref" style="margin-top:4px;text-align:left"><strong>Presup. ${he(pre)||'—'}</strong> &nbsp;·&nbsp; ${fec?he(fec):hoy} &nbsp;·&nbsp; Hoja ${gi+1}/${nH}</div></div>${instBox()}</div><div class="hoja-op"><div class="hoja-op-item"><b>Fecha instalación</b><div class="hoja-op-line"></div></div><div class="hoja-op-item"><b>Hora</b><div class="hoja-op-line"></div></div><div class="hoja-op-item"><b>Operario</b><div class="hoja-op-line"></div></div><div class="hoja-op-item"><b>Vehículo</b><div class="hoja-op-line"></div></div></div><div class="hoja-body">${fichas}</div>${pie}</div>`;
@@ -1955,7 +1955,7 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
 .hoja-op-line{margin-top:5px!important;border-color:#bbb!important}
 
 /* ── BODY ── */
-.hoja-body{padding:5px 14px 6px!important;gap:6px!important;display:flex!important;flex-direction:column!important}
+.hoja-body{padding:4px 14px 5px!important;gap:5px!important;display:flex!important;flex-direction:column!important}
 
 /* ── FICHA — nunca se parte ── */
 .ficha{
@@ -1964,6 +1964,7 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
   border:1.5px solid #c0cce0!important;
   border-radius:4px!important;
   overflow:hidden!important;
+  max-height:56mm!important;
 }
 .ficha-tit{
   padding:4px 12px!important;
@@ -1984,20 +1985,19 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
   position:relative!important;
   border-right:1.5px solid #c0cce0!important;
   border-bottom:none!important;
-  min-height:128px!important;
-  max-height:148px!important;
+  height:40mm!important;
+  max-height:40mm!important;
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
-  padding:14px 8px 6px!important;
+  padding:2mm!important;
   background:#f7f9fc!important;
-  overflow:visible!important;
+  overflow:hidden!important;
 }
 .ficha-draw svg{
-  width:100%!important;
-  height:auto!important;
+  height:36mm!important;
+  width:auto!important;
   max-width:100%!important;
-  max-height:136px!important;
   display:block!important;
 }
 
@@ -2005,12 +2005,10 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
 .ficha-datos{display:flex!important;flex-direction:column!important}
 .fdat-row{
   display:grid!important;
-  grid-template-columns:100px 1fr!important;
+  grid-template-columns:92px 1fr!important;
   border-bottom:1px solid #edf0f8!important;
-  min-height:21px!important;
-  max-height:21px!important;
+  min-height:19px!important;
   align-items:stretch!important;
-  overflow:hidden!important;
 }
 .fdat-row:last-child{border-bottom:none!important}
 .fdat-k{
@@ -2026,13 +2024,15 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
   border-right:1px solid #dde4f0!important;
 }
 .fdat-v{
-  font-size:12px!important;
+  font-size:11px!important;
   font-weight:800!important;
   color:#1c2b4a!important;
-  padding:1px 8px!important;
+  padding:2px 7px!important;
   display:flex!important;
   align-items:center!important;
   flex-wrap:wrap!important;
+  line-height:1.15!important;
+  word-break:break-word!important;
 }
 .fdat-v.big{font-size:16px!important;font-weight:900!important;letter-spacing:-0.4px!important;color:#1c2b4a!important}
 .fdat-v.sm{font-size:9px!important;font-weight:600!important;line-height:1.3!important;color:#2a3a5a!important}
@@ -2068,7 +2068,7 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
 
 @page{
   size:A4 portrait;
-  margin:7mm 6mm 18mm 6mm; /* margen inferior reservado para el pie fijo */
+  margin:6mm 6mm 6mm 6mm;
 }
 
 @media print{
