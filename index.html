@@ -699,6 +699,10 @@ function fixOCR(str){if(!str)return'';let s=str;for(const[from,to]of OCR_FIXES)s
 function limpiarLinea(s){
   if(!s)return'';
   s=s.trim();
+  // Basura lateral del registro mercantil pegada delante de un código de artículo
+  s=s.replace(/^.*?(?=\b(?:CORTOP|CORTPLADO|CORTPLA|CORTPA|CORTPLEG|CORTFRUN|PAQUETTO|ESTOR|BRISA|VERT\d|[A-Z]{2,6}\d{2}[A-Z]{1,2}\d{1,2})\s+MEDIDA[: ])/i,'');
+  // Fragmentos invertidos del texto lateral ("oilof", "nitnacreM", "aveuN"…) al inicio
+  s=s.replace(/^(?:oilof|nitnacreM|adiielL|omoT|ajoH|geR|atircsnI|[a-z]{4,10})\s+(?=[A-ZÁÉÍÓÚÑ]{3})/,'');
   // Basura de texto lateral del registro mercantil (letras con espacios: "c r e Z", "a j o H")
   // Patrón: uno o varios chars solos separados por espacios antes del contenido real
   s=s.replace(/^(?:[A-Za-z\d]{1,2}\s+){2,}(?=[A-ZÁÉÍÓÚÜÑ\-Z]{1,2}\s*[-\s])/,''); // "c r e Z - -"
@@ -889,8 +893,8 @@ function estrategiaCanotex(txt){
           const t=nl.match(/TEJIDO\s+([A-Z0-9][A-Z0-9\s\/]+?)(?:\.|$)/i);
           if(t&&t[1]&&!tejido)tejido=t[1].trim();
         }
-        // Línea sin "UD." pero con descripción de tipo (enrollable, brisa, vertical, etc.)
-        if(!tipoDesc&&/ENROLLABLE|ESTOR|ROMAN|ROLLER|DIA\s*Y\s*NOCHE|VERTICAL|BRISA/i.test(nl))tipoDesc=nl;
+        // Línea sin "UD." pero con descripción de tipo
+        if(!tipoDesc&&/ENROLLABLE|ESTOR|ROMAN|ROLLER|DIA\s*Y\s*NOCHE|VERTICAL|BRISA|PLEG[OÓ]N|PRESILLA|FRUNCID|ONDA\s*PERFECTA|PALAS|TABLAS|PLISAD/i.test(nl))tipoDesc=nl;
         // Tejido con "REF." → "TEJIDO REF. GRECIA 05"
         if(!tejido){const tRef=nl.match(/TEJIDO\s+REF\.?\s*([A-Z0-9][A-Z0-9\s\/]*)/i);if(tRef&&tRef[1])tejido=('REF. '+tRef[1]).trim();}
         // Soporte en descripción: "SOPORTE TECHO CLIC", "SOP. FRONTAL", "SOP. SOSTRE",
@@ -1040,7 +1044,9 @@ function esTapiceria(codigo,udDesc){
 function normalizaTipoCanotex(codigo,udDesc,sistema){
   const c=codigo.toUpperCase(),d=(udDesc||'').toLowerCase(),s=(sistema||'').toLowerCase();
   if(esTapiceria(c,d))return'Tapiceria';
-  if(c==='CORTOP'||d.includes('onda perfecta')||s.includes('barra guia'))return'Onda Perfecta';
+  // Onda Perfecta SOLO por código o descripción explícita
+  // (NO por "barra guia": ese sistema también lo usan plegones, presillas, etc.)
+  if(c==='CORTOP'||d.includes('onda perfecta'))return'Onda Perfecta';
   // Fruncida con cinta: código CORTFRUN o descripción
   if(c==='CORTFRUN'||d.includes('fruncida'))return'Fruncida';
   // Presilla y Plegón: mismo artículo que palas, descripción diferente
@@ -1766,7 +1772,7 @@ function getSVG(p){
   if(t.includes('enroll')||t.includes('roman')||s.includes('medium'))return svgEnrollable(p,u);
   if(t.includes('ollado')||t.includes('ojal'))return svgOllados(p,u);
   if(t.includes('anilla')||(t.includes('barra')&&!s.includes('guia')))return svgBarraAnillas(p,u);
-  if(t.includes('onda')||t.includes('cortop')||s.includes('barra guia'))return svgOndaPerfecta(p,u);
+  if(t.includes('onda')||t.includes('cortop'))return svgOndaPerfecta(p,u);
   // Plana y Plana Doble Tejido → siempre svgPalas (cortina plana), nunca Onda
   if(t.includes('plana')||t.includes('plano')||t.includes('doble'))return svgPalas(p,u);
   if(t.includes('pala')||t.includes('tabla')||t.includes('presilla')||t.includes('plegon')||t.includes('plegón')||t.includes('fruncid'))return svgPalas(p,u);
