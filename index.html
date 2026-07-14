@@ -337,6 +337,8 @@ input, select, textarea { font-family: inherit; }
   .toolbar .btn-tool, .toolbar .btn-print, .toolbar .btn-dl, .toolbar .btn-dl2 { width: 100%; justify-content: center; }
 }
 @media(max-width:480px) { .r2, .r3 { grid-template-columns: 1fr; } .fld input, .fld select, .fld textarea { font-size: 14px; padding: 11px 12px; min-height: 46px; } .btn { min-height: 46px; font-size: 13px; } }
+
+
 @media print {
   .sidebar, .toolbar, .btn-menu, .overlay { display: none !important; }
   body, html { background: #fff; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; margin: 0; padding: 0; }
@@ -767,7 +769,7 @@ function parsear(rawLines,skipClientExtract=false){
   if(!cortinas.length){cortinas=estrategiaNumerica(lines);if(cortinas.length)dbg(`✅ Numérica: ${cortinas.length}`,'ok');}
   if(!cortinas.length){dbg('⚠️ Extracción libre','warn');cortinas=estrategiaLibre(lines);}
   resetCortinas();
-  if(cortinas.length){cortinas.forEach(c=>addCortina(c));dbg(`📦 ${cortinas.length} cortina(s)`,'ok');}
+  if(cortinas.length){cortinas.forEach(c=>addCortina(c));rerenderAllCards();dbg(`📦 ${cortinas.length} cortina(s)`,'ok');}
   else{addCortina();dbg('⚠️ Sin cortinas detectadas.','warn');}
 }
 
@@ -1277,18 +1279,93 @@ function addCortina(d={}){
   const tipo=normalizaTipo(d.tipo||'');
   const hojasIni=d.hojas||'1';
   const recIni=(parseInt(hojasIni)||1)>=2?'CEN':(d.recogida||'D');
-  const c={id,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',hojas:hojasIni,recogida:recIni,tejido:d.tejido||'',sistema:d.sistema||'',tipo,extra:d.extra||'',metros:d.metros||'',caida:d.caida||'',soporte:d.soporte||'',codigo:d.codigo||'',motorizada:d.motorizada||false,ondaCm:d.ondaCm||'',esTapiceria:d.esTapiceria||false,apertura:d.apertura||'',mandoBrisa:d.mandoBrisa||'cadena',colorGuia:d.colorGuia||''};
+  const c={id,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',hojas:hojasIni,recogida:recIni,tejido:d.tejido||'',sistema:d.sistema||'',tipo,extra:d.extra||'',metros:d.metros||'',caida:d.caida||'',soporte:d.soporte||'',codigo:d.codigo||'',motorizada:d.motorizada||false,ondaCm:d.ondaCm||'',esTapiceria:d.esTapiceria||false,apertura:d.apertura||'',mandoBrisa:d.mandoBrisa||'cadena',colorGuia:d.colorGuia||'',
+  formaL:d.formaL||'',anchoL:d.anchoL||'',altoL:d.altoL||'',hojasL:d.hojasL||'1',recogidaL:d.recogidaL||'D'};
   STATE.cortinas.push(c);
   if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'){
     STATE.lcnt++;
     const corrIni=(c.tipo||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
-    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia,ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'',soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
+    const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
+    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':''),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
+    // Cortina en L → segunda guía independiente (su propia línea de corte)
+    if(c.formaL&&c.anchoL){
+      STATE.lcnt++;
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
+    }
   }
-  renderPcard(c,STATE.cortinas.length-1);
-  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa')renderLinea(STATE.lineas[STATE.lineas.length-1],STATE.lineas.length-1);
+  rerenderAllCards();
+  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa')rerenderAllLineas();
   updateBadge();
 }
 function addLinea(d={}){STATE.lcnt++;const l={id:'l'+STATE.lcnt,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',sistema:d.sistema||'',tipo:d.tipo||'',tejido:d.tejido||'',recogida:d.recogida||'D',hojas:d.hojas||'1',color:d.color||'',soportes:d.soportes||'',correderas:d.correderas||'CONVENCIONAL',manual:d.manual||'MANUAL',unidades:d.unidades||'1',obs:d.obs||''};STATE.lineas.push(l);renderLinea(l,STATE.lineas.length-1);}
+/* Unir esta cortina con la SIGUIENTE formando una L.
+   La siguiente pasa a ser el tramo lateral y se elimina como cortina independiente. */
+function unirEnL(id){
+  const i=STATE.cortinas.findIndex(c=>c.id===id);
+  if(i<0||i>=STATE.cortinas.length-1){setSt('er','No hay una cortina siguiente para unir');return;}
+  const a=STATE.cortinas[i],b=STATE.cortinas[i+1];
+  if(a.formaL){setSt('er','Esta cortina ya está en L');return;}
+  const lado=confirm('Unir "'+(a.estancia||'#'+(i+1))+'" con "'+(b.estancia||'#'+(i+2))+'" en L.\n\nAceptar = esquina a la DERECHA\nCancelar = esquina a la IZQUIERDA')?'dcha':'izq';
+  // La segunda cortina pasa a ser el tramo lateral
+  a.formaL=lado;
+  a.anchoL=b.ancho||'';
+  a.altoL=(b.alto&&b.alto!==a.alto)?b.alto:'';   // solo si es distinta de la principal
+  a.hojasL=b.hojas||'1';
+  a.recogidaL=b.recogida||'D';
+  // Conservar el tejido/sistema de la primera; si la primera no tiene, tomar el de la segunda
+  if(!a.tejido&&b.tejido)a.tejido=b.tejido;
+  if(!a.sistema&&b.sistema)a.sistema=b.sistema;
+  // Quitar la segunda cortina (su línea de corte la recrea addCortina como tramo L)
+  STATE.cortinas.splice(i+1,1);
+  reconstruirLineas();
+  rerenderAllCards();
+  updateBadge();
+  scheduleLiveRefresh();
+  setSt('ok','Cortinas unidas en L');
+}
+
+/* Separar una L en dos cortinas independientes */
+function separarL(id){
+  const i=STATE.cortinas.findIndex(c=>c.id===id);
+  if(i<0)return;
+  const a=STATE.cortinas[i];
+  if(!a.formaL){setSt('er','Esta cortina no está en L');return;}
+  // Recrear la segunda cortina a partir del tramo lateral
+  const b={...a};
+  delete b.id;
+  b.ancho=a.anchoL;b.alto=a.altoL||a.alto;b.hojas=a.hojasL;b.recogida=a.recogidaL;
+  b.formaL='';b.anchoL='';b.altoL='';b.hojasL='1';b.recogidaL='D';
+  b.estancia=(a.estancia||'')+' (2)';
+  // Limpiar la L de la primera
+  a.formaL='';a.anchoL='';a.hojasL='1';a.recogidaL='D';
+  STATE.pcnt++;
+  b.id='p'+STATE.pcnt;
+  STATE.cortinas.splice(i+1,0,b);
+  reconstruirLineas();
+  rerenderAllCards();
+  updateBadge();
+  scheduleLiveRefresh();
+  setSt('ok','L separada en dos cortinas');
+}
+
+/* Reconstruir todas las líneas de corte a partir de las cortinas actuales */
+function reconstruirLineas(){
+  STATE.lineas=[];STATE.lcnt=0;
+  STATE.cortinas.forEach(c=>{
+    const t=c.tipo||'';
+    if(t==='Enrollable'||t==='Vertical'||t==='Brisa')return;
+    STATE.lcnt++;
+    const corrIni=(t||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
+    const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
+    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':''),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
+    if(c.formaL&&c.anchoL){
+      STATE.lcnt++;
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
+    }
+  });
+  rerenderAllLineas();
+}
+
 function dupCortina(id){
   const idx=STATE.cortinas.findIndex(c=>c.id===id);
   if(idx<0)return;
@@ -1331,7 +1408,8 @@ function remLinea(id){
 function updCortina(id,field,val){
   const c=STATE.cortinas.find(x=>x.id===id);if(!c)return;
   c[field]=field==='tipo'?normalizaTipo(val):val;
-  if(field==='tipo'){rerenderAllCards();scheduleLiveRefresh();return;}
+  if(field==='tipo'||field==='formaL'){rerenderAllCards();reconstruirLineas();scheduleLiveRefresh();return;}
+  if(field==='anchoL'||field==='altoL'||field==='hojasL'||field==='recogidaL'){reconstruirLineas();scheduleLiveRefresh();return;}
   if(field==='hojas'&&(parseInt(val)||1)>=2&&c.recogida!=='CEN'){c.recogida='CEN';rerenderAllCards();scheduleLiveRefresh();return;}
   const head=document.querySelector(`.pcard[data-id="${id}"] .est`);
   if(head)head.textContent=c.estancia||'(sin nombre)';
@@ -1373,7 +1451,11 @@ function renderPcard(c,idx){
     extras+=`<div class="fld"><label>Tamaño de Onda</label><select onchange="updCortina('${c.id}','ondaCm',this.value)"><option value=""${!c.ondaCm?' selected':''}>—</option><option value="8cm"${c.ondaCm==='8cm'?' selected':''}>8 cm</option><option value="6cm"${c.ondaCm==='6cm'?' selected':''}>6 cm</option></select></div>`;
   }
 
-  div.innerHTML=`<div class="pch"><span class="num">#${idx+1}</span><span class="est">${he(c.estancia||'(sin nombre)')}</span><button class="btn-rem" title="Duplicar cortina" onclick="dupCortina('${c.id}')" style="font-size:12px">⧉</button><button class="btn-rem" onclick="remCortina('${c.id}')">✕</button></div>
+  const haySiguiente=idx<STATE.cortinas.length-1;
+  const btnL=(!c.formaL&&haySiguiente)
+    ?`<button class="btn-rem" title="Unir con la siguiente cortina en forma de L" onclick="unirEnL('${c.id}')" style="font-size:12px">⌐</button>`
+    :(c.formaL?`<button class="btn-rem" title="Separar la L en dos cortinas" onclick="separarL('${c.id}')" style="font-size:12px">⇄</button>`:'');
+  div.innerHTML=`<div class="pch"><span class="num">#${idx+1}</span><span class="est">${he(c.estancia||'(sin nombre)')}</span>${btnL}<button class="btn-rem" title="Duplicar cortina" onclick="dupCortina('${c.id}')" style="font-size:12px">⧉</button><button class="btn-rem" onclick="remCortina('${c.id}')">✕</button></div>
     <div class="pcb">
       <div class="fld"><label>Estancia</label><input type="text" value="${he(c.estancia)}" placeholder="Comedor…" oninput="updCortina('${c.id}','estancia',this.value)"></div>
       <div class="r2"><div class="fld"><label>Ancho cm</label><input type="text" inputmode="decimal" value="${he(c.ancho)}" placeholder="170" oninput="updCortina('${c.id}','ancho',this.value)"></div><div class="fld"><label>Alto cm</label><input type="text" inputmode="decimal" value="${he(c.alto)}" placeholder="257" oninput="updCortina('${c.id}','alto',this.value)"></div></div>
@@ -1382,6 +1464,23 @@ function renderPcard(c,idx){
       <div class="r2"><div class="fld"><label>Nº Hojas</label><input type="text" inputmode="numeric" value="${he(c.hojas)}" placeholder="1" oninput="updCortina('${c.id}','hojas',this.value)"></div><div class="fld"><label>Recogida</label><select onchange="updCortina('${c.id}','recogida',this.value)"><option value="D"${c.recogida==='D'?' selected':''}>Derecha</option><option value="IZQ"${c.recogida==='IZQ'?' selected':''}>Izquierda</option><option value="CEN"${c.recogida==='CEN'?' selected':''}>Central</option></select></div></div>
       <div class="fld"><label>Tejido / Referencia</label><input type="text" value="${he(c.tejido)}" placeholder="SAURA C/02" oninput="updCortina('${c.id}','tejido',this.value)"></div>
       ${extras}
+      <div class="fld"><label>Forma</label><select onchange="updCortina('${c.id}','formaL',this.value)">
+        <option value=""${!c.formaL?' selected':''}>Recta</option>
+        <option value="izq"${c.formaL==='izq'?' selected':''}>En L · esquina izquierda</option>
+        <option value="dcha"${c.formaL==='dcha'?' selected':''}>En L · esquina derecha</option>
+      </select></div>
+      ${c.formaL?`<div class="r2">
+        <div class="fld"><label>Ancho tramo L</label><input type="text" inputmode="decimal" value="${he(c.anchoL||'')}" placeholder="280" oninput="updCortina('${c.id}','anchoL',this.value)"></div>
+        <div class="fld"><label>Alto tramo L</label><input type="text" inputmode="decimal" value="${he(c.altoL||'')}" placeholder="${he(c.alto||'igual')}" oninput="updCortina('${c.id}','altoL',this.value)"></div>
+      </div>
+      <div class="r2">
+        <div class="fld"><label>Hojas L</label><input type="text" inputmode="numeric" value="${he(c.hojasL||'1')}" oninput="updCortina('${c.id}','hojasL',this.value)"></div>
+        <div class="fld"><label>Recogida L</label><select onchange="updCortina('${c.id}','recogidaL',this.value)">
+          <option value="D"${(c.recogidaL||'D')==='D'?' selected':''}>Derecha</option>
+          <option value="IZQ"${c.recogidaL==='IZQ'?' selected':''}>Izquierda</option>
+          <option value="CEN"${c.recogidaL==='CEN'?' selected':''}>Central</option>
+        </select></div>
+      </div>`:''}
       <div class="r3"><div class="fld"><label>Extra alto</label><input type="text" value="${he(c.extra||'')}" placeholder="+40" oninput="updCortina('${c.id}','extra',this.value)"></div><div class="fld"><label>Soporte</label><input type="text" value="${he(c.soporte||'')}" placeholder="T" oninput="updCortina('${c.id}','soporte',this.value)"></div><div class="fld"><label>Código</label><input type="text" value="${he(c.codigo||'')}" placeholder="CORTOP" oninput="updCortina('${c.id}','codigo',this.value)"></div></div>
     </div>`;
   $('pcards').appendChild(div);
@@ -1401,7 +1500,11 @@ function renderLinea(l,idx){
     </div>`;
   $('lineas').appendChild(div);
 }
-function rerenderAllCards(){$('pcards').innerHTML='';STATE.cortinas.forEach((c,i)=>renderPcard(c,i));}
+function rerenderAllCards(){
+  if($('pcards'))$('pcards').innerHTML='';
+  STATE.cortinas.forEach((c,i)=>renderPcard(c,i));
+  updateBadge();
+}
 function rerenderAllLineas(){$('lineas').innerHTML='';STATE.lineas.forEach((l,i)=>renderLinea(l,i));}
 function limpiarTodo(){['cnom','ctel','cdir','cpob','cpre','cfec','notas','kref','kfec'].forEach(id=>{const el=$(id);if(el)el.value='';});resetCortinas();resetInstalacion();STATE.liveActive=false;addCortina();$('main').innerHTML='<div class="empty-state" id="emptyState"><div class="ei">📂</div><p>Arrastra un PDF o imagen<br>y elige el tipo de documento</p></div>';setSt('','Esperando archivo…');clearDbg();revokeObjUrl();fileInput.value='';}
 function revokeObjUrl(){if(STATE.objectUrl){URL.revokeObjectURL(STATE.objectUrl);STATE.objectUrl=null;}}
@@ -1746,7 +1849,7 @@ function svgConSop(p){
   const sinSistema=['enroll','estor','roman','brisa','vertical','lama','paquetto'].some(k=>tLow.includes(k));
   const conSistema=!sinSistema&&p.sistema;
   // Ampliación derecha mayor cuando hay sistema, para que quepa alineado con SOP
-  const extraDer=conSistema?100:60;
+  const extraDer=conSistema?120:60;
   s=s.replace(/viewBox="(-?\d+) (-?\d+) (\d+) (\d+)"/,(m,x,y,w,h)=>{
     const newW=parseInt(w)+extraDer;
     return `viewBox="${x} ${y} ${newW} ${h}"`;
@@ -1754,15 +1857,255 @@ function svgConSop(p){
   // SOP y sistema anclados por la izquierda en la MISMA X,
   // bajados para alinearse con la cota de anchura del dibujo
   const sopX=294;
-  const sisTxt=conSistema
-    ?`<text x="${sopX}" y="13" text-anchor="start" font-size="12" font-weight="bold" fill="#5a6a82" font-family="Arial">${he(p.sistema).substring(0,22)}</text>`
-    :'';
-  const txt=`<text x="${sopX}" y="${conSistema?28:14}" text-anchor="start" font-size="11" font-weight="bold" fill="#1c3a6e" font-family="Arial">SOP: ${sop||'____'}</text>`;
+  // El sistema puede ser largo ("GUIA REFORZADA CON ESCUADRAS", "BARRA GUIA BLANCA D/28").
+  // Se reparte en 2 líneas y se reduce la fuente hasta que quepa en el espacio disponible.
+  let sisTxt='',lineasSis=0;
+  if(conSistema){
+    const dispPx=(310+extraDer)-sopX-4;   // ancho útil a la derecha del dibujo
+    const txtSis=String(p.sistema).trim();
+    // Repartir en como mucho 2 líneas por palabras
+    function repartir(maxc){
+      const pal=txtSis.split(/\s+/),ls=[];let ln='';
+      for(const w of pal){
+        if((ln+' '+w).trim().length<=maxc){ln=(ln+' '+w).trim();}
+        else{if(ln)ls.push(ln);ln=w;}
+      }
+      if(ln)ls.push(ln);
+      return ls;
+    }
+    // Buscar el tamaño de fuente mayor con el que TODO el texto cabe en <=2 líneas
+    let fs=12,lineas=null;
+    for(;fs>=7;fs-=0.5){
+      const cpl=Math.floor(dispPx/(fs*0.62));   // caracteres que caben por línea
+      const ls=repartir(cpl);
+      if(ls.length<=2&&ls.every(l=>l.length<=cpl)){lineas=ls;break;}
+    }
+    if(!lineas){fs=7;lineas=repartir(Math.floor(dispPx/(7*0.62))).slice(0,2);}
+    lineasSis=lineas.length;
+    const lh=fs+2;
+    sisTxt=lineas.map((l,i)=>
+      `<text x="${sopX}" y="${(12+i*lh).toFixed(1)}" text-anchor="start" font-size="${fs}" font-weight="bold" fill="#5a6a82" font-family="Arial">${he(l)}</text>`
+    ).join('');
+    var _sisH=12+lineasSis*lh;
+  }
+  // El SOP baja según cuántas líneas ocupe el sistema
+  const sopY=conSistema?(typeof _sisH!=='undefined'?_sisH+2:30):14;
+  const txt=`<text x="${sopX}" y="${sopY}" text-anchor="start" font-size="11" font-weight="bold" fill="#1c3a6e" font-family="Arial">SOP: ${sop||'____'}</text>`;
   return s.replace('</svg>',sisTxt+txt+'</svg>');
+}
+
+
+/* ─── DIBUJO DE CORTINA EN L ───
+   Dos tramos de guía independientes que se tocan formando esquina.
+   Cada tramo dibuja el CUERPO DE SU CONFECCIÓN (ondas, palas, paquetto…)
+   con su propia medida, hojas y flecha de recogida. */
+
+// Cuerpo de una confección dibujado en una caja arbitraria (x,y,w,h)
+function cuerpoConfeccion(tipo,x,y,w,h,hojas,ondaCm,recogida,u){
+  const t=(tipo||'').toLowerCase();
+  const nH=Math.max(1,parseInt(hojas)||1);
+  let o='';
+  // Riel/barra superior (común)
+  o+=`<rect x="${(x-4).toFixed(1)}" y="${(y-7).toFixed(1)}" width="${(w+8).toFixed(1)}" height="7" fill="none" stroke="#111" stroke-width="1.8"/>`;
+  // Soportes
+  o+=`<line x1="${x.toFixed(1)}" y1="${(y-13).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(y-7).toFixed(1)}" stroke="#111" stroke-width="1.8"/>`;
+  o+=`<line x1="${(x+w).toFixed(1)}" y1="${(y-13).toFixed(1)}" x2="${(x+w).toFixed(1)}" y2="${(y-7).toFixed(1)}" stroke="#111" stroke-width="1.8"/>`;
+
+  if(t.includes('pala')||t.includes('tabla')||t.includes('presilla')||t.includes('plegon')||t.includes('plegón')||t.includes('fruncid')){
+    // PALAS / PLEGÓN / PRESILLA / FRUNCIDA → paños separados
+    const gap=3,pW=(w-(nH-1)*gap)/nH;
+    for(let i=0;i<nH;i++){const px=x+i*(pW+gap);
+      o+=`<rect x="${px.toFixed(1)}" y="${y.toFixed(1)}" width="${pW.toFixed(1)}" height="${h.toFixed(1)}" fill="none" stroke="#111" stroke-width="1.3"/>`;}
+  } else if(t.includes('onda')){
+    // ONDA PERFECTA → tela + ondas superiores
+    o+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="none" stroke="#111" stroke-width="1.4"/>`;
+    const ow=w/Math.max(1,Math.round(w/14)),nO=Math.round(w/ow);
+    for(let i=0;i<nO;i++){const ox=x+i*ow,cx=(ox+ow/2).toFixed(1);
+      o+=`<path d="M${ox.toFixed(1)},${y.toFixed(1)} Q${cx},${(y+ow*0.75).toFixed(1)} ${(ox+ow).toFixed(1)},${y.toFixed(1)}" fill="none" stroke="#111" stroke-width="1.1"/>`;}
+    for(let i=1;i<nH;i++){const dx=(x+i*(w/nH)).toFixed(1);
+      o+=`<line x1="${dx}" y1="${y.toFixed(1)}" x2="${dx}" y2="${(y+h).toFixed(1)}" stroke="#aaa" stroke-width=".8" stroke-dasharray="3,3"/>`;}
+  } else if(t.includes('paquetto')||t.includes('estor')){
+    // PAQUETTO / ESTOR → tela + arcos inferiores
+    o+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="none" stroke="#111" stroke-width="1.4"/>`;
+    const aY=y+h*0.68,aB=y+h*0.97,d1=x+w/3,d2=x+w*2/3;
+    [[x,d1],[d1,d2],[d2,x+w]].forEach(([x1,x2])=>{
+      o+=`<path d="M${x1.toFixed(1)},${aY.toFixed(1)} Q${((x1+x2)/2).toFixed(1)},${aB.toFixed(1)} ${x2.toFixed(1)},${aY.toFixed(1)}" fill="none" stroke="#333" stroke-width="1.3"/>`;});
+  } else {
+    // PLANA y resto → tela lisa con divisiones de hoja
+    o+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="none" stroke="#111" stroke-width="1.4"/>`;
+    for(let i=1;i<nH;i++){const dx=(x+i*(w/nH)).toFixed(1);
+      o+=`<line x1="${dx}" y1="${y.toFixed(1)}" x2="${dx}" y2="${(y+h).toFixed(1)}" stroke="#aaa" stroke-width=".8" stroke-dasharray="3,3"/>`;}
+  }
+
+  // Flecha de recogida dentro del tramo.
+  // Si el tramo va partido en 2 hojas → flechas dobles, como en una cortina normal.
+  const fy=(y+h*0.45).toFixed(1);
+  if(recogida==='CEN'||nH>=2){
+    o+=`<line x1="${(x+w*0.42).toFixed(1)}" y1="${fy}" x2="${(x+w*0.18).toFixed(1)}" y2="${fy}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+    o+=`<line x1="${(x+w*0.58).toFixed(1)}" y1="${fy}" x2="${(x+w*0.82).toFixed(1)}" y2="${fy}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+  } else if(recogida==='IZQ'){
+    o+=`<line x1="${(x+w*0.68).toFixed(1)}" y1="${fy}" x2="${(x+w*0.22).toFixed(1)}" y2="${fy}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+  } else {
+    o+=`<line x1="${(x+w*0.32).toFixed(1)}" y1="${fy}" x2="${(x+w*0.78).toFixed(1)}" y2="${fy}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+  }
+  return o;
+}
+
+function svgFormaL(p,u){
+  const{ML,MT,CW,CH}=SV;
+  const esIzq=p.formaL==='izq';
+
+  // Anchos proporcionales a las medidas reales
+  const aR=parseFloat(String(p.ancho||'0').replace(',','.'))||1;
+  const aL=parseFloat(String(p.anchoL||'0').replace(',','.'))||1;
+  const util=CW-4;
+  let wRecto=util*(aR/(aR+aL)), wLat=util*(aL/(aR+aL));
+  const minW=util*0.25;
+  if(wRecto<minW){wRecto=minW;wLat=util-minW;}
+  if(wLat<minW){wLat=minW;wRecto=util-minW;}
+
+  // ── ALTURAS: cada tramo la suya. Si el tramo L no tiene alto propio, usa el principal. ──
+  const hR=parseFloat(String(p.alto||'0').replace(',','.'))||0;
+  const hLnum=parseFloat(String(p.altoL||'').replace(',','.'))||hR;
+  const alturasDistintas=!!(p.altoL&&hLnum&&hR&&Math.abs(hLnum-hR)>0.5);
+
+  const drop=CH*0.28;                 // caída de la esquina
+  const hTelaR=CH-drop;               // altura de tela del tramo recto
+  // El tramo lateral escala su tela según su altura real (proporcional al recto)
+  const hTelaL=(hR&&hLnum)?Math.max(CH*0.25,Math.min(CH-drop, hTelaR*(hLnum/hR))):hTelaR;
+
+  const yR=MT;
+  const xRecto=esIzq?(ML+wLat):ML;
+  const xLat  =esIzq?ML:(ML+wRecto);
+  const yEsq=yR, yExt=yR+drop;
+  const xEsq=esIzq?(xLat+wLat):xLat;
+  const xExt=esIzq?xLat:(xLat+wLat);
+  const rielY=y=>y-7;
+
+  const cuerpoR=cuerpoConfeccion(p.tipo,xRecto,yR,wRecto,hTelaR,p.hojas,p.ondaCm,p.recogida||'D',u);
+  const cuerpoL=cuerpoInclinado(p.tipo,xEsq,yEsq,xExt,yExt,hTelaL,p.hojasL,p.ondaCm,p.recogidaL||'D',u);
+
+  const rielL=`<line x1="${xEsq.toFixed(1)}" y1="${rielY(yEsq).toFixed(1)}" x2="${xExt.toFixed(1)}" y2="${rielY(yExt).toFixed(1)}" stroke="#111" stroke-width="1.8"/>`;
+  const sopExt=`<line x1="${xExt.toFixed(1)}" y1="${(rielY(yExt)-6).toFixed(1)}" x2="${xExt.toFixed(1)}" y2="${rielY(yExt).toFixed(1)}" stroke="#111" stroke-width="1.8"/>`;
+
+  // ── COTAS DE ANCHO: cada tramo la suya, a la misma distancia de su riel ──
+  const sep=12;                                // misma separación para ambas
+  // Cota del tramo RECTO (horizontal, sobre su riel)
+  const yCR=(rielY(yR)-sep);
+  const cotaAR=`<line x1="${xRecto.toFixed(1)}" y1="${yCR.toFixed(1)}" x2="${(xRecto+wRecto).toFixed(1)}" y2="${yCR.toFixed(1)}" stroke="#111" stroke-width="1.2" marker-start="url(#al${u})" marker-end="url(#ar${u})"/>
+    <text x="${(xRecto+wRecto/2).toFixed(1)}" y="${(yCR-9).toFixed(1)}" text-anchor="middle" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(p.ancho)}</text>`;
+  // Cota del tramo LATERAL (paralela a su riel inclinado, misma separación)
+  const yCL1=(rielY(yEsq)-sep), yCL2=(rielY(yExt)-sep);
+  const cotaAL=`<line x1="${xEsq.toFixed(1)}" y1="${yCL1.toFixed(1)}" x2="${xExt.toFixed(1)}" y2="${yCL2.toFixed(1)}" stroke="#111" stroke-width="1.2" marker-start="url(#al${u})" marker-end="url(#ar${u})"/>
+    <text x="${((xEsq+xExt)/2).toFixed(1)}" y="${((yCL1+yCL2)/2-10).toFixed(1)}" text-anchor="middle" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(p.anchoL)}</text>`;
+
+
+  // ── COTAS DE ALTO: cada una mide SOLO su tramo, en LADOS OPUESTOS ──
+  const txtR=fmtCm((p.alto||'')+(p.extra?' '+p.extra:''));
+  const txtL=fmtCm(p.altoL||'');
+  // La cota del tramo recto va al lado contrario de donde está el tramo lateral
+  const rectoDcha=!esIzq;   // si la esquina va a la dcha, el tramo recto está a la izq → su cota, a la izq
+  let cotasAlto='';
+  function cotaVert(x,yTop,hTela,txt,haciaDcha){
+    const cx=haciaDcha?(x+12):(x-12);
+    const tx=haciaDcha?(x+15):(x-15);
+    const anchor=haciaDcha?'start':'end';
+    return `<line x1="${cx.toFixed(1)}" y1="${yTop.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${(yTop+hTela).toFixed(1)}" stroke="#111" stroke-width="1.2" marker-start="url(#arv${u})" marker-end="url(#ar${u})"/>
+      <text x="${tx.toFixed(1)}" y="${(yTop+hTela/2+5).toFixed(1)}" text-anchor="${anchor}" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${txt}</text>`;
+  }
+  // Siempre dos cotas de altura, una por tramo, en lados opuestos
+  const txtLfinal=txtL!=='—'?txtL:txtR;   // si el tramo L no tiene alto propio, usa el principal
+  if(esIzq){
+    // lateral a la IZQUIERDA → su cota a la izq; recto a la derecha → su cota a la dcha
+    cotasAlto =cotaVert(xLat, yExt, hTelaL, txtLfinal, false);
+    cotasAlto+=cotaVert(xRecto+wRecto, yR, hTelaR, txtR, true);
+  }else{
+    // recto a la IZQUIERDA → su cota a la izq; lateral a la derecha → su cota a la dcha
+    cotasAlto =cotaVert(xRecto, yR, hTelaR, txtR, false);
+    cotasAlto+=cotaVert(xLat+wLat, yExt, hTelaL, txtLfinal, true);
+  }
+
+  // Ganchos por tramo
+  let gch='';
+  if((p.tipo||'').toLowerCase().includes('onda')){
+    try{
+      const gR=calcularCorrederasTexto(p.ancho,p.hojas,p.ondaCm);
+      const gL=calcularCorrederasTexto(p.anchoL,p.hojasL,p.ondaCm);
+      if(gR)gch+=`<text x="${(xRecto+wRecto/2).toFixed(1)}" y="${(yR+hTelaR*0.85).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="bold" fill="#555" font-family="Arial">${gR}</text>`;
+      if(gL)gch+=`<text x="${((xEsq+xExt)/2).toFixed(1)}" y="${((yEsq+yExt)/2+hTelaL*0.85).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="bold" fill="#555" font-family="Arial">${gL}</text>`;
+    }catch(e){}
+  }
+
+  let svg=svgBase(u,`${cuerpoR}${rielL}${sopExt}${cuerpoL}${gch}${cotaAR}${cotaAL}${cotasAlto}`);
+  // Siempre hay cota de altura a la izquierda → ampliar el lienzo por ese lado
+  svg=svg.replace(/viewBox="(-?\d+) (-?\d+) (\d+) (\d+)"/,(m,x,y,w,h)=>
+    `viewBox="${parseInt(x)-58} ${y} ${parseInt(w)+58} ${h}"`);
+  // Ampliar por arriba: las cotas de ancho van por encima de los rieles
+  svg=svg.replace(/viewBox="(-?\d+) (-?\d+) (\d+) (\d+)"/,(m,x,y,w,h)=>
+    `viewBox="${x} ${parseInt(y)-18} ${w} ${parseInt(h)+18}"`);
+  return svg;
+}
+
+/* Cuerpo de la confección dibujado INCLINADO (paralelogramo).
+   El borde superior va de (x1,y1) a (x2,y2); la tela cuelga h hacia abajo. */
+function cuerpoInclinado(tipo,x1,y1,x2,y2,h,hojas,ondaCm,recogida,u){
+  const t=(tipo||'').toLowerCase();
+  const nH=Math.max(1,parseInt(hojas)||1);
+  const dx=x2-x1, dy=y2-y1;
+  // Punto sobre el borde superior a fracción f (0..1)
+  const px=f=>x1+dx*f, py=f=>y1+dy*f;
+  let o='';
+
+  if(t.includes('pala')||t.includes('tabla')||t.includes('presilla')||t.includes('plegon')||t.includes('plegón')||t.includes('fruncid')){
+    // Paños separados, cada uno inclinado
+    const gapF=0.03, pF=(1-(nH-1)*gapF)/nH;
+    for(let i=0;i<nH;i++){
+      const f0=i*(pF+gapF), f1=f0+pF;
+      o+=`<path d="M${px(f0).toFixed(1)},${py(f0).toFixed(1)} L${px(f1).toFixed(1)},${py(f1).toFixed(1)} L${px(f1).toFixed(1)},${(py(f1)+h).toFixed(1)} L${px(f0).toFixed(1)},${(py(f0)+h).toFixed(1)} Z" fill="none" stroke="#111" stroke-width="1.3"/>`;
+    }
+  } else {
+    // Contorno del paralelogramo (tela)
+    o+=`<path d="M${x1.toFixed(1)},${y1.toFixed(1)} L${x2.toFixed(1)},${y2.toFixed(1)} L${x2.toFixed(1)},${(y2+h).toFixed(1)} L${x1.toFixed(1)},${(y1+h).toFixed(1)} Z" fill="none" stroke="#111" stroke-width="1.4"/>`;
+    if(t.includes('onda')){
+      // Ondas siguiendo el borde superior inclinado
+      const nO=Math.max(3,Math.round(Math.abs(dx)/14));
+      for(let i=0;i<nO;i++){
+        const f0=i/nO, f1=(i+1)/nO, fm=(f0+f1)/2;
+        const ow=Math.abs(px(f1)-px(f0));
+        o+=`<path d="M${px(f0).toFixed(1)},${py(f0).toFixed(1)} Q${px(fm).toFixed(1)},${(py(fm)+ow*0.75).toFixed(1)} ${px(f1).toFixed(1)},${py(f1).toFixed(1)}" fill="none" stroke="#111" stroke-width="1.1"/>`;
+      }
+    } else if(t.includes('paquetto')||t.includes('estor')){
+      // Arcos inferiores siguiendo la inclinación
+      for(let i=0;i<3;i++){
+        const f0=i/3, f1=(i+1)/3, fm=(f0+f1)/2;
+        const yA0=py(f0)+h*0.68, yA1=py(f1)+h*0.68, yB=py(fm)+h*0.97;
+        o+=`<path d="M${px(f0).toFixed(1)},${yA0.toFixed(1)} Q${px(fm).toFixed(1)},${yB.toFixed(1)} ${px(f1).toFixed(1)},${yA1.toFixed(1)}" fill="none" stroke="#333" stroke-width="1.3"/>`;
+      }
+    }
+    // Divisiones de hoja (inclinadas)
+    for(let i=1;i<nH;i++){
+      const f=i/nH;
+      o+=`<line x1="${px(f).toFixed(1)}" y1="${py(f).toFixed(1)}" x2="${px(f).toFixed(1)}" y2="${(py(f)+h).toFixed(1)}" stroke="#aaa" stroke-width=".8" stroke-dasharray="3,3"/>`;
+    }
+  }
+
+  // Flechas de recogida, siguiendo la inclinación del tramo
+  const fy=f=>(py(f)+h*0.45).toFixed(1);
+  if(recogida==='CEN'||nH>=2){
+    o+=`<line x1="${px(0.42).toFixed(1)}" y1="${fy(0.42)}" x2="${px(0.18).toFixed(1)}" y2="${fy(0.18)}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+    o+=`<line x1="${px(0.58).toFixed(1)}" y1="${fy(0.58)}" x2="${px(0.82).toFixed(1)}" y2="${fy(0.82)}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+  } else if(recogida==='IZQ'){
+    o+=`<line x1="${px(0.68).toFixed(1)}" y1="${fy(0.68)}" x2="${px(0.22).toFixed(1)}" y2="${fy(0.22)}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+  } else {
+    o+=`<line x1="${px(0.32).toFixed(1)}" y1="${fy(0.32)}" x2="${px(0.78).toFixed(1)}" y2="${fy(0.78)}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+  }
+  return o;
 }
 
 function getSVG(p){
   const u=uid(),t=(p.tipo||'').toLowerCase(),s=(p.sistema||'').toLowerCase();
+  // Cortina en L: dibujo del conjunto (dos tramos independientes formando esquina)
+  if(p.formaL&&p.anchoL)return svgFormaL(p,u);
   // Sin tipo definido → ficha en blanco para rellenar a mano
   if(!t||t==='cortina')return svgBlanco(p,u);
   if(t.includes('paquetto'))return svgPaquetto(p,u);
@@ -1836,6 +2179,11 @@ function fichaFilas(p){
   if((p.tipo||'').toLowerCase().includes('onda')&&p.ancho)rows+='<div class="fdat-row"><div class="fdat-k">Correderas</div><div class="fdat-v" style="font-size:10px">'+calcularCorrederasTexto(p.ancho,p.hojas,p.ondaCm)+'</div></div>';
   if(p.caida)rows+='<div class="fdat-row"><div class="fdat-k">Caída</div><div class="fdat-v sm">'+he(p.caida)+'</div></div>';
   if(p.soporte)rows+='<div class="fdat-row"><div class="fdat-k">Soporte</div><div class="fdat-v sm">'+he(p.soporte)+'</div></div>';
+  // Cortina en L: mostrar la medida del segundo tramo
+  if(p.formaL&&p.anchoL){
+    const _mL=fmtCm(p.anchoL)+(p.altoL?' × '+fmtCm(p.altoL):'');
+    rows+='<div class="fdat-row"><div class="fdat-k">Tramo L</div><div class="fdat-v">'+_mL+' · '+(p.hojasL||'1')+'H</div></div>';
+  }
   // Estor con varillas: fila con el nº de varillas ((alto-5)/20 - 1)
   if(esEstorF&&p.alto){
     const _aN=parseFloat(String(p.alto).replace(',','.'))||0;
@@ -1844,6 +2192,7 @@ function fichaFilas(p){
   }
   return rows;
 }
+
 
 function buildInstHTML(){
   STATE.svgUid=0;
@@ -1970,7 +2319,7 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
   border:1.5px solid #c0cce0!important;
   border-radius:4px!important;
   overflow:hidden!important;
-  max-height:56mm!important;
+  max-height:60mm!important;
 }
 .ficha-tit{
   padding:4px 12px!important;
@@ -1991,8 +2340,8 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
   position:relative!important;
   border-right:1.5px solid #c0cce0!important;
   border-bottom:none!important;
-  height:40mm!important;
-  max-height:40mm!important;
+  height:47mm!important;
+  max-height:47mm!important;
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
@@ -2001,7 +2350,7 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
   overflow:hidden!important;
 }
 .ficha-draw svg{
-  height:36mm!important;
+  height:43mm!important;               /* ~20% mayor que los 36mm previos */
   width:auto!important;
   max-width:100%!important;
   display:block!important;
