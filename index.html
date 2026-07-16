@@ -511,7 +511,7 @@ input, select, textarea { font-family: inherit; }
 'use strict';
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const CFG={EMPRESA_TELS:new Set(['973235776','900100200']),MAX_LINEAS_CORTE:10,OCR_SCALE:2.8,CORTINAS_POR_HOJA:4};
-const STATE={cortinas:[],lineas:[],pcnt:0,lcnt:0,svgUid:0,objectUrl:null,liveActive:false,_liveTimer:null,instZona:'',instRef:'',hayInstalacion:false,_instRawHit:false,_instRawZona:'',_instRawRef:''};
+const STATE={cortinas:[],lineas:[],pcnt:0,lcnt:0,svgUid:0,objectUrl:null,liveActive:false,_liveTimer:null,instZona:'',instRef:'',instDireccion:'',instTel:'',hayInstalacion:false,_instRawHit:false,_instRawZona:'',_instRawRef:''};
 /* ─── LIVE PREVIEW ─── */
 function scheduleLiveRefresh(){
   if(!STATE.liveActive)return;
@@ -732,6 +732,24 @@ function parsear(rawLines,skipClientExtract=false){
   for(const s of _instLines){
     const rm=s.match(/^\s*REF[\s.:\-]*([A-ZÀ-ÿ0-9][^\n]{1,50})/i);
     if(rm){STATE.instRef=rm[1].trim().replace(/[\.\s]+$/,'');break;}
+  }
+  // Dirección y teléfono de instalación: líneas que siguen justo a la línea
+  // "…INSTALACION … ZONA:…" (p.ej. "C/ JOSEP IRLA, 24", "ESC. 1 5ºB", "TFNO 615489660")
+  {
+    const instIdx=_instLines.findIndex(l=>/UD\.?\s*INSTALACI[OÓ]N|INSTALACI[OÓ]N[^\n]{0,40}ZONA\s*:/i.test(l));
+    if(instIdx>=0){
+      const STOP_INST=/^(BRUTO|ACEPTACI[OÓ]N|NOMBRE\s*:|FIRMA|TOTAL|SEG[UÚ]N|CIF\.?\s|PENEDES|Tel\s*:|info@|\*|RGPD|FORMAPAGO|FORMA\s+DE\s+PAGO|TRANSFERENCIA|N\/C\.)/i;
+      const dirParts=[];let tel='';
+      for(let j=instIdx+1;j<_instLines.length&&j<instIdx+6;j++){
+        const l=_instLines[j];
+        if(!l||STOP_INST.test(l))break;
+        const tm=l.match(/(?:TFNO|TEL[ÉE]?FONO|TEL)\.?:?\s*([679]\d{8})/i)||l.match(/\b([679]\d{8})\b/);
+        if(tm){if(!tel)tel=tm[1];const resto=l.replace(tm[0],'').trim().replace(/^[\-,.\s]+|[\-,.\s]+$/g,'');if(resto)dirParts.push(resto);continue;}
+        dirParts.push(l);
+      }
+      if(dirParts.length)STATE.instDireccion=dirParts.join(', ').replace(/\s{2,}/g,' ').trim();
+      if(tel)STATE.instTel=tel;
+    }
   }
   // La caja de instalación se muestra SOLO si aparece la palabra "INSTALACION"
   STATE.hayInstalacion=/UD\.?\s*INSTALACI[OÓ]N|INSTALACI[OÓ]N[^\n]{0,40}ZONA\s*:/i.test(_instFull)||!!STATE._instRawHit;
@@ -1273,7 +1291,7 @@ function setVal(id,val){const el=$(id);if(el&&val&&val.trim())el.value=val.trim(
 
 /* ─── GESTIÓN CORTINAS ─── */
 function resetCortinas(){STATE.cortinas=[];STATE.lineas=[];STATE.pcnt=0;STATE.lcnt=0;$('pcards').innerHTML='';$('lineas').innerHTML='';updateBadge();}
-function resetInstalacion(){STATE.instZona='';STATE.instRef='';STATE.hayInstalacion=false;STATE._instRawHit=false;STATE._instRawZona='';STATE._instRawRef='';}
+function resetInstalacion(){STATE.instZona='';STATE.instRef='';STATE.instDireccion='';STATE.instTel='';STATE.hayInstalacion=false;STATE._instRawHit=false;STATE._instRawZona='';STATE._instRawRef='';}
 function addCortina(d={}){
   STATE.pcnt++;const id='p'+STATE.pcnt;
   const tipo=normalizaTipo(d.tipo||'');
@@ -1633,7 +1651,7 @@ function svgPaquetto(p,u){
 
 function svgEnrollable(p,u){
   // Enrollable usa dimensiones propias más grandes
-  const W=320,H=205,ML=15,MR=65,MT=38,MB=15;
+  const W=320,H=213,ML=15,MR=65,MT=46,MB=15;
   const CW=W-ML-MR,CH=H-MT-MB;
   const tubeY=MT-8;
   const tube=`<rect x="${(ML-3).toFixed(1)}" y="${tubeY}" width="${(CW+6).toFixed(1)}" height="11" rx="5" fill="none" stroke="#111" stroke-width="2.2"/>`;
@@ -2210,8 +2228,10 @@ function buildInstHTML(){
   // Mismos campos que Datos del cliente: Nombre, Teléfono, Dirección, Población.
   if(!STATE.hayInstalacion)return'';
   const zonaLimpia=(STATE.instZona||'').trim();
+  const dirLimpia=(STATE.instDireccion||'').trim();
+  const telLimpio=(STATE.instTel||'').trim();
   const fila=(k,v)=>`<div class="cli-row"><span class="cli-k">${k}</span><span class="cli-v${v?'':' cli-fill'}">${v?he(v):''}</span></div>`;
-  return`<div class="cli-box inst-box"><div class="cli-box-tit">Datos de instalación</div><div class="cli-box-body">${fila('Nombre','')}${fila('Teléfono','')}${fila('Dirección','')}${fila('Población',zonaLimpia)}</div></div>`;
+  return`<div class="cli-box inst-box"><div class="cli-box-tit">Datos de instalación</div><div class="cli-box-body">${fila('Nombre','')}${fila('Teléfono',telLimpio)}${fila('Dirección',dirLimpia)}${fila('Población',zonaLimpia)}</div></div>`;
 }
 function cabCliente(){return`<div class="cli-box"><div class="cli-box-tit">Datos del cliente</div><div class="cli-box-body"><div class="cli-row"><span class="cli-k">Nombre</span><span class="cli-v">${he(nom)||'—'}</span></div><div class="cli-row"><span class="cli-k">Teléfono</span><span class="cli-v">${he(tel)||'—'}</span></div><div class="cli-row"><span class="cli-k">Dirección</span><span class="cli-v" style="font-size:10.5px">${he(dir)||'—'}</span></div><div class="cli-row"><span class="cli-k">Población</span><span class="cli-v">${he(pob)||'—'}</span></div></div></div>`;}
 
