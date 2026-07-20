@@ -511,7 +511,7 @@ input, select, textarea { font-family: inherit; }
 'use strict';
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const CFG={EMPRESA_TELS:new Set(['973235776','900100200']),MAX_LINEAS_CORTE:10,OCR_SCALE:2.8,CORTINAS_POR_HOJA:4};
-const STATE={cortinas:[],lineas:[],pcnt:0,lcnt:0,svgUid:0,objectUrl:null,liveActive:false,_liveTimer:null,instZona:'',instRef:'',instDireccion:'',instTel:'',hayInstalacion:false,_instRawHit:false,_instRawZona:'',_instRawRef:''};
+const STATE={cortinas:[],lineas:[],pcnt:0,lcnt:0,svgUid:0,objectUrl:null,liveActive:false,_liveTimer:null,instZona:'',instRef:'',instNombre:'',instDireccion:'',instTel:'',hayInstalacion:false,_instRawHit:false,_instRawZona:'',_instRawRef:''};
 /* ─── LIVE PREVIEW ─── */
 function scheduleLiveRefresh(){
   if(!STATE.liveActive)return;
@@ -739,14 +739,19 @@ function parsear(rawLines,skipClientExtract=false){
     const instIdx=_instLines.findIndex(l=>/UD\.?\s*INSTALACI[OÓ]N|INSTALACI[OÓ]N[^\n]{0,40}ZONA\s*:/i.test(l));
     if(instIdx>=0){
       const STOP_INST=/^(BRUTO|ACEPTACI[OÓ]N|NOMBRE\s*:|FIRMA|TOTAL|SEG[UÚ]N|CIF\.?\s|PENEDES|Tel\s*:|info@|\*|RGPD|FORMAPAGO|FORMA\s+DE\s+PAGO|TRANSFERENCIA|N\/C\.)/i;
-      const dirParts=[];let tel='';
+      // Detecta si una línea parece dirección (calle, avda, nº, piso…)
+      const ES_DIR=/(^|\s)(C\/|CALLE|AVDA|AVGDA|AV\.|AVENIDA|PLA[ÇC]A|PLAZA|CARRER|PASSEIG|PASEO|CTRA|CAMINO|CAM[IÍ]|POLIGON|POL[IÍ]GONO|URB|N[º°]|ESC\.|PISO|BLOC)/i;
+      const dirParts=[];let tel='',nombre='';
       for(let j=instIdx+1;j<_instLines.length&&j<instIdx+6;j++){
         const l=_instLines[j];
         if(!l||STOP_INST.test(l))break;
         const tm=l.match(/(?:TFNO|TEL[ÉE]?FONO|TEL)\.?:?\s*([679]\d{8})/i)||l.match(/\b([679]\d{8})\b/);
-        if(tm){if(!tel)tel=tm[1];const resto=l.replace(tm[0],'').trim().replace(/^[\-,.\s]+|[\-,.\s]+$/g,'');if(resto)dirParts.push(resto);continue;}
+        if(tm){if(!tel)tel=tm[1];const resto=l.replace(tm[0],'').trim().replace(/^[\-,.\s]+|[\-,.\s]+$/g,'');if(resto&&ES_DIR.test(resto))dirParts.push(resto);else if(resto&&!nombre)nombre=resto;continue;}
+        // Primera línea que NO es dirección → nombre del contacto de instalación
+        if(!nombre&&!ES_DIR.test(l)){nombre=l;continue;}
         dirParts.push(l);
       }
+      if(nombre)STATE.instNombre=nombre.replace(/\s{2,}/g,' ').trim();
       if(dirParts.length)STATE.instDireccion=dirParts.join(', ').replace(/\s{2,}/g,' ').trim();
       if(tel)STATE.instTel=tel;
     }
@@ -816,7 +821,7 @@ function estrategiaCanotex(txt){
     const est=(m[1]||'').replace(/\.\s*$/,'').trim();
     return !NO_EST.test(est)&&est.length>=2&&est.length<=50&&!/^\d/.test(est)&&!/MEDIDA/i.test(est)&&!/^[-\s]+$/.test(est);
   }
-  function esProd(l){return /MEDIDA:\s*\d+(?:[.,]\d+)?(?:\s*\+\s*\d+(?:[.,]\d+)?)*\s*[xX×]\s*\d+/i.test(l);}
+  function esProd(l){return /MEDIDA:\s*\d+(?:[.,]\d+)?(?:\s*[-+]\s*\d+(?:[.,]\d+)?)*\s*[xX×]\s*\d+/i.test(l);}
 
   // Extraer tejido de cualquier línea de descripción de enrollable
   // Canotex enrollable: "CADENA (T43), TEJIDO THECNIC BASIC P05 BLANCO/GRIS."
@@ -864,7 +869,7 @@ function estrategiaCanotex(txt){
       i++;continue;
     }
     if(esProd(line)){
-      const pm=line.match(/^([A-Z0-9]+)\s+MEDIDA:\s*(\d+(?:[.,]\d+)?(?:\s*\+\s*\d+(?:[.,]\d+)?)*)\s*[xX×]\s*(\d+(?:[.,]\d+)?)\s*H?((?:\s*(?:\+\d+|T\.?T|ACB|ACABADA|H\.?T|PIE|CM))*)/i);
+      const pm=line.match(/^([A-Z0-9]+)\s+MEDIDA:\s*(\d+(?:[.,]\d+)?(?:\s*[-+]\s*\d+(?:[.,]\d+)?)*)\s*[xX×]\s*(\d+(?:[.,]\d+)?)\s*H?((?:\s*(?:\+\d+|T\.?T|ACB|ACABADA|H\.?T|PIE|CM))*)/i);
       if(!pm){i++;continue;}
       const codigo=(pm[1]||'').toUpperCase();
       // Ancho compuesto "120+180" → se conserva tal cual (sin sumar)
@@ -873,7 +878,7 @@ function estrategiaCanotex(txt){
       // Anotación tras el alto: "+40" (de "162H+40"), "TT", "ACB", "PIE"…
       let sufAlto=(pm[4]||'').trim().replace(/^H\b\.?/i,'').replace(/[.\s]+$/,'').trim();
       const extra=sufAlto;
-      const resto=line.replace(/^[A-Z0-9]+\s+MEDIDA:[^]*?[xX×]\s*\d+(?:[.,]\d+)?[A-Z.\+0-9\s]*?(?=\s+(?:RECOG|CONFE|MANDO|COLOR|CAIDA|SOP|-)|$)/i,'');
+      const resto=line.replace(/^[A-Z0-9]+\s+MEDIDA:\s*\d+(?:[.,]\d+)?(?:\s*[-+]\s*\d+(?:[.,]\d+)?)*\s*[xX×]\s*\d+(?:[.,]\d+)?[A-Z.\+0-9\s]*?(?=\s+(?:RECOG|CONFE|MANDO|COLOR|CAIDA|SOP)|$)/i,'');
       const confeM=resto.match(/CONFE:\s*(\d+)\s*HOJAS?/i),hojas=confeM?confeM[1]:'1';
       const recogM=resto.match(/RECOG:([A-Z]+)/i)||resto.match(/MANDO:\s*([A-Z]+)/i),recRaw=recogM&&recogM[1]?recogM[1]:'D';
       // Verticales: RECOGIDO:Nº 2 → número de apertura 1-10
@@ -1291,7 +1296,7 @@ function setVal(id,val){const el=$(id);if(el&&val&&val.trim())el.value=val.trim(
 
 /* ─── GESTIÓN CORTINAS ─── */
 function resetCortinas(){STATE.cortinas=[];STATE.lineas=[];STATE.pcnt=0;STATE.lcnt=0;$('pcards').innerHTML='';$('lineas').innerHTML='';updateBadge();}
-function resetInstalacion(){STATE.instZona='';STATE.instRef='';STATE.instDireccion='';STATE.instTel='';STATE.hayInstalacion=false;STATE._instRawHit=false;STATE._instRawZona='';STATE._instRawRef='';}
+function resetInstalacion(){STATE.instZona='';STATE.instRef='';STATE.instNombre='';STATE.instDireccion='';STATE.instTel='';STATE.hayInstalacion=false;STATE._instRawHit=false;STATE._instRawZona='';STATE._instRawRef='';}
 function addCortina(d={}){
   STATE.pcnt++;const id='p'+STATE.pcnt;
   const tipo=normalizaTipo(d.tipo||'');
@@ -1551,8 +1556,8 @@ function cotas(u,aw,ah){
 function fmtCm(v){
   if(v==null||String(v).trim()==='')return'—';
   const s=String(v).trim();
-  // Medida compuesta "120+180" → "120+180 cm"
-  if(/^\d+(?:[.,]\d+)?(?:\+\d+(?:[.,]\d+)?)+$/.test(s))return s+' cm';
+  // Medida compuesta "120+180" o "198-159" → "198-159 cm"
+  if(/^\d+(?:[.,]\d+)?(?:[-+]\d+(?:[.,]\d+)?)+$/.test(s))return s+' cm';
   const m=s.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
   if(!m)return s;
   const num=m[1];let resto=(m[2]||'').trim();
@@ -2231,7 +2236,8 @@ function buildInstHTML(){
   const dirLimpia=(STATE.instDireccion||'').trim();
   const telLimpio=(STATE.instTel||'').trim();
   const fila=(k,v)=>`<div class="cli-row"><span class="cli-k">${k}</span><span class="cli-v${v?'':' cli-fill'}">${v?he(v):''}</span></div>`;
-  return`<div class="cli-box inst-box"><div class="cli-box-tit">Datos de instalación</div><div class="cli-box-body">${fila('Nombre','')}${fila('Teléfono',telLimpio)}${fila('Dirección',dirLimpia)}${fila('Población',zonaLimpia)}</div></div>`;
+  const nomLimpio=(STATE.instNombre||'').trim();
+  return`<div class="cli-box inst-box"><div class="cli-box-tit">Datos de instalación</div><div class="cli-box-body">${fila('Nombre',nomLimpio)}${fila('Teléfono',telLimpio)}${fila('Dirección',dirLimpia)}${fila('Población',zonaLimpia)}</div></div>`;
 }
 function cabCliente(){return`<div class="cli-box"><div class="cli-box-tit">Datos del cliente</div><div class="cli-box-body"><div class="cli-row"><span class="cli-k">Nombre</span><span class="cli-v">${he(nom)||'—'}</span></div><div class="cli-row"><span class="cli-k">Teléfono</span><span class="cli-v">${he(tel)||'—'}</span></div><div class="cli-row"><span class="cli-k">Dirección</span><span class="cli-v" style="font-size:10.5px">${he(dir)||'—'}</span></div><div class="cli-row"><span class="cli-k">Población</span><span class="cli-v">${he(pob)||'—'}</span></div></div></div>`;}
 
@@ -2419,12 +2425,8 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
   grid-template-columns:1fr 155px!important;
   gap:12px!important;
   border-top:1px solid #dde4f0!important;
-  position:fixed!important;
-  bottom:0!important;
-  left:0!important;
-  right:0!important;
-  margin:0!important;
-  padding:6px 14px 4px!important;
+  margin:8px 14px 0!important;
+  padding:6px 0 4px!important;
   background:#fff!important;
 }
 .notas-box{border:1px solid #c8d0df!important;border-radius:4px!important;overflow:hidden!important}
@@ -2448,7 +2450,7 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
 
 @page{
   size:A4 portrait;
-  margin:6mm 6mm 22mm 6mm; /* margen inferior reservado para el pie fijo (notas+firma) */
+  margin:5mm 6mm 5mm 6mm;
 }
 
 @media print{
