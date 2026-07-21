@@ -890,17 +890,25 @@ function estrategiaCanotex(txt){
       // Verticales: RECOGIDO:Nº 2 → número de apertura 1-10
       const aperturaM=resto.match(/RECOGIDO:?\s*N?[ºo°]?\s*(\d{1,2})/i);
       const apertura=aperturaM?aperturaM[1]:'';
-      // Color de guía/sistema: "COLOR GUIA:BCO", "COLOR GUIA:NEGRA"…
-      const colorGuiaM=resto.match(/COLOR\s*GU[IÍ]A\s*:\s*([A-ZÀ-ÿ]+)/i);
+      // Color de guía/sistema: "COLOR GUIA:BCO", "COLOR GUIA:NEGRA", "EN COLOR BLANCO"…
+      const colorGuiaM=resto.match(/COLOR\s*GU[IÍ]A\s*:\s*([A-ZÀ-ÿ]+)/i)
+        ||resto.match(/\bEN\s+COLOR\s+([A-ZÀ-ÿ]+)/i)
+        ||resto.match(/\bCOLOR\s+([A-ZÀ-ÿ]+)/i);
       const colorGuia=colorGuiaM?colorGuiaM[1]:'';
       const caidaM=resto.match(/CAIDA:\s*([A-Z]+)/i),sopM2=resto.match(/SOP:([A-Z]+)/i);
 
       // Recoger bloque de líneas siguiente (hasta siguiente producto/estancia)
-      let descLineas=[],j=i+1;
-      while(j<lines.length&&j<i+15){
+      let descLineas=[],j=i+1,saltosCab=0;
+      // Líneas de cabecera/pie de página que hay que SALTAR (no cortan la descripción,
+      // porque la cortina puede continuar en la página siguiente tras la cabecera).
+      const ES_CABECERA=/^(SUMA\s+Y\s+SIGUE|PRESUPUESTO(?::|\s|$)|CANOTEX|PENEDES|Nif:|Tel:|info@|CIF\.|Inscrita|Reg\.|Tomo|folio|Hoja\s+L|LLEIDA|DUCH\s|AVDA\.|AVGDA|\d{5}\s|PRESUPUESTO\s+FECHA|ARTÍCULO\s+DESCRIPCI|\d{6,}\s+\d{2}\/\d{2}\/\d{4}|646\.\d|^\d+\s*\/\s*\d+$)/i;
+      while(j<lines.length&&j<i+22){
         const nl=lines[j].trim();
-        if(esProd(nl)||esEstancia(nl)||/^PAGAMENT|^BRUTO|^TOTAL|^SUMA/i.test(nl))break;
-        descLineas.push(nl);
+        // Parar de verdad solo ante otra cortina, otra estancia o el cierre del presupuesto
+        if(esProd(nl)||esEstancia(nl)||/^PAGAMENT|^BRUTO|^TOTAL(?!\s+PROTECC)|^ACEPTACI|^SEG[UÚ]N|^\*m[áa]s\s+informaci/i.test(nl))break;
+        // Saltar cabeceras/pies de página (permite cruzar el salto de página)
+        if(ES_CABECERA.test(nl)){j++;saltosCab++;if(saltosCab>16)break;continue;}
+        if(nl)descLineas.push(nl);
         j++;
       }
 
@@ -908,16 +916,47 @@ function estrategiaCanotex(txt){
       const esEnrollCodigo=CODIGOS_ENROLL.test(codigo);
 
       let tejido='',sistema='',tipoDesc='';let sopDesc='';
-      for(const nl of descLineas){
+      for(let nl of descLineas){
+        // Descartar líneas que son SOLO basura lateral del registro mercantil
+        // ("omoT", "oilof", "ajoH", "31846252B", ",16", ",29", ".FIC"…)
+        if(/^(?:\.?geR\.?|atircsnI|nitnacreM|omoT|ajoH|oilof|adiielL|\.FIC|[,.]?\d{1,3}|\d{6,}[A-Z]?|[A-Z]?\d{6,})$/i.test(nl.trim()))continue;
+        // Quitar basura lateral pegada al inicio de una línea válida
+        nl=nl.replace(/^(?:\.?geR\.?|atircsnI|nitnacreM|omoT|ajoH|oilof|adiielL|\.FIC|[,.]\d{1,3}|\d{6,}[A-Z]?|[A-Z]?\d{6,})\s+(?=[A-ZÁÉÍÓÚÑ])/i,'').trim();
+        nl=nl.replace(/\s+(?:omoT|ajoH|oilof|geR\.?|atircsnI|nitnacreM|\.FIC)$/i,'').trim();
         const nlC=nl.replace(/^\d+\s*[.·]\s+/,'').replace(/^[A-Z]\s+(?=[A-Z]{2})/,'');
         // TEJIDO — sin break para que el loop siga buscando SISTEMA
-        if(!tejido&&/^TEJIDO:\s*/i.test(nlC))tejido=nlC.replace(/^TEJIDO:\s*/i,'').trim();
-        else if(!tejido&&/^TEJIDO:\s*/i.test(nl))tejido=nl.replace(/^TEJIDO:\s*/i,'').trim();
+        if(!tejido&&/^TEJIDO:\s*/i.test(nlC))tejido=nlC.replace(/^(?:TEJIDO:\s*)+/i,'').trim();
+        else if(!tejido&&/^TEJIDO:\s*/i.test(nl))tejido=nl.replace(/^(?:TEJIDO:\s*)+/i,'').trim();
         // SISTEMA
-        if(!sistema&&/^SISTEMA\s+DE\s+INSTALACI/i.test(nl))
+        if(!sistema&&/^SISTEMA\s+DE\s+INSTALACI/i.test(nl)){
           sistema=nl.replace(/^SISTEMA\s+DE\s+INSTALACI[OÓ]N?:\s*/i,'').trim();
+          // El sistema puede continuar en las líneas siguientes (p.ej. termina en coma
+          // "GUIA MANUAL 1 VIA, REFORZADA," y sigue "EN COLOR BLANCO (...)").
+          // Unir continuaciones que NO empiezan por otra etiqueta ni son otra cortina/estancia.
+          let jj=descLineas.indexOf(nl);
+          if(jj>=0){
+            while(jj+1<descLineas.length){
+              let sig=descLineas[jj+1];
+              if(!sig){jj++;continue;}
+              // Saltar líneas de basura lateral pura ("omoT", "oilof", códigos…)
+              if(/^(?:\.?geR\.?|atircsnI|nitnacreM|omoT|ajoH|oilof|adiielL|\.FIC|[,.]?\d{1,3}|\d{6,}[A-Z]?|[A-Z]?\d{6,})$/i.test(sig.trim())){jj++;continue;}
+              // Parar si la siguiente línea es una etiqueta nueva u otro artículo/estancia
+              if(/^(TEJIDO|SISTEMA|MEDIDA|UD\.|CONFE|RECOG|MANDO|SOP|COLOR\s+GU|CAIDA)/i.test(sig))break;
+              if(/^[A-Z0-9]{4,}\s+MEDIDA/i.test(sig))break;
+              if(NO_EST.test(sig))break;
+              // Unir solo si el sistema venía "abierto" (acaba en coma) o la línea sigue el sistema
+              if(/[,\-]$/.test(sistema)||/^(EN\s+COLOR|COLOR|REFORZAD|CON\s+EMPALME|EN\s+DOS|D\.\d)/i.test(sig)){
+                sistema=(sistema+' '+sig).replace(/\s{2,}/g,' ').trim();
+                jj++;
+              } else break;
+            }
+          }
           // Quitar el fragmento de soporte del sistema (va en su propio campo)
           sistema=sistema.replace(/\s*(?:CON\s+)?SOP(?:ORTES?)?[\s.:]+(?:TECHO\s*CLIC|SOSTRE|TECHO|PARED|FRONTAL|FRENTE|RAPIDO|RAP|CLIC)\.?/gi,'').replace(/\s{2,}/g,' ').replace(/\s+\./g,'.').replace(/^[\s.]+|[\s.]+$/g,'').trim();
+          // Quitar la coletilla de correderas ("CORR.OP", "CORR.CONVENCIONAL", "-CORR.OP")
+          // que no forma parte del sistema de instalación.
+          sistema=sistema.replace(/[\s-]*CORR\.?\s*(?:OP|CONVENCIONAL|CONV\.?)?\.?/gi,'').replace(/[\s-]+$/,'').replace(/\s{2,}/g,' ').trim();
+        }
         // UD. descripción
         if(!tipoDesc&&/^UD\.\s*/i.test(nl)){
           tipoDesc=nl.replace(/^UD\.\s*/i,'').replace(/\(ONDA[^)]*\)/,'').trim();
