@@ -1348,13 +1348,16 @@ function addCortina(d={}){
   const hojasIni=d.hojas||'1';
   const recIni=(parseInt(hojasIni)||1)>=2?'CEN':(d.recogida||'D');
   const c={id,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',hojas:hojasIni,recogida:recIni,tejido:d.tejido||'',sistema:d.sistema||'',tipo,extra:d.extra||'',metros:d.metros||'',caida:d.caida||'',soporte:d.soporte||'',codigo:d.codigo||'',motorizada:d.motorizada||false,ondaCm:d.ondaCm||'',esTapiceria:d.esTapiceria||false,apertura:d.apertura||'',mandoBrisa:d.mandoBrisa||'cadena',colorGuia:d.colorGuia||'',
-  formaL:d.formaL||'',anchoL:d.anchoL||'',altoL:d.altoL||'',hojasL:d.hojasL||'1',recogidaL:d.recogidaL||'D'};
+  formaL:d.formaL||'',anchoL:d.anchoL||'',altoL:d.altoL||'',hojasL:d.hojasL||'1',recogidaL:d.recogidaL||'D',
+  llucana:d.llucana||'',llucAnchoArriba:d.llucAnchoArriba||'',llucAltoCorto:d.llucAltoCorto||'',llucInclinada:d.llucInclinada||'',
+  enBlanco:d.enBlanco||false,
+  llu2:d.llu2||'',llu2Ancho:d.llu2Ancho||'',llu2Alto:d.llu2Alto||'',llu2AnchoArriba:d.llu2AnchoArriba||'',llu2AltoCorto:d.llu2AltoCorto||'',llu2Inclinada:d.llu2Inclinada||'',llu2Hojas:d.llu2Hojas||'1',llu2Recogida:d.llu2Recogida||'D'};
   STATE.cortinas.push(c);
   if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'){
     STATE.lcnt++;
     const corrIni=(c.tipo||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
     const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
-    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':''),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
+    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':'')),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
     // Cortina en L → segunda guía independiente (su propia línea de corte)
     if(c.formaL&&c.anchoL){
       STATE.lcnt++;
@@ -1366,6 +1369,103 @@ function addCortina(d={}){
   updateBadge();
 }
 function addLinea(d={}){STATE.lcnt++;const l={id:'l'+STATE.lcnt,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',sistema:d.sistema||'',tipo:d.tipo||'',tejido:d.tejido||'',recogida:d.recogida||'D',hojas:d.hojas||'1',color:d.color||'',soportes:d.soportes||'',correderas:d.correderas||'CONVENCIONAL',manual:d.manual||'MANUAL',unidades:d.unidades||'1',obs:d.obs||''};STATE.lineas.push(l);renderLinea(l,STATE.lineas.length-1);}
+/* Calcular la longitud de la diagonal (inclinada) de una llucana por Pitágoras:
+   cateto horizontal = ancho_abajo - ancho_arriba (si no hay arriba → ancho completo = triángulo)
+   cateto vertical   = altura
+   inclinada = raíz(horizontal² + vertical²) */
+function calcLlucInclinada(c){
+  const abajo=parseFloat(String(c.ancho||'').replace(',','.'))||0;
+  const arriba=parseFloat(String(c.llucAnchoArriba||'').replace(',','.'))||0;   // vacío → triángulo
+  const alto=parseFloat(String(c.alto||'').replace(',','.'))||0;                // lado largo
+  const corto=parseFloat(String(c.llucAltoCorto||'').replace(',','.'))||0;      // lado corto
+  if(!abajo||!alto)return'';
+  const horiz=Math.max(0,abajo-arriba);       // cuánto avanza la diagonal en horizontal
+  const vert=corto?Math.abs(alto-corto):alto; // caída real de la diagonal
+  const diag=Math.sqrt(horiz*horiz+vert*vert);
+  return diag?String(Math.round(diag)):'';
+}
+
+/* Inclinada del 2º tramo de la llucana (mismo Pitágoras que la principal) */
+function calcLluc2Inclinada(c){
+  const abajo =parseFloat(String(c.llu2Ancho||'').replace(',','.'))||0;
+  const arriba=parseFloat(String(c.llu2AnchoArriba||'').replace(',','.'))||0;
+  const alto  =parseFloat(String(c.llu2Alto||c.alto||'').replace(',','.'))||0;
+  const corto =parseFloat(String(c.llu2AltoCorto||'').replace(',','.'))||0;
+  if(!abajo||!alto)return'';
+  const horiz=Math.max(0,abajo-arriba);
+  const vert=corto?Math.abs(alto-corto):alto;
+  const diag=Math.sqrt(horiz*horiz+vert*vert);
+  return diag?String(Math.round(diag)):'';
+}
+
+/* Unir la SIGUIENTE cortina como 2º tramo de la llucana.
+   Igual que la forma en L: dos cortinas independientes (dos guías, dos líneas de
+   corte) que comparten una sola ficha con el dibujo del conjunto. */
+function unirLlucana(id){
+  const i=STATE.cortinas.findIndex(c=>c.id===id);
+  if(i<0||i>=STATE.cortinas.length-1){setSt('er','No hay una cortina siguiente para unir');return;}
+  const a=STATE.cortinas[i],b=STATE.cortinas[i+1];
+  if(!a.llucana){setSt('er','Esta cortina no está en forma de llucana');return;}
+  if(a.llu2){setSt('er','Esta llucana ya tiene un 2º tramo');return;}
+  const lado=confirm('Unir "'+(b.estancia||'#'+(i+2))+'" como 2º tramo de la llucana.\n\nAceptar = inclinación a la DERECHA\nCancelar = inclinación a la IZQUIERDA')?'dcha':'izq';
+  a.llu2=lado;
+  a.llu2Ancho=b.ancho||'';
+  a.llu2Alto=(b.alto&&b.alto!==a.alto)?b.alto:'';
+  a.llu2AnchoArriba='';
+  a.llu2AltoCorto='';
+  a.llu2Inclinada='';
+  a.llu2Hojas=b.hojas||'1';
+  a.llu2Recogida=b.recogida||'D';
+  if(!a.tejido&&b.tejido)a.tejido=b.tejido;
+  if(!a.sistema&&b.sistema)a.sistema=b.sistema;
+  STATE.cortinas.splice(i+1,1);
+  reconstruirLineas();rerenderAllCards();updateBadge();scheduleLiveRefresh();
+  setSt('ok','2º tramo de llucana añadido');
+}
+
+/* Separar el 2º tramo: vuelve a ser una cortina independiente */
+function separarLlucana(id){
+  const i=STATE.cortinas.findIndex(c=>c.id===id);
+  if(i<0)return;
+  const a=STATE.cortinas[i];
+  if(!a.llu2){setSt('er','Esta llucana no tiene 2º tramo');return;}
+  const b={...a};
+  delete b.id;
+  b.ancho=a.llu2Ancho;b.alto=a.llu2Alto||a.alto;b.hojas=a.llu2Hojas;b.recogida=a.llu2Recogida;
+  b.llucana=a.llu2;b.llucAnchoArriba=a.llu2AnchoArriba;b.llucAltoCorto=a.llu2AltoCorto;b.llucInclinada=a.llu2Inclinada;
+  b.llu2='';b.llu2Ancho='';b.llu2Alto='';b.llu2AnchoArriba='';b.llu2AltoCorto='';b.llu2Inclinada='';b.llu2Hojas='1';b.llu2Recogida='D';
+  b.estancia=(a.estancia||'')+' (2)';
+  a.llu2='';a.llu2Ancho='';a.llu2Alto='';a.llu2AnchoArriba='';a.llu2AltoCorto='';a.llu2Inclinada='';a.llu2Hojas='1';a.llu2Recogida='D';
+  STATE.pcnt++;b.id='p'+STATE.pcnt;
+  STATE.cortinas.splice(i+1,0,b);
+  reconstruirLineas();rerenderAllCards();updateBadge();scheduleLiveRefresh();
+  setSt('ok','2º tramo separado');
+}
+
+/* Dejar la ficha en blanco (dibujo y datos) para hacerla a mano sobre el papel */
+function toggleBlanco(id){
+  const c=STATE.cortinas.find(x=>x.id===id);if(!c)return;
+  c.enBlanco=!c.enBlanco;
+  rerenderAllCards();scheduleLiveRefresh();
+  setSt('ok',c.enBlanco?'Ficha en blanco para rellenar a mano':'Dibujo automático restaurado');
+}
+
+function ponerLlucana(id){
+  const c=STATE.cortinas.find(x=>x.id===id);if(!c)return;
+  c.llucana='dcha';           // por defecto inclinación a la derecha
+  c.llucAnchoArriba='';c.llucAltoCorto='';  // vacío → triángulo
+  c.llucInclinada='';         // se calcula solo
+  rerenderAllCards();scheduleLiveRefresh();
+  setSt('ok','Forma de llucana activada');
+}
+function quitarLlucana(id){
+  const c=STATE.cortinas.find(x=>x.id===id);if(!c)return;
+  c.llucana='';c.llucAnchoArriba='';c.llucAltoCorto='';c.llucInclinada='';
+  c.llu2='';c.llu2Ancho='';c.llu2Alto='';c.llu2AnchoArriba='';c.llu2AltoCorto='';c.llu2Inclinada='';c.llu2Hojas='1';c.llu2Recogida='D';
+  rerenderAllCards();scheduleLiveRefresh();
+  setSt('ok','Llucana quitada');
+}
+
 /* Unir esta cortina con la SIGUIENTE formando una L.
    La siguiente pasa a ser el tramo lateral y se elimina como cortina independiente. */
 function unirEnL(id){
@@ -1425,10 +1525,16 @@ function reconstruirLineas(){
     STATE.lcnt++;
     const corrIni=(t||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
     const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
-    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':''),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
+    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':'')),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
     if(c.formaL&&c.anchoL){
       STATE.lcnt++;
       STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
+    }
+    // Llucana con 2º tramo → segunda guía independiente
+    if(c.llucana&&c.llu2&&c.llu2Ancho){
+      STATE.lcnt++;
+      const incT=c.llu2Inclinada||calcLluc2Inclinada(c);
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo llucana)',ancho:c.llu2Ancho,alto:c.llu2Alto||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.llu2Recogida||'D',hojas:c.llu2Hojas||'1',color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Llucana · inclinación '+(c.llu2==='izq'?'izq':'dcha')+(incT?' · inclinada '+incT+' cm':'')});
     }
   });
   rerenderAllLineas();
@@ -1476,11 +1582,48 @@ function remLinea(id){
 function updCortina(id,field,val){
   const c=STATE.cortinas.find(x=>x.id===id);if(!c)return;
   c[field]=field==='tipo'?normalizaTipo(val):val;
+  const card=document.querySelector(`.pcard[data-id="${id}"]`);
+
+  // Cambios ESTRUCTURALES (vienen de desplegables): la tarjeta cambia de campos → redibujar
   if(field==='tipo'||field==='formaL'){rerenderAllCards();reconstruirLineas();scheduleLiveRefresh();return;}
-  if(field==='anchoL'||field==='altoL'||field==='hojasL'||field==='recogidaL'){reconstruirLineas();scheduleLiveRefresh();return;}
-  if(field==='hojas'&&(parseInt(val)||1)>=2&&c.recogida!=='CEN'){c.recogida='CEN';rerenderAllCards();scheduleLiveRefresh();return;}
-  const head=document.querySelector(`.pcard[data-id="${id}"] .est`);
-  if(head)head.textContent=c.estancia||'(sin nombre)';
+  if(field==='llucana'){rerenderAllCards();scheduleLiveRefresh();return;}
+
+  // Cambios de VALOR: NO redibujar la tarjeta (perdería el foco y habría que hacer
+  // doble clic en el siguiente campo). Solo actualizar lo justo.
+  if(field==='anchoL'||field==='altoL'||field==='hojasL'||field==='recogidaL'){
+    reconstruirLineas();scheduleLiveRefresh();return;
+  }
+  if(field==='llu2'){rerenderAllCards();reconstruirLineas();scheduleLiveRefresh();return;}
+  if(field==='llu2Ancho'||field==='llu2Alto'||field==='llu2AnchoArriba'||field==='llu2AltoCorto'||field==='llu2Inclinada'||field==='llu2Hojas'||field==='llu2Recogida'){
+    if(card){const inp=card.querySelector('input[onchange*="llu2Inclinada"]');if(inp)inp.placeholder=calcLluc2Inclinada(c)||'auto';}
+    reconstruirLineas();scheduleLiveRefresh();return;
+  }
+  if(field==='llucAnchoArriba'||field==='llucAltoCorto'||field==='llucInclinada'){
+    // Refrescar solo la sugerencia automática de la inclinada
+    if(card){
+      const inp=card.querySelector('input[onchange*="llucInclinada"]');
+      if(inp)inp.placeholder=calcLlucInclinada(c)||'auto';
+    }
+    scheduleLiveRefresh();return;
+  }
+  if(field==='ancho'||field==='alto'){
+    // Actualizar la sugerencia de la inclinada si es llucana
+    if(c.llucana&&card){
+      const inp=card.querySelector('input[onchange*="llucInclinada"]');
+      if(inp)inp.placeholder=calcLlucInclinada(c)||'auto';
+    }
+    scheduleLiveRefresh();return;
+  }
+  if(field==='hojas'&&(parseInt(val)||1)>=2&&c.recogida!=='CEN'){
+    // Poner recogida central sin redibujar: actualizar el propio desplegable
+    c.recogida='CEN';
+    if(card){const sel=card.querySelector('select[onchange*="recogida"]');if(sel)sel.value='CEN';}
+    scheduleLiveRefresh();return;
+  }
+  if(field==='estancia'&&card){
+    const head=card.querySelector('.est');
+    if(head)head.textContent=c.estancia||'(sin nombre)';
+  }
   scheduleLiveRefresh();
 }
 function updLinea(id,field,val){const l=STATE.lineas.find(x=>x.id===id);if(!l)return;l[field]=val;const head=document.querySelector(`.pcard[data-lid="${id}"] .est`);if(head&&field==='estancia')head.textContent=val||'(sin nombre)';}
@@ -1511,7 +1654,7 @@ function renderPcard(c,idx){
   if(isEnroll(c.tipo)){
     extras+=`<div class="r2">
       <div class="fld"><label>Accionamiento</label><select onchange="updCortina('${c.id}','motorizada',this.value==='true')"><option value="false"${!c.motorizada?' selected':''}>Manual</option><option value="true"${c.motorizada?' selected':''}>Motorizada</option></select></div>
-      <div class="fld"><label>Caída</label><input type="text" value="${he(c.caida||'')}" placeholder="DEL" oninput="updCortina('${c.id}','caida',this.value)"></div>
+      <div class="fld"><label>Caída</label><input type="text" value="${he(c.caida||'')}" placeholder="DEL" onchange="updCortina('${c.id}','caida',this.value)"></div>
     </div>
 `;
   }
@@ -1520,17 +1663,33 @@ function renderPcard(c,idx){
   }
 
   const haySiguiente=idx<STATE.cortinas.length-1;
-  const btnL=(!c.formaL&&haySiguiente)
+  const btnL=(!c.formaL&&!c.llucana&&haySiguiente)
     ?`<button class="btn-rem" title="Unir con la siguiente cortina en forma de L" onclick="unirEnL('${c.id}')" style="font-size:12px">⌐</button>`
     :(c.formaL?`<button class="btn-rem" title="Separar la L en dos cortinas" onclick="separarL('${c.id}')" style="font-size:12px">⇄</button>`:'');
-  div.innerHTML=`<div class="pch"><span class="num">#${idx+1}</span><span class="est">${he(c.estancia||'(sin nombre)')}</span>${btnL}<button class="btn-rem" title="Duplicar cortina" onclick="dupCortina('${c.id}')" style="font-size:12px">⧉</button><button class="btn-rem" onclick="remCortina('${c.id}')">✕</button></div>
+  // Botón Llucana (riel superior inclinado en trapecio/triángulo)
+  const btnLluc=!c.formaL
+    ?(c.llucana
+      ?`<button class="btn-rem" title="Quitar forma de llucana" onclick="quitarLlucana('${c.id}')" style="font-size:12px">▱</button>`
+      :`<button class="btn-rem" title="Convertir en llucana (riel superior inclinado)" onclick="ponerLlucana('${c.id}')" style="font-size:12px">◺</button>`)
+    :'';
+  // Dejar la ficha en blanco para dibujarla y rellenarla a mano
+  const btnBlanco=c.llucana
+    ?`<button class="btn-rem" title="${c.enBlanco?'Volver al dibujo automático':'Dejar dibujo y datos en blanco para rellenar a mano'}" onclick="toggleBlanco('${c.id}')" style="font-size:12px${c.enBlanco?';color:var(--acc)':''}">✎</button>`
+    :'';
+  // Unir/separar el 2º tramo de la llucana (misma idea que la forma en L)
+  const btnLluc2=(c.llucana&&!c.formaL)
+    ?(c.llu2
+      ?`<button class="btn-rem" title="Separar el 2º tramo de la llucana" onclick="separarLlucana('${c.id}')" style="font-size:12px">⇄</button>`
+      :(haySiguiente?`<button class="btn-rem" title="Unir la siguiente cortina como 2º tramo de la llucana" onclick="unirLlucana('${c.id}')" style="font-size:12px">⌐</button>`:''))
+    :'';
+  div.innerHTML=`<div class="pch"><span class="num">#${idx+1}</span><span class="est">${he(c.estancia||'(sin nombre)')}</span>${btnL}${btnLluc}${btnBlanco}${btnLluc2}<button class="btn-rem" title="Duplicar cortina" onclick="dupCortina('${c.id}')" style="font-size:12px">⧉</button><button class="btn-rem" onclick="remCortina('${c.id}')">✕</button></div>
     <div class="pcb">
-      <div class="fld"><label>Estancia</label><input type="text" value="${he(c.estancia)}" placeholder="Comedor…" oninput="updCortina('${c.id}','estancia',this.value)"></div>
-      <div class="r2"><div class="fld"><label>Ancho cm</label><input type="text" inputmode="decimal" value="${he(c.ancho)}" placeholder="170" oninput="updCortina('${c.id}','ancho',this.value)"></div><div class="fld"><label>Alto cm</label><input type="text" inputmode="decimal" value="${he(c.alto)}" placeholder="257" oninput="updCortina('${c.id}','alto',this.value)"></div></div>
+      <div class="fld"><label>Estancia</label><input type="text" value="${he(c.estancia)}" placeholder="Comedor…" onchange="updCortina('${c.id}','estancia',this.value)"></div>
+      <div class="r2"><div class="fld"><label>Ancho cm</label><input type="text" inputmode="decimal" value="${he(c.ancho)}" placeholder="170" onchange="updCortina('${c.id}','ancho',this.value)"></div><div class="fld"><label>Alto cm</label><input type="text" inputmode="decimal" value="${he(c.alto)}" placeholder="257" onchange="updCortina('${c.id}','alto',this.value)"></div></div>
       <div class="fld"><label>Tipo cortina</label><select onchange="updCortina('${c.id}','tipo',this.value)"><option value="">-- Seleccionar --</option>${opts.map(t=>`<option value="${t}"${c.tipo===t?' selected':''}>${t}</option>`).join('')}</select></div>
-      <div class="fld"><label>Sistema</label><input type="text" value="${he(c.sistema)}" placeholder="Guia Manual 1 Vía" oninput="updCortina('${c.id}','sistema',this.value)"></div>
-      <div class="r2"><div class="fld"><label>Nº Hojas</label><input type="text" inputmode="numeric" value="${he(c.hojas)}" placeholder="1" oninput="updCortina('${c.id}','hojas',this.value)"></div><div class="fld"><label>Recogida</label><select onchange="updCortina('${c.id}','recogida',this.value)"><option value="D"${c.recogida==='D'?' selected':''}>Derecha</option><option value="IZQ"${c.recogida==='IZQ'?' selected':''}>Izquierda</option><option value="CEN"${c.recogida==='CEN'?' selected':''}>Central</option></select></div></div>
-      <div class="fld"><label>Tejido / Referencia</label><input type="text" value="${he(c.tejido)}" placeholder="SAURA C/02" oninput="updCortina('${c.id}','tejido',this.value)"></div>
+      <div class="fld"><label>Sistema</label><input type="text" value="${he(c.sistema)}" placeholder="Guia Manual 1 Vía" onchange="updCortina('${c.id}','sistema',this.value)"></div>
+      <div class="r2"><div class="fld"><label>Nº Hojas</label><input type="text" inputmode="numeric" value="${he(c.hojas)}" placeholder="1" onchange="updCortina('${c.id}','hojas',this.value)"></div><div class="fld"><label>Recogida</label><select onchange="updCortina('${c.id}','recogida',this.value)"><option value="D"${c.recogida==='D'?' selected':''}>Derecha</option><option value="IZQ"${c.recogida==='IZQ'?' selected':''}>Izquierda</option><option value="CEN"${c.recogida==='CEN'?' selected':''}>Central</option></select></div></div>
+      <div class="fld"><label>Tejido / Referencia</label><input type="text" value="${he(c.tejido)}" placeholder="SAURA C/02" onchange="updCortina('${c.id}','tejido',this.value)"></div>
       ${extras}
       <div class="fld"><label>Forma</label><select onchange="updCortina('${c.id}','formaL',this.value)">
         <option value=""${!c.formaL?' selected':''}>Recta</option>
@@ -1538,18 +1697,51 @@ function renderPcard(c,idx){
         <option value="dcha"${c.formaL==='dcha'?' selected':''}>En L · esquina derecha</option>
       </select></div>
       ${c.formaL?`<div class="r2">
-        <div class="fld"><label>Ancho tramo L</label><input type="text" inputmode="decimal" value="${he(c.anchoL||'')}" placeholder="280" oninput="updCortina('${c.id}','anchoL',this.value)"></div>
-        <div class="fld"><label>Alto tramo L</label><input type="text" inputmode="decimal" value="${he(c.altoL||'')}" placeholder="${he(c.alto||'igual')}" oninput="updCortina('${c.id}','altoL',this.value)"></div>
+        <div class="fld"><label>Ancho tramo L</label><input type="text" inputmode="decimal" value="${he(c.anchoL||'')}" placeholder="280" onchange="updCortina('${c.id}','anchoL',this.value)"></div>
+        <div class="fld"><label>Alto tramo L</label><input type="text" inputmode="decimal" value="${he(c.altoL||'')}" placeholder="${he(c.alto||'igual')}" onchange="updCortina('${c.id}','altoL',this.value)"></div>
       </div>
       <div class="r2">
-        <div class="fld"><label>Hojas L</label><input type="text" inputmode="numeric" value="${he(c.hojasL||'1')}" oninput="updCortina('${c.id}','hojasL',this.value)"></div>
+        <div class="fld"><label>Hojas L</label><input type="text" inputmode="numeric" value="${he(c.hojasL||'1')}" onchange="updCortina('${c.id}','hojasL',this.value)"></div>
         <div class="fld"><label>Recogida L</label><select onchange="updCortina('${c.id}','recogidaL',this.value)">
           <option value="D"${(c.recogidaL||'D')==='D'?' selected':''}>Derecha</option>
           <option value="IZQ"${c.recogidaL==='IZQ'?' selected':''}>Izquierda</option>
           <option value="CEN"${c.recogidaL==='CEN'?' selected':''}>Central</option>
         </select></div>
       </div>`:''}
-      <div class="r3"><div class="fld"><label>Extra alto</label><input type="text" value="${he(c.extra||'')}" placeholder="+40" oninput="updCortina('${c.id}','extra',this.value)"></div><div class="fld"><label>Soporte</label><input type="text" value="${he(c.soporte||'')}" placeholder="T" oninput="updCortina('${c.id}','soporte',this.value)"></div><div class="fld"><label>Código</label><input type="text" value="${he(c.codigo||'')}" placeholder="CORTOP" oninput="updCortina('${c.id}','codigo',this.value)"></div></div>
+      ${c.llucana?`<div class="fld"><label>Lado de la inclinación</label><select onchange="updCortina('${c.id}','llucana',this.value)">
+        <option value="izq"${c.llucana==='izq'?' selected':''}>Inclinación a la izquierda</option>
+        <option value="dcha"${c.llucana==='dcha'?' selected':''}>Inclinación a la derecha</option>
+      </select></div>
+      <div class="r2">
+        <div class="fld"><label>Ancho arriba (opcional)</label><input type="text" inputmode="decimal" value="${he(c.llucAnchoArriba||'')}" placeholder="vacío = triángulo" onchange="updCortina('${c.id}','llucAnchoArriba',this.value)"></div>
+        <div class="fld"><label>Alto lado corto</label><input type="text" inputmode="decimal" value="${he(c.llucAltoCorto||'')}" placeholder="150" onchange="updCortina('${c.id}','llucAltoCorto',this.value)"></div>
+      </div>
+      <div class="fld"><label>Inclinada (auto)</label><input type="text" inputmode="decimal" value="${he(c.llucInclinada||'')}" placeholder="${he(calcLlucInclinada(c)||'auto')}" onchange="updCortina('${c.id}','llucInclinada',this.value)"></div>`:''}
+      ${(c.llucana&&c.llu2)?`<div style="border-top:1px dashed var(--bd);margin:6px 0 2px;padding-top:6px">
+        <span class="slbl" style="margin-bottom:6px">2º tramo de la llucana</span>
+        <div class="fld"><label>Lado de la inclinación (2º)</label><select onchange="updCortina('${c.id}','llu2',this.value)">
+          <option value="izq"${c.llu2==='izq'?' selected':''}>Inclinación a la izquierda</option>
+          <option value="dcha"${c.llu2==='dcha'?' selected':''}>Inclinación a la derecha</option>
+        </select></div>
+        <div class="r2">
+          <div class="fld"><label>Ancho abajo (2º)</label><input type="text" inputmode="decimal" value="${he(c.llu2Ancho||'')}" placeholder="180" onchange="updCortina('${c.id}','llu2Ancho',this.value)"></div>
+          <div class="fld"><label>Alto (2º)</label><input type="text" inputmode="decimal" value="${he(c.llu2Alto||'')}" placeholder="${he(c.alto||'250')}" onchange="updCortina('${c.id}','llu2Alto',this.value)"></div>
+        </div>
+        <div class="r2">
+          <div class="fld"><label>Ancho arriba (2º)</label><input type="text" inputmode="decimal" value="${he(c.llu2AnchoArriba||'')}" placeholder="vacío = triángulo" onchange="updCortina('${c.id}','llu2AnchoArriba',this.value)"></div>
+          <div class="fld"><label>Alto lado corto (2º)</label><input type="text" inputmode="decimal" value="${he(c.llu2AltoCorto||'')}" placeholder="150" onchange="updCortina('${c.id}','llu2AltoCorto',this.value)"></div>
+        </div>
+        <div class="r2">
+          <div class="fld"><label>Inclinada 2º (auto)</label><input type="text" inputmode="decimal" value="${he(c.llu2Inclinada||'')}" placeholder="${he(calcLluc2Inclinada(c)||'auto')}" onchange="updCortina('${c.id}','llu2Inclinada',this.value)"></div>
+          <div class="fld"><label>Hojas (2º)</label><input type="text" inputmode="numeric" value="${he(c.llu2Hojas||'1')}" onchange="updCortina('${c.id}','llu2Hojas',this.value)"></div>
+        </div>
+        <div class="fld"><label>Recogida (2º)</label><select onchange="updCortina('${c.id}','llu2Recogida',this.value)">
+          <option value="D"${(c.llu2Recogida||'D')==='D'?' selected':''}>Derecha</option>
+          <option value="IZQ"${c.llu2Recogida==='IZQ'?' selected':''}>Izquierda</option>
+          <option value="CEN"${c.llu2Recogida==='CEN'?' selected':''}>Central</option>
+        </select></div>
+      </div>`:''}
+      <div class="r3"><div class="fld"><label>Extra alto</label><input type="text" value="${he(c.extra||'')}" placeholder="+40" onchange="updCortina('${c.id}','extra',this.value)"></div><div class="fld"><label>Soporte</label><input type="text" value="${he(c.soporte||'')}" placeholder="T" onchange="updCortina('${c.id}','soporte',this.value)"></div><div class="fld"><label>Código</label><input type="text" value="${he(c.codigo||'')}" placeholder="CORTOP" onchange="updCortina('${c.id}','codigo',this.value)"></div></div>
     </div>`;
   $('pcards').appendChild(div);
 }
@@ -1557,14 +1749,14 @@ function renderLinea(l,idx){
   const div=document.createElement('div');div.className='pcard';div.dataset.lid=l.id;
   div.innerHTML=`<div class="pch"><span class="num">L${idx+1}</span><span class="est">${he(l.estancia||'(sin nombre)')}</span><button class="btn-rem" onclick="remLinea('${l.id}')">✕</button></div>
     <div class="pcb">
-      <div class="fld"><label>Estancia / Ref</label><input type="text" value="${he(l.estancia)}" oninput="updLinea('${l.id}','estancia',this.value)"></div>
-      <div class="r2"><div class="fld"><label>Ancho cm</label><input type="text" inputmode="decimal" value="${he(l.ancho)}" oninput="updLinea('${l.id}','ancho',this.value)"></div><div class="fld"><label>Alto cm</label><input type="text" inputmode="decimal" value="${he(l.alto)}" oninput="updLinea('${l.id}','alto',this.value)"></div></div>
-      <div class="fld"><label>Tipo Sistema</label><input type="text" value="${he(l.sistema)}" oninput="updLinea('${l.id}','sistema',this.value)"></div>
-      <div class="r2"><div class="fld"><label>Confección</label><input type="text" value="${he(l.tipo)}" oninput="updLinea('${l.id}','tipo',this.value)"></div><div class="fld"><label>Hojas</label><input type="text" inputmode="numeric" value="${he(l.hojas)}" oninput="updLinea('${l.id}','hojas',this.value)"></div></div>
-      <div class="r2"><div class="fld"><label>Color</label><input type="text" value="${he(l.color)}" oninput="updLinea('${l.id}','color',this.value)"></div><div class="fld"><label>Soportes</label><input type="text" value="${he(l.soportes)}" oninput="updLinea('${l.id}','soportes',this.value)"></div></div>
+      <div class="fld"><label>Estancia / Ref</label><input type="text" value="${he(l.estancia)}" onchange="updLinea('${l.id}','estancia',this.value)"></div>
+      <div class="r2"><div class="fld"><label>Ancho cm</label><input type="text" inputmode="decimal" value="${he(l.ancho)}" onchange="updLinea('${l.id}','ancho',this.value)"></div><div class="fld"><label>Alto cm</label><input type="text" inputmode="decimal" value="${he(l.alto)}" onchange="updLinea('${l.id}','alto',this.value)"></div></div>
+      <div class="fld"><label>Tipo Sistema</label><input type="text" value="${he(l.sistema)}" onchange="updLinea('${l.id}','sistema',this.value)"></div>
+      <div class="r2"><div class="fld"><label>Confección</label><input type="text" value="${he(l.tipo)}" onchange="updLinea('${l.id}','tipo',this.value)"></div><div class="fld"><label>Hojas</label><input type="text" inputmode="numeric" value="${he(l.hojas)}" onchange="updLinea('${l.id}','hojas',this.value)"></div></div>
+      <div class="r2"><div class="fld"><label>Color</label><input type="text" value="${he(l.color)}" onchange="updLinea('${l.id}','color',this.value)"></div><div class="fld"><label>Soportes</label><input type="text" value="${he(l.soportes)}" onchange="updLinea('${l.id}','soportes',this.value)"></div></div>
       <div class="r2"><div class="fld"><label>Correderas</label><select onchange="updLinea('${l.id}','correderas',this.value)"><option value="CONVENCIONAL"${l.correderas==='CONVENCIONAL'?' selected':''}>CONVENCIONAL</option><option value="OP8"${l.correderas==='OP8'?' selected':''}>//OP8</option><option value="OP6"${l.correderas==='OP6'?' selected':''}>//OP6</option></select></div><div class="fld"><label>Manual/Cuerda</label><select onchange="updLinea('${l.id}','manual',this.value)"><option value="MANUAL"${l.manual==='MANUAL'?' selected':''}>Manual</option><option value="CUERDA"${l.manual==='CUERDA'?' selected':''}>Cuerda</option></select></div></div>
-      <div class="r2"><div class="fld"><label>Mando/Recogida</label><input type="text" value="${he(l.recogida)}" oninput="updLinea('${l.id}','recogida',this.value)"></div><div class="fld"><label>Tejido</label><input type="text" value="${he(l.tejido)}" oninput="updLinea('${l.id}','tejido',this.value)"></div></div>
-      <div class="r2"><div class="fld"><label>Observaciones</label><input type="text" value="${he(l.obs)}" oninput="updLinea('${l.id}','obs',this.value)"></div><div class="fld"><label>Unidades</label><input type="text" inputmode="numeric" value="${he(l.unidades)}" oninput="updLinea('${l.id}','unidades',this.value)"></div></div>
+      <div class="r2"><div class="fld"><label>Mando/Recogida</label><input type="text" value="${he(l.recogida)}" onchange="updLinea('${l.id}','recogida',this.value)"></div><div class="fld"><label>Tejido</label><input type="text" value="${he(l.tejido)}" onchange="updLinea('${l.id}','tejido',this.value)"></div></div>
+      <div class="r2"><div class="fld"><label>Observaciones</label><input type="text" value="${he(l.obs)}" onchange="updLinea('${l.id}','obs',this.value)"></div><div class="fld"><label>Unidades</label><input type="text" inputmode="numeric" value="${he(l.unidades)}" onchange="updLinea('${l.id}','unidades',this.value)"></div></div>
     </div>`;
   $('lineas').appendChild(div);
 }
@@ -1908,6 +2100,7 @@ function svgVertical(p,u){
 }
 
 function svgConSop(p){
+  if(p.enBlanco)return getSVG(p);   // ficha en blanco: sin sistema ni SOP
   // Inserta las etiquetas junto al dibujo, fuera de la cortina
   let s=getSVG(p);
   const sop=he(p.soporte||'');
@@ -1962,6 +2155,219 @@ function svgConSop(p){
   return s.replace('</svg>',sisTxt+txt+'</svg>');
 }
 
+
+
+/* ─── DIBUJO DE LLUCANA ───
+   Cortina con el riel superior INCLINADO en un lado (trapecio o triángulo).
+   - Ancho abajo: base horizontal (del presupuesto)
+   - Alto: lado vertical recto (en el lado alto)
+   - Ancho arriba (opcional): tramo recto del riel arriba; vacío → triángulo
+   - Inclinada: la diagonal (hipotenusa), calculada o manual
+   Puede inclinarse a izquierda o derecha. */
+function svgLlucana(p,u){
+  const{ML,MT,CW,CH}=SV;
+  const incIzq=p.llucana==='izq';           // la diagonal BAJA hacia la izquierda
+  const nH=Math.max(1,parseInt(p.hojas)||1);
+
+  const abajo =parseFloat(String(p.ancho||'').replace(',','.'))||0;
+  const arriba=parseFloat(String(p.llucAnchoArriba||'').replace(',','.'))||0;
+  const altoL =parseFloat(String(p.alto||'').replace(',','.'))||0;          // lado LARGO
+  const altoC =parseFloat(String(p.llucAltoCorto||'').replace(',','.'))||0; // lado CORTO
+
+  // Proporciones del dibujo
+  const fArriba=(abajo&&arriba)?Math.min(0.85,Math.max(0,arriba/abajo)):0;  // 0 → triángulo
+  // Altura relativa del lado corto.
+  // Si NO se indica alto corto → 0 → la diagonal baja hasta la base = TRIANGULAR.
+  let fCorto=(altoL&&altoC)?Math.min(0.92,Math.max(0.05,altoC/altoL)):0;
+
+  const x0=ML, x1=ML+CW;
+  const yBase=MT+CH;                 // base inferior
+  const yAlto=MT+10;                 // riel del lado LARGO
+  const hDib=yBase-yAlto;            // altura dibujada del lado largo
+  const yCorto=yBase-hDib*fCorto;    // riel del lado CORTO (más abajo)
+
+  // Vértices del contorno y extremos del riel
+  let ptos,xRectoIni,xRectoFin,diag,xLargo,xCorto;
+  if(incIzq){
+    // Lado LARGO a la derecha, la diagonal baja hacia la IZQUIERDA
+    const xQ=x0+CW*(1-fArriba);
+    ptos=`${x0},${yCorto} ${xQ},${yAlto} ${x1},${yAlto} ${x1},${yBase} ${x0},${yBase}`;
+    xRectoIni=xQ; xRectoFin=x1;
+    diag={x1:x0,y1:yCorto,x2:xQ,y2:yAlto};
+    xLargo=x1; xCorto=x0;
+  }else{
+    // Lado LARGO a la izquierda, la diagonal baja hacia la DERECHA
+    const xQ=x0+CW*fArriba;
+    ptos=`${x0},${yAlto} ${xQ},${yAlto} ${x1},${yCorto} ${x1},${yBase} ${x0},${yBase}`;
+    xRectoIni=x0; xRectoFin=xQ;
+    diag={x1:xQ,y1:yAlto,x2:x1,y2:yCorto};
+    xLargo=x0; xCorto=x1;
+  }
+
+  let o=`<polygon points="${ptos}" fill="none" stroke="#111" stroke-width="1.4"/>`;
+  // Riel superior: tramo recto + tramo inclinado (una sola pieza)
+  if(fArriba>0)o+=`<line x1="${xRectoIni.toFixed(1)}" y1="${yAlto}" x2="${xRectoFin.toFixed(1)}" y2="${yAlto}" stroke="#111" stroke-width="2.2"/>`;
+  o+=`<line x1="${diag.x1.toFixed(1)}" y1="${diag.y1.toFixed(1)}" x2="${diag.x2.toFixed(1)}" y2="${diag.y2.toFixed(1)}" stroke="#111" stroke-width="2.2"/>`;
+
+  // Altura del riel en cada x (para colgar la tela)
+  function yRiel(x){
+    if(incIzq){
+      const xQ=x0+CW*(1-fArriba);
+      if(x>=xQ)return yAlto;
+      const t=(x-x0)/Math.max(1,(xQ-x0));return yCorto+(yAlto-yCorto)*t;
+    }else{
+      const xQ=x0+CW*fArriba;
+      if(x<=xQ)return yAlto;
+      const t=(x-xQ)/Math.max(1,(x1-xQ));return yAlto+(yCorto-yAlto)*t;
+    }
+  }
+  const nPl=Math.max(6,Math.round(CW/16));
+  for(let i=1;i<nPl;i++){const x=x0+(CW*i/nPl);
+    o+=`<line x1="${x.toFixed(1)}" y1="${(yRiel(x)+2).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(yBase-2).toFixed(1)}" stroke="#ccc" stroke-width=".7"/>`;}
+  for(let i=1;i<nH;i++){const x=x0+CW*i/nH;
+    o+=`<line x1="${x.toFixed(1)}" y1="${yRiel(x).toFixed(1)}" x2="${x.toFixed(1)}" y2="${yBase}" stroke="#aaa" stroke-width=".8" stroke-dasharray="3,3"/>`;}
+
+  // ── COTAS ──
+  // Cota vertical genérica (haciaDcha = el texto va a la derecha de la línea)
+  function cotaV(x,yTop,yBot,txt,haciaDcha){
+    const cx=haciaDcha?(x+13):(x-13);
+    return `<line x1="${cx.toFixed(1)}" y1="${yTop.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${yBot.toFixed(1)}" stroke="#111" stroke-width="1.2" marker-start="url(#arv${u})" marker-end="url(#ar${u})"/>
+      <text x="${(haciaDcha?cx+4:cx-4).toFixed(1)}" y="${((yTop+yBot)/2+5).toFixed(1)}" text-anchor="${haciaDcha?'start':'end'}" font-size="16" fill="#111" font-family="Arial" font-weight="bold" paint-order="stroke" stroke="#fff" stroke-width="3.2" stroke-linejoin="round">${txt}</text>`;
+  }
+  // Ancho de abajo (base)
+  const yCA=(yBase+16);
+  o+=`<line x1="${x0}" y1="${yCA}" x2="${x1}" y2="${yCA}" stroke="#111" stroke-width="1.2" marker-start="url(#al${u})" marker-end="url(#ar${u})"/>
+    <text x="${(x0+CW/2).toFixed(1)}" y="${(yCA+15).toFixed(1)}" text-anchor="middle" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(p.ancho)}</text>`;
+  // Alto del lado LARGO (a su lado, hacia fuera)
+  o+=cotaV(xLargo,yAlto,yBase,fmtCm((p.alto||'')+(p.extra?' '+p.extra:'')),!incIzq?false:true);
+  // Alto del lado CORTO (al lado contrario, hacia fuera) — solo si se ha indicado
+  if(altoC)o+=cotaV(xCorto,yCorto,yBase,fmtCm(p.llucAltoCorto),!incIzq?true:false);
+  // Ancho de arriba (sobre el tramo recto del riel)
+  if(fArriba>0){
+    const yCB=(yAlto-12);
+    o+=`<line x1="${xRectoIni.toFixed(1)}" y1="${yCB}" x2="${xRectoFin.toFixed(1)}" y2="${yCB}" stroke="#111" stroke-width="1" marker-start="url(#al${u})" marker-end="url(#ar${u})"/>
+      <text x="${((xRectoIni+xRectoFin)/2).toFixed(1)}" y="${(yCB-5).toFixed(1)}" text-anchor="middle" font-size="13" fill="#555" font-family="Arial" font-weight="bold" paint-order="stroke" stroke="#fff" stroke-width="3.2" stroke-linejoin="round">${fmtCm(p.llucAnchoArriba)}</text>`;
+  }
+  // Inclinada: separada PERPENDICULARMENTE de la diagonal, hacia fuera
+  const inc=p.llucInclinada||calcLlucInclinada(p);
+  if(inc){
+    const ddx=diag.x2-diag.x1, ddy=diag.y2-diag.y1, ln=Math.hypot(ddx,ddy)||1;
+    let nx=-ddy/ln, ny=ddx/ln;
+    if(ny>0){nx=-nx;ny=-ny;}
+    const off=14;
+    o+=`<text x="${((diag.x1+diag.x2)/2+nx*off).toFixed(1)}" y="${((diag.y1+diag.y2)/2+ny*off+4).toFixed(1)}" text-anchor="middle" font-size="13" fill="#1c3a6e" font-family="Arial" font-weight="bold" paint-order="stroke" stroke="#fff" stroke-width="3.2" stroke-linejoin="round">${fmtCm(inc)}</text>`;
+  }
+
+  let svg=svgBase(u,o);
+  // Ampliar el lienzo a ambos lados: las cotas de altura van por fuera
+  svg=svg.replace(/viewBox="(-?\d+) (-?\d+) (\d+) (\d+)"/,(m,x,y,w,h)=>
+    `viewBox="${parseInt(x)-56} ${y} ${parseInt(w)+112} ${parseInt(h)+28}"`);
+  return svg;
+}
+
+
+/* ─── DIBUJO DE LLUCANA DOBLE ───
+   Dos tramos independientes (dos guías, dos líneas de corte) que forman el
+   conjunto de la llucana. Cada tramo con su ancho, alto, alto corto e inclinación. */
+function svgLlucanaDoble(p,u){
+  const{ML,MT,CW,CH}=SV;
+  const num=v=>parseFloat(String(v||'').replace(',','.'))||0;
+
+  // Datos de cada tramo
+  const T=[
+    {ancho:num(p.ancho), alto:num(p.alto), arriba:num(p.llucAnchoArriba), corto:num(p.llucAltoCorto),
+     lado:p.llucana==='izq'?'izq':'dcha', hojas:Math.max(1,parseInt(p.hojas)||1),
+     txtAncho:fmtCm(p.ancho), txtAlto:fmtCm((p.alto||'')+(p.extra?' '+p.extra:'')),
+     txtCorto:p.llucAltoCorto?fmtCm(p.llucAltoCorto):'', txtArriba:p.llucAnchoArriba?fmtCm(p.llucAnchoArriba):'',
+     inc:p.llucInclinada||calcLlucInclinada(p)},
+    {ancho:num(p.llu2Ancho), alto:num(p.llu2Alto||p.alto), arriba:num(p.llu2AnchoArriba), corto:num(p.llu2AltoCorto),
+     lado:p.llu2==='izq'?'izq':'dcha', hojas:Math.max(1,parseInt(p.llu2Hojas)||1),
+     txtAncho:fmtCm(p.llu2Ancho), txtAlto:fmtCm(p.llu2Alto||p.alto),
+     txtCorto:p.llu2AltoCorto?fmtCm(p.llu2AltoCorto):'', txtArriba:p.llu2AnchoArriba?fmtCm(p.llu2AnchoArriba):'',
+     inc:p.llu2Inclinada||calcLluc2Inclinada(p)}
+  ];
+
+  // Reparto horizontal proporcional a los anchos reales
+  const sep=10, util=CW-sep;
+  const sum=(T[0].ancho+T[1].ancho)||2;
+  let w0=util*(T[0].ancho||1)/sum, w1=util-w0;
+  const minW=util*0.22;
+  if(w0<minW){w0=minW;w1=util-minW;}
+  if(w1<minW){w1=minW;w0=util-minW;}
+  const X=[ML, ML+w0+sep], W=[w0,w1];
+
+  const yBase=MT+CH, hMax=CH-12;
+  const altoRef=Math.max(T[0].alto,T[1].alto)||1;
+
+  let o='';
+  T.forEach((t,k)=>{
+    const x0=X[k], x1=X[k]+W[k];
+    const hDib=t.alto?hMax*(t.alto/altoRef):hMax;      // altura dibujada proporcional
+    const yAlto=yBase-hDib;
+    const fArr=(t.ancho&&t.arriba)?Math.min(0.85,Math.max(0,t.arriba/t.ancho)):0;
+    const fCor=(t.alto&&t.corto)?Math.min(0.92,Math.max(0.05,t.corto/t.alto)):0;   // 0 → triángulo
+    const yCorto=yBase-hDib*fCor;
+    const incIzq=t.lado==='izq';
+
+    let ptos,xRIni,xRFin,dg,xLargo,xCorto;
+    if(incIzq){
+      const xQ=x0+W[k]*(1-fArr);
+      ptos=`${x0},${yCorto} ${xQ},${yAlto} ${x1},${yAlto} ${x1},${yBase} ${x0},${yBase}`;
+      xRIni=xQ;xRFin=x1;dg={x1:x0,y1:yCorto,x2:xQ,y2:yAlto};xLargo=x1;xCorto=x0;
+    }else{
+      const xQ=x0+W[k]*fArr;
+      ptos=`${x0},${yAlto} ${xQ},${yAlto} ${x1},${yCorto} ${x1},${yBase} ${x0},${yBase}`;
+      xRIni=x0;xRFin=xQ;dg={x1:xQ,y1:yAlto,x2:x1,y2:yCorto};xLargo=x0;xCorto=x1;
+    }
+    o+=`<polygon points="${ptos}" fill="none" stroke="#111" stroke-width="1.4"/>`;
+    if(fArr>0)o+=`<line x1="${xRIni.toFixed(1)}" y1="${yAlto.toFixed(1)}" x2="${xRFin.toFixed(1)}" y2="${yAlto.toFixed(1)}" stroke="#111" stroke-width="2.2"/>`;
+    o+=`<line x1="${dg.x1.toFixed(1)}" y1="${dg.y1.toFixed(1)}" x2="${dg.x2.toFixed(1)}" y2="${dg.y2.toFixed(1)}" stroke="#111" stroke-width="2.2"/>`;
+
+    // Tela colgando
+    function yRiel(x){
+      if(incIzq){const xQ=x0+W[k]*(1-fArr);if(x>=xQ)return yAlto;
+        const tt=(x-x0)/Math.max(1,(xQ-x0));return yCorto+(yAlto-yCorto)*tt;}
+      const xQ=x0+W[k]*fArr;if(x<=xQ)return yAlto;
+      const tt=(x-xQ)/Math.max(1,(x1-xQ));return yAlto+(yCorto-yAlto)*tt;
+    }
+    const nPl=Math.max(4,Math.round(W[k]/15));
+    for(let i=1;i<nPl;i++){const x=x0+(W[k]*i/nPl);
+      o+=`<line x1="${x.toFixed(1)}" y1="${(yRiel(x)+2).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(yBase-2).toFixed(1)}" stroke="#ccc" stroke-width=".7"/>`;}
+    for(let i=1;i<t.hojas;i++){const x=x0+W[k]*i/t.hojas;
+      o+=`<line x1="${x.toFixed(1)}" y1="${yRiel(x).toFixed(1)}" x2="${x.toFixed(1)}" y2="${yBase}" stroke="#aaa" stroke-width=".8" stroke-dasharray="3,3"/>`;}
+
+    // Cota de ancho (bajo cada tramo)
+    const yCA=yBase+15;
+    o+=`<line x1="${x0.toFixed(1)}" y1="${yCA}" x2="${x1.toFixed(1)}" y2="${yCA}" stroke="#111" stroke-width="1.2" marker-start="url(#al${u})" marker-end="url(#ar${u})"/>
+      <text x="${((x0+x1)/2).toFixed(1)}" y="${(yCA+15).toFixed(1)}" text-anchor="middle" font-size="15" fill="#111" font-family="Arial" font-weight="bold">${t.txtAncho}</text>`;
+    // Cota de alto: la del tramo 0 por fuera a la izquierda, la del tramo 1 por fuera a la derecha
+    const fuera=(k===0)?-16:16;
+    const xc=(k===0?ML:ML+CW)+fuera;
+    o+=`<line x1="${xc.toFixed(1)}" y1="${yAlto.toFixed(1)}" x2="${xc.toFixed(1)}" y2="${yBase}" stroke="#111" stroke-width="1.2" marker-start="url(#arv${u})" marker-end="url(#ar${u})"/>
+      <text x="${(xc+(k===0?-4:4)).toFixed(1)}" y="${((yAlto+yBase)/2+5).toFixed(1)}" text-anchor="${k===0?'end':'start'}" font-size="15" fill="#111" font-family="Arial" font-weight="bold">${t.txtAlto}</text>`;
+    // Alto del lado corto: centrado en su arista vertical, desplazado HACIA DENTRO
+    // para no pisar el contorno ni la cota de altura.
+    if(t.txtCorto){
+      const haciaDentro=(xCorto<=x0+0.5)?18:-18;
+      o+=`<text x="${(xCorto+haciaDentro).toFixed(1)}" y="${((yCorto+yBase)/2+4).toFixed(1)}" text-anchor="middle" font-size="12" fill="#5a6a82" font-family="Arial" font-weight="bold" paint-order="stroke" stroke="#fff" stroke-width="3.2" stroke-linejoin="round">${t.txtCorto}</text>`;
+    }
+    // Ancho de arriba (sobre el riel recto)
+    if(fArr>0)o+=`<text x="${((xRIni+xRFin)/2).toFixed(1)}" y="${(yAlto-7).toFixed(1)}" text-anchor="middle" font-size="12" fill="#555" font-family="Arial" font-weight="bold" paint-order="stroke" stroke="#fff" stroke-width="3.2" stroke-linejoin="round">${t.txtArriba}</text>`;
+    // Inclinada: separada PERPENDICULARMENTE de la diagonal, hacia fuera
+    if(t.inc){
+      const ddx=dg.x2-dg.x1, ddy=dg.y2-dg.y1, ln=Math.hypot(ddx,ddy)||1;
+      let nx=-ddy/ln, ny=ddx/ln;              // normal a la diagonal
+      if(ny>0){nx=-nx;ny=-ny;}                // que apunte hacia arriba (fuera de la tela)
+      const off=13;
+      o+=`<text x="${((dg.x1+dg.x2)/2+nx*off).toFixed(1)}" y="${((dg.y1+dg.y2)/2+ny*off+4).toFixed(1)}" text-anchor="middle" font-size="12" fill="#1c3a6e" font-family="Arial" font-weight="bold" paint-order="stroke" stroke="#fff" stroke-width="3.2" stroke-linejoin="round">${fmtCm(t.inc)}</text>`;
+    }
+  });
+
+  let svg=svgBase(u,o);
+  svg=svg.replace(/viewBox="(-?\d+) (-?\d+) (\d+) (\d+)"/,(m,x,y,w,h)=>
+    `viewBox="${parseInt(x)-58} ${y} ${parseInt(w)+116} ${parseInt(h)+20}"`);
+  return svg;
+}
 
 /* ─── DIBUJO DE CORTINA EN L ───
    Dos tramos de guía independientes que se tocan formando esquina.
@@ -2172,8 +2578,14 @@ function cuerpoInclinado(tipo,x1,y1,x2,y2,h,hojas,ondaCm,recogida,u){
 
 function getSVG(p){
   const u=uid(),t=(p.tipo||'').toLowerCase(),s=(p.sistema||'').toLowerCase();
+  // Ficha en blanco: sin dibujo, para hacerlo a mano sobre el papel
+  if(p.enBlanco)return svgBlanco(p,u);
   // Cortina en L: dibujo del conjunto (dos tramos independientes formando esquina)
   if(p.formaL&&p.anchoL)return svgFormaL(p,u);
+  // Llucana con 2º tramo unido → dibujo del conjunto
+  if(p.llucana&&p.llu2&&p.llu2Ancho)return svgLlucanaDoble(p,u);
+  // Llucana: riel superior inclinado (trapecio/triángulo)
+  if(p.llucana)return svgLlucana(p,u);
   // Sin tipo definido → ficha en blanco para rellenar a mano
   if(!t||t==='cortina')return svgBlanco(p,u);
   if(t.includes('paquetto'))return svgPaquetto(p,u);
@@ -2224,6 +2636,11 @@ function generarInst(preserveScroll){
 }
 
 function fichaFilas(p){
+  // Ficha en blanco: se mantienen las etiquetas pero sin valores, para rellenar a mano
+  if(p.enBlanco){
+    return ['Ancho','Alto','Sistema','Confección','Nº Hojas','Recogida','Tejido','Soporte']
+      .map(k=>'<div class="fdat-row"><div class="fdat-k">'+k+'</div><div class="fdat-v">&nbsp;</div></div>').join('');
+  }
   const esTap=p.esTapiceria||['tapiceria','tapiz','tapizado'].includes((p.tipo||'').toLowerCase().trim());
   if(esTap){
     return '<div class="fdat-row"><div class="fdat-k">Tejido</div><div class="fdat-v sm">'+he(p.tejido||'—')+'</div></div>';
@@ -2247,6 +2664,11 @@ function fichaFilas(p){
   if((p.tipo||'').toLowerCase().includes('onda')&&p.ancho)rows+='<div class="fdat-row"><div class="fdat-k">Correderas</div><div class="fdat-v" style="font-size:10px">'+calcularCorrederasTexto(p.ancho,p.hojas,p.ondaCm)+'</div></div>';
   if(p.caida)rows+='<div class="fdat-row"><div class="fdat-k">Caída</div><div class="fdat-v sm">'+he(p.caida)+'</div></div>';
   if(p.soporte)rows+='<div class="fdat-row"><div class="fdat-k">Soporte</div><div class="fdat-v sm">'+he(p.soporte)+'</div></div>';
+  // Llucana con 2º tramo: mostrar sus medidas
+  if(p.llucana&&p.llu2&&p.llu2Ancho){
+    const _i2=p.llu2Inclinada||calcLluc2Inclinada(p);
+    rows+='<div class="fdat-row"><div class="fdat-k">Tramo llucana</div><div class="fdat-v">'+fmtCm(p.llu2Ancho)+' × '+fmtCm(p.llu2Alto||p.alto)+' · '+(p.llu2Hojas||'1')+'H'+(_i2?' · inc. '+_i2:'')+'</div></div>';
+  }
   // Cortina en L: mostrar la medida del segundo tramo
   if(p.formaL&&p.anchoL){
     const _mL=fmtCm(p.anchoL)+(p.altoL?' × '+fmtCm(p.altoL):'');
