@@ -83,6 +83,33 @@ test('Sin mención de instalación no marca el checkbox', () => {
   assert.strictEqual(app.document.getElementById('instCheck').checked, false);
 });
 
+console.log('\nColcha/Vánova/Nórdica y Friso');
+
+test('normalizaTipo reconoce colcha, vànova y funda nórdica', () => {
+  assert.strictEqual(app.normalizaTipo('COLCHA MATRIMONIO'), 'Colcha/Vánova/Nórdica');
+  assert.strictEqual(app.normalizaTipo('vànova estampada'), 'Colcha/Vánova/Nórdica');
+  assert.strictEqual(app.normalizaTipo('funda nordica 150'), 'Colcha/Vánova/Nórdica');
+});
+test('normalizaTipo reconoce friso', () => {
+  assert.strictEqual(app.normalizaTipo('FRISO A JUEGO'), 'Friso');
+});
+test('normalizaTipoCanotex — colcha y friso solo por descripción', () => {
+  assert.strictEqual(app.normalizaTipoCanotex('XXX', 'COLCHA PIQUE', ''), 'Colcha/Vánova/Nórdica');
+  assert.strictEqual(app.normalizaTipoCanotex('XXX', 'FRISO A JUEGO', ''), 'Friso');
+});
+test('getSVG dibuja Colcha y Friso sin lanzar excepción', () => {
+  assert.doesNotThrow(() => app.getSVG({ tipo: 'Colcha/Vánova/Nórdica', ancho: '150', alto: '200' }));
+  assert.doesNotThrow(() => app.getSVG({ tipo: 'Friso', ancho: '150', alto: '40', hojas: '2' }));
+});
+test('Colcha no genera línea de corte (sin riel); Friso sí', () => {
+  app.resetCortinas();
+  app.addCortina({ tipo: 'Colcha/Vánova/Nórdica', ancho: '150', alto: '200', estancia: 'Test colcha' });
+  app.addCortina({ tipo: 'Friso', ancho: '150', alto: '40', estancia: 'Test friso' });
+  const STATE = app.__internals.STATE;
+  assert.strictEqual(STATE.cortinas.length, 2);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(STATE.lineas.map(l => l.estancia))), ['Test friso']);
+});
+
 console.log('\nFunciones puras del parser');
 
 test('fmtCm — número simple añade "cm"', () => {
