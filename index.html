@@ -1505,7 +1505,7 @@ function separarL(id){
   b.formaL='';b.anchoL='';b.altoL='';b.hojasL='1';b.recogidaL='D';
   b.estancia=(a.estancia||'')+' (2)';
   // Limpiar la L de la primera
-  a.formaL='';a.anchoL='';a.hojasL='1';a.recogidaL='D';
+  a.formaL='';a.anchoL='';a.altoL='';a.hojasL='1';a.recogidaL='D';
   STATE.pcnt++;
   b.id='p'+STATE.pcnt;
   STATE.cortinas.splice(i+1,0,b);
@@ -1717,7 +1717,7 @@ function renderPcard(c,idx){
         <div class="fld"><label>Alto lado corto</label><input type="text" inputmode="decimal" value="${he(c.llucAltoCorto||'')}" placeholder="150" onchange="updCortina('${c.id}','llucAltoCorto',this.value)"></div>
       </div>
       <div class="fld"><label>Inclinada (auto)</label><input type="text" inputmode="decimal" value="${he(c.llucInclinada||'')}" placeholder="${he(calcLlucInclinada(c)||'auto')}" onchange="updCortina('${c.id}','llucInclinada',this.value)"></div>`:''}
-      ${(c.llucana&&c.llu2)?`<div style="border-top:1px dashed var(--bd);margin:6px 0 2px;padding-top:6px">
+      ${(c.llucana&&c.llu2)?`<div style="border-top:1px dashed var(--s3);margin:6px 0 2px;padding-top:6px">
         <span class="slbl" style="margin-bottom:6px">2º tramo de la llucana</span>
         <div class="fld"><label>Lado de la inclinación (2º)</label><select onchange="updCortina('${c.id}','llu2',this.value)">
           <option value="izq"${c.llu2==='izq'?' selected':''}>Inclinación a la izquierda</option>
@@ -2573,10 +2573,13 @@ function cuerpoInclinado(tipo,x1,y1,x2,y2,h,hojas,ondaCm,recogida,u){
   }
 
   if(t.includes('paquetto')||t.includes('estor')){
-    // PAQUETTO / ESTOR → cuerda de mando en el lateral (como en la cortina normal), sin flecha
+    // PAQUETTO / ESTOR → cuerda de mando en el lateral (como en la cortina normal), sin flecha.
+    // Usar SIEMPRE el extremo físicamente izq/dcha (no x1/x2, que según la esquina de la L
+    // pueden venir invertidos: x1 es el punto que toca la esquina, no necesariamente el de la izq).
     const isIZQ=(recogida==='IZQ');
-    const mandoX=(isIZQ?x1-9:x2+7);
-    const mandoYTop=(isIZQ?y1:y2);
+    const izqEsX1=x1<=x2;
+    const mandoX=(isIZQ?(izqEsX1?x1:x2)-9:(izqEsX1?x2:x1)+7);
+    const mandoYTop=(isIZQ?(izqEsX1?y1:y2):(izqEsX1?y2:y1));
     const cadEndP=mandoYTop+h*0.32;
     o+=`<line x1="${mandoX.toFixed(1)}" y1="${(mandoYTop-4).toFixed(1)}" x2="${mandoX.toFixed(1)}" y2="${cadEndP.toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/>
     <rect x="${(mandoX-2.5).toFixed(1)}" y="${cadEndP.toFixed(1)}" width="5" height="11" rx="2.5" fill="none" stroke="#111" stroke-width="1.3"/>`;
