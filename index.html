@@ -263,7 +263,7 @@ input, select, textarea { font-family: inherit; }
 
 /* Toolbar — pegada arriba al hacer scroll, para tener Imprimir/Guardar PDF siempre a mano */
 .toolbar {
-  display: flex; gap: 8px; width: 100%; max-width: 900px; flex-wrap: wrap; align-items: center;
+  display: flex; gap: 8px; width: 100%; max-width: 900px; flex-wrap: wrap; align-items: center; justify-content: flex-end;
   position: sticky; top: 0; z-index: 5;
   background: var(--bg);
   margin: -24px 0 0; padding: 16px 0 12px;
@@ -292,6 +292,7 @@ input, select, textarea { font-family: inherit; }
 .hoja-marca-wrap { text-align: left; align-self: start; display: flex; flex-direction: column; align-items: flex-start; }
 .hoja-cab.sin-inst { grid-template-columns: 1fr; }
 .inst-box { min-width: 260px; }
+.cli-box.ref-box { min-width: 130px; }
 .cli-fill { border-bottom: 1px solid #9aadcc; min-height: 13px; }
 .hoja-marca { font-size: 19px; font-weight: 900; color: #1c3a6e; letter-spacing: -.3px; }
 .hoja-subtit { font-size: 8px; color: #9aadcc; text-transform: uppercase; letter-spacing: .5px; margin-top: 1px; }
@@ -495,6 +496,13 @@ input, select, textarea { font-family: inherit; }
           <div class="fld"><label>Dirección</label><input id="idir" type="text" placeholder="Calle, número…"></div>
           <div class="fld"><label>Población / Zona</label><input id="ipob" type="text" placeholder="Ciudad"></div>
         </div>
+        <label class="inst-check" for="refCheck" style="margin-top:10px">
+          <input type="checkbox" id="refCheck" onchange="toggleRefPedido(this.checked)">
+          <span class="slbl" style="margin:0">Incluir Ref. del pedido</span>
+        </label>
+        <div class="fg inst-fields" id="refFields">
+          <div class="fld"><label>Referencia</label><input id="irefped" type="text" placeholder="A691"></div>
+        </div>
       </section>
       <hr class="divider">
       <section>
@@ -509,10 +517,6 @@ input, select, textarea { font-family: inherit; }
         <span class="slbl">Notas para el operario</span>
         <div class="fld"><textarea id="notas" placeholder="Indicaciones especiales…"></textarea></div>
       </section>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <button class="btn btn-primary" onclick="generarInst()">👁 Vista previa</button>
-        <button class="btn btn-green" onclick="generarInstPDF()">🖨 Generar e Imprimir PDF</button>
-      </div>
     </div>
     <div class="panel" id="panelCorte">
       <section>
@@ -552,7 +556,7 @@ const RE_INSTAL_WORD=/INSTAL[·.]?L?ACI[OÓ]N?/;
 const RE_HAY_INSTALACION=new RegExp('UD\\.?\\s*'+RE_INSTAL_WORD.source+'|'+RE_INSTAL_WORD.source+'[^\\n]{0,40}ZONA\\s*:|'+RE_INSTAL_WORD.source+'\\s+(?:INCLU\\w*|INCLOS\\w*)','i');
 // Solo el bloque con zona/dirección propia (para localizar dónde buscar nombre/tfno/dirección).
 const RE_INSTALACION_ZONA=new RegExp('UD\\.?\\s*'+RE_INSTAL_WORD.source+'|'+RE_INSTAL_WORD.source+'[^\\n]{0,40}ZONA\\s*:','i');
-const STATE={cortinas:[],lineas:[],pcnt:0,lcnt:0,svgUid:0,objectUrl:null,liveActive:false,_liveTimer:null,instZona:'',instRef:'',instNombre:'',instDireccion:'',instTel:'',hayInstalacion:false,_instRawHit:false,_instRawZona:'',_instRawRef:''};
+const STATE={cortinas:[],lineas:[],pcnt:0,lcnt:0,svgUid:0,objectUrl:null,liveActive:true,_liveTimer:null,instZona:'',instRef:'',instNombre:'',instDireccion:'',instTel:'',hayInstalacion:false,_instRawHit:false,_instRawZona:'',_instRawRef:''};
 /* ─── LIVE PREVIEW ─── */
 function scheduleLiveRefresh(){
   if(!STATE.liveActive)return;
@@ -560,7 +564,7 @@ function scheduleLiveRefresh(){
   STATE._liveTimer=setTimeout(()=>{ generarInst(true); },350);
 }
 function bindClientLive(){
-  ['cnom','ctel','cdir','cpob','cpre','cfec','notas','inom','itel','idir','ipob'].forEach(id=>{
+  ['cnom','ctel','cdir','cpob','cpre','cfec','notas','inom','itel','idir','ipob','irefped'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.addEventListener('input',scheduleLiveRefresh);
   });
@@ -837,6 +841,7 @@ function parsear(rawLines,skipClientExtract=false){
   if(!cortinas.length){dbg('⚠️ Extracción libre','warn');cortinas=estrategiaLibre(lines);}
   resetCortinas();
   aplicarInstalacionUI();
+  aplicarRefUI();
   if(cortinas.length){
     cortinas.forEach(c=>addCortina(c));rerenderAllCards();dbg(`📦 ${cortinas.length} cortina(s)`,'ok');
     // Previsualizar automáticamente: no hace falta pulsar "Vista previa"
@@ -1248,6 +1253,9 @@ function resetInstalacion(){
   const chk=$('instCheck');if(chk)chk.checked=false;
   const box=$('instFields');if(box)box.classList.remove('show');
   ['inom','itel','idir','ipob'].forEach(id=>{const el=$(id);if(el)el.value='';});
+  const chkRef=$('refCheck');if(chkRef)chkRef.checked=false;
+  const boxRef=$('refFields');if(boxRef)boxRef.classList.remove('show');
+  const irp=$('irefped');if(irp)irp.value='';
 }
 /* Activar/desactivar manualmente la caja de instalación en la hoja.
    Al marcarla sin datos detectados, se rellena con los del cliente (misma dirección
@@ -1285,6 +1293,21 @@ function aplicarInstalacionUI(){
   const dir=STATE.instDireccion||$('cdir').value||'';
   const pob=STATE.instZona||$('cpob').value||'';
   $('inom').value=nom;$('itel').value=tel;$('idir').value=dir;$('ipob').value=pob;
+}
+/* Igual que toggleInstalacion, para el recuadro de Ref. del pedido junto al de instalación. */
+function toggleRefPedido(checked){
+  const box=$('refFields');if(box)box.classList.toggle('show',checked);
+  if(!checked){const el=$('irefped');if(el)el.value='';}
+  scheduleLiveRefresh();
+}
+/* Igual que aplicarInstalacionUI: sincroniza el checkbox de Ref. del pedido tras detectar
+   (o no) la referencia en el documento. */
+function aplicarRefUI(){
+  const chk=$('refCheck');if(!chk)return;
+  const hayRef=!!(STATE.instRef&&STATE.instRef.trim());
+  chk.checked=hayRef;
+  const box=$('refFields');if(box)box.classList.toggle('show',hayRef);
+  if(hayRef)$('irefped').value=STATE.instRef;
 }
 function addCortina(d={}){
   STATE.pcnt++;const id='p'+STATE.pcnt;
@@ -1890,22 +1913,48 @@ function svgPanelJapones(p,u){
   const r2=`<rect x="${(ML-4).toFixed(1)}" y="${(MT-5).toFixed(1)}" width="${(CW+8).toFixed(1)}" height="4" fill="none" stroke="#111" stroke-width="1.5"/>`;
   return svgBase(u,`${r1}${r2}${pan}${recArrow(u,p.recogida,p.hojas)}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);}
 
-/* Colcha / Vánova / Funda Nórdica: cama con almohada y colcha caída,
+/* Colcha / Vánova / Funda Nórdica: cama en perspectiva 3/4 con almohada y
+   colcha caída (superficie superior + caída delantera de borde suave),
    sin sistema de recogida (no lleva riel ni cadena de mando). */
 function svgColcha(p,u){
   const{ML,MT,CW,CH}=SV;
-  const pilW=CW*0.34,pilH=CH*0.20,pilX=ML+CW*0.08,pilY=MT-2;
-  const pillow=`<rect x="${pilX.toFixed(1)}" y="${pilY.toFixed(1)}" width="${pilW.toFixed(1)}" height="${pilH.toFixed(1)}" rx="9" fill="none" stroke="#111" stroke-width="1.4"/>`;
-  const by=MT+pilH*0.6,bh=CH-pilH*0.6;
-  const bed=`<rect x="${ML.toFixed(1)}" y="${by.toFixed(1)}" width="${CW.toFixed(1)}" height="${bh.toFixed(1)}" rx="22" fill="none" stroke="#111" stroke-width="1.6"/>`;
-  const foldY=by+bh*0.14;
-  const fold=`<path d="M${ML.toFixed(1)},${foldY.toFixed(1)} Q${(ML+CW/2).toFixed(1)},${(foldY+9).toFixed(1)} ${(ML+CW).toFixed(1)},${foldY.toFixed(1)}" fill="none" stroke="#666" stroke-width="1"/>`;
-  let drapes='';
-  [0.30,0.70].forEach(f=>{
-    const dx=ML+CW*f,y1=foldY+6,y2=by+bh-16;
-    drapes+=`<path d="M${dx.toFixed(1)},${y1.toFixed(1)} Q${(dx+7).toFixed(1)},${((y1+y2)/2).toFixed(1)} ${dx.toFixed(1)},${y2.toFixed(1)}" fill="none" stroke="#ccc" stroke-width=".8"/>`;
-  });
-  return svgBase(u,`${bed}${pillow}${fold}${drapes}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);
+  // Esquinas de la superficie superior de la cama (colchón+colcha), en perspectiva
+  const TL={x:ML+CW*0.24,y:MT+CH*0.22}, TR={x:ML+CW*0.95,y:MT+CH*0.30},
+        BR={x:ML+CW,       y:MT+CH*0.68}, BL={x:ML+CW*0.16,y:MT+CH*0.62};
+
+  // Almohada, apoyada detrás de la esquina trasera-izquierda
+  const pcx=TL.x-CW*0.06,pcy=TL.y-CH*0.14;
+  const pw=CW*0.19,ph=CH*0.12;
+  const pillow=`<path d="M${(pcx-pw).toFixed(1)},${(pcy+ph*0.35).toFixed(1)}
+    C${(pcx-pw*1.1).toFixed(1)},${(pcy-ph*0.2).toFixed(1)} ${(pcx-pw*0.6).toFixed(1)},${(pcy-ph*0.65).toFixed(1)} ${pcx.toFixed(1)},${(pcy-ph*0.65).toFixed(1)}
+    C${(pcx+pw*0.7).toFixed(1)},${(pcy-ph*0.65).toFixed(1)} ${(pcx+pw*1.15).toFixed(1)},${(pcy-ph*0.2).toFixed(1)} ${(pcx+pw).toFixed(1)},${(pcy+ph*0.35).toFixed(1)}
+    C${(pcx+pw*0.93).toFixed(1)},${(pcy+ph*0.85).toFixed(1)} ${(pcx+pw*0.35).toFixed(1)},${(pcy+ph*1.1).toFixed(1)} ${(pcx-pw*0.3).toFixed(1)},${(pcy+ph).toFixed(1)}
+    C${(pcx-pw*0.75).toFixed(1)},${(pcy+ph*0.95).toFixed(1)} ${(pcx-pw*0.9).toFixed(1)},${(pcy+ph*0.75).toFixed(1)} ${(pcx-pw).toFixed(1)},${(pcy+ph*0.35).toFixed(1)} Z"
+    fill="none" stroke="#111" stroke-width="1.5"/>`;
+  const pillowFold=`<path d="M${(pcx-pw*0.8).toFixed(1)},${(pcy+ph*0.25).toFixed(1)} Q${pcx.toFixed(1)},${(pcy+ph*0.6).toFixed(1)} ${(pcx+pw*0.85).toFixed(1)},${(pcy+ph*0.2).toFixed(1)}" fill="none" stroke="#111" stroke-width="1"/>`;
+
+  // Colchón asomando bajo la almohada (rayitas apiladas)
+  let matt='';
+  for(let i=0;i<3;i++){
+    const y=TL.y+2+i*(CH*0.045);
+    matt+=`<line x1="${(TL.x-CW*0.13).toFixed(1)}" y1="${y.toFixed(1)}" x2="${(TL.x-CW*0.03).toFixed(1)}" y2="${y.toFixed(1)}" stroke="#111" stroke-width="1"/>`;
+  }
+
+  // Superficie superior (colcha lisa sobre el colchón)
+  const top=`<path d="M${TL.x.toFixed(1)},${TL.y.toFixed(1)} L${TR.x.toFixed(1)},${TR.y.toFixed(1)} L${BR.x.toFixed(1)},${BR.y.toFixed(1)} L${BL.x.toFixed(1)},${BL.y.toFixed(1)} Z" fill="none" stroke="#111" stroke-width="1.6" stroke-linejoin="round"/>`;
+
+  // Caída delantera: curva única y suave de BL a BR
+  const midX=(BL.x+BR.x)/2,dipY=MT+CH*1.0;
+  const drop=`<path d="M${BL.x.toFixed(1)},${BL.y.toFixed(1)}
+    C${(BL.x-CW*0.03).toFixed(1)},${(BL.y+CH*0.23).toFixed(1)} ${(midX-CW*0.2).toFixed(1)},${dipY.toFixed(1)} ${midX.toFixed(1)},${dipY.toFixed(1)}
+    C${(midX+CW*0.2).toFixed(1)},${dipY.toFixed(1)} ${(BR.x+CW*0.03).toFixed(1)},${(BR.y+CH*0.23).toFixed(1)} ${BR.x.toFixed(1)},${BR.y.toFixed(1)}"
+    fill="none" stroke="#111" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+  // Pliegues suaves sobre la superficie de la colcha
+  const f1=`<path d="M${(TL.x+CW*0.04).toFixed(1)},${(TL.y+CH*0.21).toFixed(1)} Q${(TL.x+CW*0.47).toFixed(1)},${(TL.y+CH*0.12).toFixed(1)} ${(TR.x-CW*0.04).toFixed(1)},${(TR.y+CH*0.22).toFixed(1)}" fill="none" stroke="#777" stroke-width=".9"/>`;
+  const f2=`<path d="M${(BL.x+CW*0.06).toFixed(1)},${(BL.y-CH*0.10).toFixed(1)} Q${(BL.x+CW*0.47).toFixed(1)},${(BL.y-CH*0.18).toFixed(1)} ${(BR.x-CW*0.07).toFixed(1)},${(BR.y-CH*0.07).toFixed(1)}" fill="none" stroke="#aaa" stroke-width=".8"/>`;
+
+  return svgBase(u,`${top}${drop}${pillow}${pillowFold}${matt}${f1}${f2}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);
 }
 
 /* Friso: caída corta con barra y remates redondos, pliegues y borde
@@ -2710,13 +2759,18 @@ function buildInstHTML(){
   const pre=$('cpre').value,fec=$('cfec').value,notas=$('notas').value;
   const hoy=new Date().toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'});
   const cortinas=STATE.cortinas.filter(c=>c.ancho||c.alto||c.estancia);
-  if(!cortinas.length){alert('No hay cortinas con datos.');return null;}
+  // Sin datos todavía (p.ej. recién arrancada o cortina en blanco): no hay nada que
+  // previsualizar aún. Sin alert(): esto se llama también en segundo plano mientras
+  // se escribe, y un aviso emergente en mitad de la escritura sería muy molesto.
+  if(!cortinas.length)return null;
   const CPH=CFG.CORTINAS_POR_HOJA;
   const grupos=[];for(let i=0;i<cortinas.length;i+=CPH)grupos.push(cortinas.slice(i,i+CPH));
   const nH=grupos.length;
-  // El checkbox "Incluir datos de instalación" del sidebar es la fuente de verdad:
-  // auto-marcado si el presupuesto la trae, o marcado a mano por el usuario.
+  // Los checkboxes "Incluir datos de instalación" / "Incluir Ref. del pedido" del
+  // sidebar son la fuente de verdad: auto-marcados si el presupuesto los trae, o
+  // marcados a mano por el usuario.
   const hayInst=!!$('instCheck')?.checked;
+  const hayRef=!!$('refCheck')?.checked;
 
   function instBox(){
   // Mismos campos que Datos del cliente: Nombre, Teléfono, Dirección, Población.
@@ -2727,6 +2781,11 @@ function buildInstHTML(){
   const zonaLimpia=($('ipob')?.value||'').trim();
   const fila=(k,v)=>`<div class="cli-row"><span class="cli-k">${k}</span><span class="cli-v${v?'':' cli-fill'}">${v?he(v):''}</span></div>`;
   return`<div class="cli-box inst-box"><div class="cli-box-tit">Datos de instalación</div><div class="cli-box-body">${fila('Nombre',nomLimpio)}${fila('Teléfono',telLimpio)}${fila('Dirección',dirLimpia)}${fila('Población',zonaLimpia)}</div></div>`;
+}
+function refBox(){
+  if(!hayRef)return'';
+  const refLimpia=($('irefped')?.value||'').trim();
+  return`<div class="cli-box ref-box"><div class="cli-box-tit">Ref. del pedido</div><div class="cli-box-body"><div class="cli-row"><span class="cli-k">Ref.</span><span class="cli-v${refLimpia?'':' cli-fill'}">${refLimpia?he(refLimpia):''}</span></div></div></div>`;
 }
 function cabCliente(){return`<div class="cli-box"><div class="cli-box-tit">Datos del cliente</div><div class="cli-box-body"><div class="cli-row"><span class="cli-k">Nombre</span><span class="cli-v">${he(nom)||'—'}</span></div><div class="cli-row"><span class="cli-k">Teléfono</span><span class="cli-v">${he(tel)||'—'}</span></div><div class="cli-row"><span class="cli-k">Dirección</span><span class="cli-v" style="font-size:10.5px">${he(dir)||'—'}</span></div><div class="cli-row"><span class="cli-k">Población</span><span class="cli-v">${he(pob)||'—'}</span></div></div></div>`;}
 
@@ -2750,7 +2809,8 @@ function cabCliente(){return`<div class="cli-box"><div class="cli-box-tit">Datos
       ?`<div class="hoja-pie"><div class="notas-box"><div class="nt">Notas para el operario</div><div class="nc">${notas?he(notas).replace(/\n/g,'<br>'):'—'}</div></div><div class="firma-box"><div style="flex:1"></div><div class="firma-lin"></div><div class="firma-lbl">Firma del operario</div></div></div>`
       :`<div class="cont-lbl">Hoja ${gi+1}/${nH} · continúa >></div>`;
 
-    return`<div class="hoja"><div class="hoja-cab ${hayInst?'':'sin-inst'}"><div class="hoja-marca-wrap">${cabCliente()}<div class="hoja-docref" style="margin-top:4px;text-align:left"><strong>Presup. ${he(pre)||'—'}</strong> &nbsp;·&nbsp; ${fec?he(fec):hoy} &nbsp;·&nbsp; Hoja ${gi+1}/${nH}</div></div>${instBox()}</div><div class="hoja-op"><div class="hoja-op-item"><b>Fecha instalación</b><div class="hoja-op-line"></div></div><div class="hoja-op-item"><b>Hora</b><div class="hoja-op-line"></div></div><div class="hoja-op-item"><b>Operario</b><div class="hoja-op-line"></div></div><div class="hoja-op-item"><b>Vehículo</b><div class="hoja-op-line"></div></div></div><div class="hoja-body">${fichas}</div>${pie}</div>`;
+    const cajasDerecha=(hayInst||hayRef)?`<div style="display:flex;gap:10px;align-items:flex-start">${instBox()}${refBox()}</div>`:'';
+    return`<div class="hoja"><div class="hoja-cab ${(hayInst||hayRef)?'':'sin-inst'}"><div class="hoja-marca-wrap">${cabCliente()}<div class="hoja-docref" style="margin-top:4px;text-align:left"><strong>Presup. ${he(pre)||'—'}</strong> &nbsp;·&nbsp; ${fec?he(fec):hoy} &nbsp;·&nbsp; Hoja ${gi+1}/${nH}</div></div>${cajasDerecha}</div><div class="hoja-op"><div class="hoja-op-item"><b>Fecha instalación</b><div class="hoja-op-line"></div></div><div class="hoja-op-item"><b>Hora</b><div class="hoja-op-line"></div></div><div class="hoja-op-item"><b>Operario</b><div class="hoja-op-line"></div></div><div class="hoja-op-item"><b>Vehículo</b><div class="hoja-op-line"></div></div></div><div class="hoja-body">${fichas}</div>${pie}</div>`;
   }).join('');
 }
 
@@ -2811,6 +2871,7 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
 /* ── BOX CLIENTE ── */
 .cli-box{min-width:210px!important;border:1.5px solid #1c2b4a!important;border-radius:3px!important}
 .inst-box{min-width:228px!important}
+.ref-box{min-width:120px!important}
 .cli-fill{border-bottom:1px solid #9aadcc!important;min-height:12px!important;display:block!important}
 .cli-box-tit{font-size:6.5px!important;padding:3px 10px!important;letter-spacing:0.6px!important;background:#1c2b4a!important;color:#fff!important}
 .cli-box-body{padding:5px 10px!important;gap:4px!important}
