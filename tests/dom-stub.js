@@ -63,8 +63,12 @@ function makeFakeDocument() {
 }
 
 /* Construye un sandbox de vm con todo lo que index.html necesita para
-   cargar sin lanzar excepciones, y devuelve el contexto ya ejecutado
-   (con todas las funciones/const de nivel superior colgadas de él). */
+   cargar sin lanzar excepciones, y devuelve el contexto ya ejecutado.
+   Las `function` de nivel superior quedan colgadas del propio sandbox
+   (sb.miFuncion), pero los `const`/`let` de nivel superior (como STATE)
+   NO se convierten en propiedades del objeto global — es una regla del
+   lenguaje, no un descuido del harness. Por eso se añade al final del
+   script un puente que expone esos bindings como sb.__internals. */
 function loadAppScript(scriptSource) {
   const vm = require('vm');
   const fakeDocument = makeFakeDocument();
@@ -91,7 +95,8 @@ function loadAppScript(scriptSource) {
   };
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
-  vm.runInContext(scriptSource, sandbox, { filename: 'index.html#script' });
+  const bridged = scriptSource + '\n;globalThis.__internals = { get STATE(){ return STATE; } };';
+  vm.runInContext(bridged, sandbox, { filename: 'index.html#script' });
   return sandbox;
 }
 

@@ -42,6 +42,47 @@ for (const s of samples) {
   });
 }
 
+console.log('\nparsear() — detección de instalación (ES/CA) y respaldo con datos del cliente');
+
+test('Nota en catalán "INSTAL·LACIO INCLOSA" activa instalación y usa los datos del cliente', () => {
+  app.resetInstalacion();
+  app.document.getElementById('cnom').value = 'Cliente Ejemplo';
+  app.document.getElementById('ctel').value = '600111222';
+  app.document.getElementById('cdir').value = 'C/ Exemple, 1';
+  app.document.getElementById('cpob').value = 'LLEIDA';
+  app.parsear([
+    'PRESUPUESTO DE VENTA',
+    'REF. G700 CLIENTE SIETE',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'SALO 1,00',
+    'PAQUETTO MEDIDA:120X150 -MANDO:D 1,00',
+    'TEJIDO: LISO GRIS',
+    'NOTA: INSTAL·LACIO INCLOSA 1,00',
+  ], true);
+  const STATE = app.__internals.STATE;
+  assert.strictEqual(STATE.hayInstalacion, true);
+  assert.strictEqual(app.document.getElementById('instCheck').checked, true);
+  assert.strictEqual(app.document.getElementById('inom').value, 'Cliente Ejemplo');
+  assert.strictEqual(app.document.getElementById('idir').value, 'C/ Exemple, 1');
+  assert.strictEqual(app.document.getElementById('ipob').value, 'LLEIDA');
+});
+
+test('Sin mención de instalación no marca el checkbox', () => {
+  app.resetInstalacion();
+  app.parsear([
+    'PRESUPUESTO DE VENTA',
+    'REF. H800 CLIENTE OCHO',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'SALO 1,00',
+    'PAQUETTO MEDIDA:120X150 -MANDO:D 1,00',
+    'TEJIDO: LISO GRIS',
+    'SISTEMA DE INSTALACION: GUIA MANUAL 1 VIA',
+  ], true);
+  const STATE = app.__internals.STATE;
+  assert.strictEqual(STATE.hayInstalacion, false);
+  assert.strictEqual(app.document.getElementById('instCheck').checked, false);
+});
+
 console.log('\nFunciones puras del parser');
 
 test('fmtCm — número simple añade "cm"', () => {
@@ -61,6 +102,8 @@ test('fmtCm — unidad especial TT en vez de cm', () => {
 test('normalizeRecogida — variantes de izquierda', () => {
   assert.strictEqual(app.normalizeRecogida('IZQ'), 'IZQ');
   assert.strictEqual(app.normalizeRecogida('izquierda'), 'IZQ');
+  // Algunos presupuestos reales solo traen una letra en MANDO/RECOG ("I"/"D").
+  assert.strictEqual(app.normalizeRecogida('I'), 'IZQ');
 });
 test('normalizeRecogida — variantes de central', () => {
   assert.strictEqual(app.normalizeRecogida('CENTRAL'), 'CEN');

@@ -544,6 +544,14 @@ input, select, textarea { font-family: inherit; }
 'use strict';
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const CFG={EMPRESA_TELS:new Set(['973235776','900100200']),MAX_LINEAS_CORTE:10,OCR_SCALE:2.8,CORTINAS_POR_HOJA:4};
+// Palabra "instalación", en español o catalán ("instal·lació"/"instal·lacio", con o sin
+// el punto volado, con o sin la N final): Canotex emite presupuestos en los dos idiomas.
+const RE_INSTAL_WORD=/INSTAL[·.]?L?ACI[OÓ]N?/;
+// Detecta que el presupuesto incluye instalación: como línea de artículo ("UD. INSTALACION…"),
+// como bloque con zona ("INSTALACION … ZONA:") o como simple nota ("INSTALACION/INSTAL·LACIO INCLUIDA/INCLOSA").
+const RE_HAY_INSTALACION=new RegExp('UD\\.?\\s*'+RE_INSTAL_WORD.source+'|'+RE_INSTAL_WORD.source+'[^\\n]{0,40}ZONA\\s*:|'+RE_INSTAL_WORD.source+'\\s+(?:INCLU\\w*|INCLOS\\w*)','i');
+// Solo el bloque con zona/dirección propia (para localizar dónde buscar nombre/tfno/dirección).
+const RE_INSTALACION_ZONA=new RegExp('UD\\.?\\s*'+RE_INSTAL_WORD.source+'|'+RE_INSTAL_WORD.source+'[^\\n]{0,40}ZONA\\s*:','i');
 const STATE={cortinas:[],lineas:[],pcnt:0,lcnt:0,svgUid:0,objectUrl:null,liveActive:false,_liveTimer:null,instZona:'',instRef:'',instNombre:'',instDireccion:'',instTel:'',hayInstalacion:false,_instRawHit:false,_instRawZona:'',_instRawRef:''};
 /* ─── LIVE PREVIEW ─── */
 function scheduleLiveRefresh(){
@@ -666,9 +674,9 @@ async function processPDF(file){
     const _txtCompleto=allLines.join(' \n ');
     // Buscar "INSTALACION" incluso si pdf.js separó caracteres con espacios
     const _txtSinEsp=_txtCompleto.replace(/\s+/g,'');
-    // Solo la línea de artículo: "INSTALACION UD. INSTALACION CORTINA ZONA:…"
-    const INST_RE=/UD\.?\s*INSTALACI[OÓ]N|INSTALACI[OÓ]N[^\n]{0,40}ZONA\s*:/i;
-    STATE._instRawHit=INST_RE.test(_txtCompleto)||INST_RE.test(_txtSinEsp);
+    // Línea de artículo ("UD. INSTALACION CORTINA ZONA:…"), zona propia, o nota simple
+    // ("INSTALACION/INSTAL·LACIO INCLUIDA/INCLOSA").
+    STATE._instRawHit=RE_HAY_INSTALACION.test(_txtCompleto)||RE_HAY_INSTALACION.test(_txtSinEsp);
     dbg('🔎 ¿Instalación en PDF? '+(STATE._instRawHit?'SÍ':'NO'),STATE._instRawHit?'ok':'warn');
     // REF del pedido: extraer siempre (con o sin instalación)
     {
@@ -767,7 +775,7 @@ function parsear(rawLines,skipClientExtract=false){
   // Dirección y teléfono de instalación: líneas que siguen justo a la línea
   // "…INSTALACION … ZONA:…" (p.ej. "C/ JOSEP IRLA, 24", "ESC. 1 5ºB", "TFNO 615489660")
   {
-    const instIdx=_instLines.findIndex(l=>/UD\.?\s*INSTALACI[OÓ]N|INSTALACI[OÓ]N[^\n]{0,40}ZONA\s*:/i.test(l));
+    const instIdx=_instLines.findIndex(l=>RE_INSTALACION_ZONA.test(l));
     if(instIdx>=0){
       const STOP_INST=/^(BRUTO|ACEPTACI[OÓ]N|NOMBRE\s*:|FIRMA|TOTAL|SEG[UÚ]N|CIF\.?\s|PENEDES|Tel\s*:|info@|\*|RGPD|FORMAPAGO|FORMA\s+DE\s+PAGO|TRANSFERENCIA|N\/C\.|SUMA\s+Y\s+SIGUE|SUMA|PRESUPUESTO|P[ÁA]G\.|ARTÍCULO|DESCRIPCI[OÓ]N|CANTIDAD|PRECIO|Nif:|Inscrita|Reg\.|Tomo|Folio|Hoja\s+L|^\d{6,}\s)/i;
       // Detecta si una línea parece dirección (calle, avda, nº, piso…)
@@ -792,8 +800,8 @@ function parsear(rawLines,skipClientExtract=false){
       if(tel)STATE.instTel=tel;
     }
   }
-  // La caja de instalación se muestra SOLO si aparece la palabra "INSTALACION"
-  STATE.hayInstalacion=/UD\.?\s*INSTALACI[OÓ]N|INSTALACI[OÓ]N[^\n]{0,40}ZONA\s*:/i.test(_instFull)||!!STATE._instRawHit;
+  // La caja de instalación se muestra SOLO si aparece la palabra "INSTALACION"/"INSTAL·LACIO"
+  STATE.hayInstalacion=RE_HAY_INSTALACION.test(_instFull)||!!STATE._instRawHit;
   if(STATE._instRawHit&&!STATE.instZona&&STATE._instRawZona)STATE.instZona=STATE._instRawZona;
   if(!STATE.instRef&&STATE._instRawRef)STATE.instRef=STATE._instRawRef;
   if(!STATE.hayInstalacion){STATE.instZona='';}
@@ -1040,7 +1048,7 @@ function estrategiaCanotex(txt){
         const mD=resto.match(/MANDO[:\s]*([A-Z]+)/i);
         if(mD&&mD[1]&&(codigo==='PAQUETTO'||codigo.startsWith('P05'))){
           const mv=mD[1].toUpperCase();
-          sistema='Mando cadena '+(mv==='D'?'derecha':mv==='IZ'||mv==='IZQ'?'izquierda':mv.toLowerCase());
+          sistema='Mando cadena '+(mv==='D'?'derecha':mv==='I'||mv==='IZ'||mv==='IZQ'?'izquierda':mv.toLowerCase());
         }
       }
 
@@ -1199,7 +1207,7 @@ function estrategiaMedidaDirecta(txt){const results=[],seen=new Set();const medR
 function estrategiaNumerica(lines){const results=[];let currentEst='';lines.forEach(line=>{if(/^[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑA-Z\s]{3,35}$/.test(line))currentEst=line.trim();const m=line.match(/(\d{2,4}(?:[.,]\d+)?)\s*[xX×]\s*(\d{2,4}(?:[.,]\d+)?)/);if(m&&currentEst&&parseFloat(m[1])>50&&parseFloat(m[2])>50){results.push({estancia:currentEst,ancho:m[1].replace(',','.'),alto:m[2].replace(',','.'),hojas:'1',recogida:'D',tejido:'',sistema:'',tipo:''});currentEst='';}});return results;}
 function estrategiaLibre(lines){const results=[];lines.forEach(line=>{const m=line.match(/(\d{2,3}(?:[.,]\d+)?)\s*[xX×]\s*(\d{2,3}(?:[.,]\d+)?)/);if(m&&parseFloat(m[1])>50&&parseFloat(m[2])>50)results.push({estancia:`Cortina ${results.length+1}`,ancho:m[1].replace(',','.'),alto:m[2].replace(',','.'),hojas:'1',recogida:'D',tejido:'',sistema:'',tipo:''});});return results.slice(0,20);}
 function extractField(txt,pat){const m=(txt||'').match(pat);return(m&&m[1]!=null)?String(m[1]).trim().replace(/\s+/g,' '):'';}
-function normalizeRecogida(raw){const r=(raw||'').trim().toUpperCase();if(/^IZ$|IZQ|ESQ|IZQUI/.test(r))return'IZQ';if(/CEN|CENT/.test(r))return'CEN';if(/LAT/.test(r))return'D';return'D';}
+function normalizeRecogida(raw){const r=(raw||'').trim().toUpperCase();if(/^I$|^IZ$|IZQ|ESQ|IZQUI/.test(r))return'IZQ';if(/CEN|CENT/.test(r))return'CEN';if(/LAT/.test(r))return'D';return'D';}
 
 // Normaliza colores de sistemas, incluyendo abreviaturas de los presupuestos
 function normalizaColorSis(v){

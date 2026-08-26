@@ -81,6 +81,27 @@ module.exports = [
     }],
   },
   {
+    // Caso real: algunos presupuestos usan una sola letra en MANDO ("I"/"D"),
+    // no solo "IZQ"/"IZQUIERDA" — ver normalizeRecogida.
+    name: 'Paquetto con mando a una sola letra (MANDO:I)',
+    txt: [
+      'PRESUPUESTO DE VENTA',
+      'REF. F600 CLIENTE SEIS',
+      'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+      'CUINA 1,00',
+      'PAQUETTO MEDIDA: 145X122T.T -MANDO:I 1,00',
+      'UD. ESTOR TIPO PAQUETTO CON MANDO A CADENA OCULTO.',
+      'TEJIDO: BEGUR 02 NACAR.',
+    ].join('\n'),
+    expected: [{
+      estancia: 'CUINA', ancho: '145', alto: '122', hojas: '1', extra: 'T.T',
+      metros: '1.85', recogida: 'IZQ', tejido: 'BEGUR 02 NACAR.',
+      sistema: 'Mando cadena izquierda', tipo: 'Paquetto', codigo: 'PAQUETTO',
+      caida: '', soporte: 'T', esTapiceria: false, ondaCm: '', apertura: '',
+      mandoBrisa: '', colorGuia: '',
+    }],
+  },
+  {
     name: 'Dos hojas con recogida central',
     txt: [
       'PRESUPUESTO DE VENTA',
