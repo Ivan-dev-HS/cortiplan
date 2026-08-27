@@ -1148,10 +1148,16 @@ function esTapiceria(codigo,udDesc){
 }
 function normalizaTipoCanotex(codigo,udDesc,sistema){
   const c=codigo.toUpperCase(),d=(udDesc||'').toLowerCase(),s=(sistema||'').toLowerCase();
+  // Cabecero/Cojín van ANTES que Tapicería: un cabecero tapizado ("CABECERO
+  // TAPIZADO") contiene la palabra "tapizado", así que si no se comprueban
+  // primero, esTapiceria() se adelantaría y lo clasificaría mal.
+  if(d.includes('cabecero')||d.includes('cabecera'))return'Cabecero';
+  if(d.includes('cojin')||d.includes('cojín'))return'Cojín';
   if(esTapiceria(c,d))return'Tapiceria';
-  // Colcha/Vánova/Funda Nórdica y Friso: solo por descripción (no hay código Canotex conocido)
+  // Colcha/Vánova/Funda Nórdica, Friso y Visillo: solo por descripción (no hay código Canotex conocido)
   if(d.includes('colcha')||d.includes('vanova')||d.includes('vànova')||d.includes('nordica')||d.includes('nórdica')||d.includes('edredon')||d.includes('edredón'))return'Colcha/Vánova/Nórdica';
   if(d.includes('friso'))return'Friso';
+  if(d.includes('visillo'))return'Visillo';
   // Onda Perfecta SOLO por código o descripción explícita
   // (NO por "barra guia": ese sistema también lo usan plegones, presillas, etc.)
   if(c==='CORTOP'||d.includes('onda perfecta'))return'Onda Perfecta';
@@ -1242,7 +1248,10 @@ function normalizaColorSis(v){
   return'';
 }
 
-function normalizaTipo(raw){if(!raw)return'';const lo=raw.toLowerCase();const MAP=[{k:['onda'],v:'Onda Perfecta'},{k:['fruncid'],v:'Fruncida'},{k:['presilla'],v:'Presilla'},{k:['plegon encarado','plegón encarado'],v:'Plegón Encarado'},{k:['plegon','plegón'],v:'Plegón'},{k:['pala','tabla'],v:'Palas/Tablas'},{k:['paquetto'],v:'Paquetto'},{k:['brisa','dia y noche','día y noche'],v:'Brisa'},{k:['vertical','lama'],v:'Vertical'},{k:['estor'],v:'Estor'},{k:['enroll','roman'],v:'Enrollable'},{k:['ollado','ojal'],v:'Ollados'},{k:['anilla','barra'],v:'Barra con Anillas'},{k:['panel'],v:'Panel Japonés'},{k:['tapic','tapiz','tapizado'],v:'Tapiceria'},{k:['colcha','vanova','vànova','vanua','nordica','nórdica','edredon','edredón'],v:'Colcha/Vánova/Nórdica'},{k:['friso'],v:'Friso'}];for(const{k,v}of MAP)if(k.some(x=>lo.includes(x)))return v;return raw;}
+function normalizaTipo(raw){if(!raw)return'';const lo=raw.toLowerCase();const MAP=[{k:['onda'],v:'Onda Perfecta'},{k:['fruncid'],v:'Fruncida'},{k:['presilla'],v:'Presilla'},{k:['plegon encarado','plegón encarado'],v:'Plegón Encarado'},{k:['plegon','plegón'],v:'Plegón'},{k:['pala','tabla'],v:'Palas/Tablas'},{k:['paquetto'],v:'Paquetto'},{k:['brisa','dia y noche','día y noche'],v:'Brisa'},{k:['vertical','lama'],v:'Vertical'},{k:['estor'],v:'Estor'},{k:['enroll','roman'],v:'Enrollable'},{k:['ollado','ojal'],v:'Ollados'},{k:['anilla','barra'],v:'Barra con Anillas'},{k:['panel'],v:'Panel Japonés'},
+  // Cabecero/Cojín ANTES que Tapicería: "CABECERO TAPIZADO" contiene "tapizado".
+  {k:['cabecero','cabecera'],v:'Cabecero'},{k:['cojin','cojín'],v:'Cojín'},
+  {k:['tapic','tapiz','tapizado'],v:'Tapiceria'},{k:['colcha','vanova','vànova','vanua','nordica','nórdica','edredon','edredón'],v:'Colcha/Vánova/Nórdica'},{k:['friso'],v:'Friso'},{k:['visillo'],v:'Visillo'}];for(const{k,v}of MAP)if(k.some(x=>lo.includes(x)))return v;return raw;}
 function isEnroll(tipo){const t=(tipo||'').toLowerCase();return t.includes('enrollable')||t.includes('roman');}
 function setVal(id,val){const el=$(id);if(el&&val&&val.trim())el.value=val.trim();}
 
@@ -1320,7 +1329,7 @@ function addCortina(d={}){
   enBlanco:d.enBlanco||false,
   llu2:d.llu2||'',llu2Ancho:d.llu2Ancho||'',llu2Alto:d.llu2Alto||'',llu2AnchoArriba:d.llu2AnchoArriba||'',llu2AltoCorto:d.llu2AltoCorto||'',llu2Inclinada:d.llu2Inclinada||'',llu2Hojas:d.llu2Hojas||'1',llu2Recogida:d.llu2Recogida||'D'};
   STATE.cortinas.push(c);
-  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'){
+  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'&&tipo!=='Cojín'&&tipo!=='Cabecero'){
     STATE.lcnt++;
     const corrIni=(c.tipo||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
     const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
@@ -1332,7 +1341,7 @@ function addCortina(d={}){
     }
   }
   rerenderAllCards();
-  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica')rerenderAllLineas();
+  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'&&tipo!=='Cojín'&&tipo!=='Cabecero')rerenderAllLineas();
   updateBadge();
 }
 function addLinea(d={}){STATE.lcnt++;const l={id:'l'+STATE.lcnt,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',sistema:d.sistema||'',tipo:d.tipo||'',tejido:d.tejido||'',recogida:d.recogida||'D',hojas:d.hojas||'1',color:d.color||'',soportes:d.soportes||'',correderas:d.correderas||'CONVENCIONAL',manual:d.manual||'MANUAL',unidades:d.unidades||'1',obs:d.obs||''};STATE.lineas.push(l);renderLinea(l,STATE.lineas.length-1);}
@@ -1488,7 +1497,7 @@ function reconstruirLineas(){
   STATE.lineas=[];STATE.lcnt=0;
   STATE.cortinas.forEach(c=>{
     const t=c.tipo||'';
-    if(t==='Enrollable'||t==='Vertical'||t==='Brisa'||t==='Colcha/Vánova/Nórdica')return;
+    if(t==='Enrollable'||t==='Vertical'||t==='Brisa'||t==='Colcha/Vánova/Nórdica'||t==='Cojín'||t==='Cabecero')return;
     STATE.lcnt++;
     const corrIni=(t||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
     const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
@@ -1596,7 +1605,7 @@ function updCortina(id,field,val){
 function updLinea(id,field,val){const l=STATE.lineas.find(x=>x.id===id);if(!l)return;l[field]=val;const head=document.querySelector(`.pcard[data-lid="${id}"] .est`);if(head&&field==='estancia')head.textContent=val||'(sin nombre)';}
 function renderPcard(c,idx){
   const div=document.createElement('div');div.className='pcard';div.dataset.id=c.id;
-  const opts=['Onda Perfecta','Palas/Tablas','Fruncida','Presilla','Plegón','Plegón Encarado','Plana','Plana Doble Tejido','Paquetto','Estor','Enrollable','Vertical','Brisa','Ollados','Barra con Anillas','Panel Japonés','Tapiceria','Colcha/Vánova/Nórdica','Friso'];
+  const opts=['Onda Perfecta','Palas/Tablas','Fruncida','Presilla','Plegón','Plegón Encarado','Plana','Plana Doble Tejido','Paquetto','Estor','Enrollable','Vertical','Brisa','Ollados','Barra con Anillas','Panel Japonés','Tapiceria','Colcha/Vánova/Nórdica','Friso','Visillo','Cojín','Cabecero'];
   const tLow=(c.tipo||'').toLowerCase();
   const esVertBri=tLow.includes('vertical')||tLow.includes('brisa')||tLow.includes('lama');
   const esBrisa=tLow.includes('brisa');
@@ -1913,48 +1922,35 @@ function svgPanelJapones(p,u){
   const r2=`<rect x="${(ML-4).toFixed(1)}" y="${(MT-5).toFixed(1)}" width="${(CW+8).toFixed(1)}" height="4" fill="none" stroke="#111" stroke-width="1.5"/>`;
   return svgBase(u,`${r1}${r2}${pan}${recArrow(u,p.recogida,p.hojas)}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);}
 
-/* Colcha / Vánova / Funda Nórdica: cama en perspectiva 3/4 con almohada y
-   colcha caída (superficie superior + caída delantera de borde suave),
-   sin sistema de recogida (no lleva riel ni cadena de mando). */
+/* Colcha / Vánova / Funda Nórdica: cama con almohada girada, colchón asomando
+   a la izquierda, el borde de la colcha vuelto hacia atrás (embozo, doble
+   curva) y cayendo por delante con dos puntas redondeadas desiguales.
+   Sin sistema de recogida (no lleva riel ni cadena de mando).
+   Dibujada en coordenadas propias (canvas 310x205, igual que svgBase) y
+   reescalada con un <g transform> al hueco real ML..ML+CW / MT..MT+CH,
+   para poder ajustar las curvas a ojo sin recalcular fracciones de CW/CH. */
 function svgColcha(p,u){
   const{ML,MT,CW,CH}=SV;
-  // Esquinas de la superficie superior de la cama (colchón+colcha), en perspectiva
-  const TL={x:ML+CW*0.24,y:MT+CH*0.22}, TR={x:ML+CW*0.95,y:MT+CH*0.30},
-        BR={x:ML+CW,       y:MT+CH*0.68}, BL={x:ML+CW*0.16,y:MT+CH*0.62};
+  const pillow=`<path d="M44.9,81.6Q42.0,72.0 51.8,70.2L108.2,59.8Q118.0,58.0 121.5,67.4L128.5,86.6Q132.0,96.0 122.2,98.0L63.8,110.0Q54.0,112.0 51.1,102.4Z" fill="none" stroke="#111" stroke-width="1.5" stroke-linejoin="round"/>`;
+  const pillowFold=`<path d="M56,90 Q93,98 122,80" fill="none" stroke="#111" stroke-width="1"/>`;
+  const matt=`<path d="M18,120 L46,112 L50,150 L20,158 Z" fill="none" stroke="#111" stroke-width="1.4" stroke-linejoin="round"/>
+    <line x1="22" y1="130" x2="48" y2="123" stroke="#111" stroke-width=".9"/>
+    <line x1="21" y1="142" x2="49" y2="135" stroke="#111" stroke-width=".9"/>`;
+  // Embozo: borde de la colcha vuelto hacia atrás cerca de la almohada
+  const fold=`<path d="M22,150 Q150,96 292,132" fill="none" stroke="#111" stroke-width="1.6"/>
+    <path d="M30,162 Q150,112 286,148" fill="none" stroke="#111" stroke-width="1.6"/>`;
+  // Colcha: contorno único de punta a punta del embozo, con dos caídas
+  // redondeadas desiguales abajo (izq. más baja/grande, dcha. más alta)
+  const body=`<path d="M22,150 C10,175 30,205 75,205 C130,205 180,195 250,185 C275,180 292,160 292,132" fill="none" stroke="#111" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>`;
+  // Pliegues suaves sobre la superficie, paralelos al borde inferior
+  const w1=`<path d="M60,178 Q150,158 250,168" fill="none" stroke="#777" stroke-width=".9"/>`;
+  const w2=`<path d="M50,192 Q150,172 244,184" fill="none" stroke="#aaa" stroke-width=".8"/>`;
 
-  // Almohada, apoyada detrás de la esquina trasera-izquierda
-  const pcx=TL.x-CW*0.06,pcy=TL.y-CH*0.14;
-  const pw=CW*0.19,ph=CH*0.12;
-  const pillow=`<path d="M${(pcx-pw).toFixed(1)},${(pcy+ph*0.35).toFixed(1)}
-    C${(pcx-pw*1.1).toFixed(1)},${(pcy-ph*0.2).toFixed(1)} ${(pcx-pw*0.6).toFixed(1)},${(pcy-ph*0.65).toFixed(1)} ${pcx.toFixed(1)},${(pcy-ph*0.65).toFixed(1)}
-    C${(pcx+pw*0.7).toFixed(1)},${(pcy-ph*0.65).toFixed(1)} ${(pcx+pw*1.15).toFixed(1)},${(pcy-ph*0.2).toFixed(1)} ${(pcx+pw).toFixed(1)},${(pcy+ph*0.35).toFixed(1)}
-    C${(pcx+pw*0.93).toFixed(1)},${(pcy+ph*0.85).toFixed(1)} ${(pcx+pw*0.35).toFixed(1)},${(pcy+ph*1.1).toFixed(1)} ${(pcx-pw*0.3).toFixed(1)},${(pcy+ph).toFixed(1)}
-    C${(pcx-pw*0.75).toFixed(1)},${(pcy+ph*0.95).toFixed(1)} ${(pcx-pw*0.9).toFixed(1)},${(pcy+ph*0.75).toFixed(1)} ${(pcx-pw).toFixed(1)},${(pcy+ph*0.35).toFixed(1)} Z"
-    fill="none" stroke="#111" stroke-width="1.5"/>`;
-  const pillowFold=`<path d="M${(pcx-pw*0.8).toFixed(1)},${(pcy+ph*0.25).toFixed(1)} Q${pcx.toFixed(1)},${(pcy+ph*0.6).toFixed(1)} ${(pcx+pw*0.85).toFixed(1)},${(pcy+ph*0.2).toFixed(1)}" fill="none" stroke="#111" stroke-width="1"/>`;
+  // Encaje del dibujo (diseñado en 310x205) al hueco real de contenido
+  const sx=CW/277,sy=CH/162,tx=ML-15*sx,ty=MT-46*sy;
+  const grupo=`<g transform="translate(${tx.toFixed(2)},${ty.toFixed(2)}) scale(${sx.toFixed(4)},${sy.toFixed(4)})">${body}${fold}${pillow}${pillowFold}${matt}${w1}${w2}</g>`;
 
-  // Colchón asomando bajo la almohada (rayitas apiladas)
-  let matt='';
-  for(let i=0;i<3;i++){
-    const y=TL.y+2+i*(CH*0.045);
-    matt+=`<line x1="${(TL.x-CW*0.13).toFixed(1)}" y1="${y.toFixed(1)}" x2="${(TL.x-CW*0.03).toFixed(1)}" y2="${y.toFixed(1)}" stroke="#111" stroke-width="1"/>`;
-  }
-
-  // Superficie superior (colcha lisa sobre el colchón)
-  const top=`<path d="M${TL.x.toFixed(1)},${TL.y.toFixed(1)} L${TR.x.toFixed(1)},${TR.y.toFixed(1)} L${BR.x.toFixed(1)},${BR.y.toFixed(1)} L${BL.x.toFixed(1)},${BL.y.toFixed(1)} Z" fill="none" stroke="#111" stroke-width="1.6" stroke-linejoin="round"/>`;
-
-  // Caída delantera: curva única y suave de BL a BR
-  const midX=(BL.x+BR.x)/2,dipY=MT+CH*1.0;
-  const drop=`<path d="M${BL.x.toFixed(1)},${BL.y.toFixed(1)}
-    C${(BL.x-CW*0.03).toFixed(1)},${(BL.y+CH*0.23).toFixed(1)} ${(midX-CW*0.2).toFixed(1)},${dipY.toFixed(1)} ${midX.toFixed(1)},${dipY.toFixed(1)}
-    C${(midX+CW*0.2).toFixed(1)},${dipY.toFixed(1)} ${(BR.x+CW*0.03).toFixed(1)},${(BR.y+CH*0.23).toFixed(1)} ${BR.x.toFixed(1)},${BR.y.toFixed(1)}"
-    fill="none" stroke="#111" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>`;
-
-  // Pliegues suaves sobre la superficie de la colcha
-  const f1=`<path d="M${(TL.x+CW*0.04).toFixed(1)},${(TL.y+CH*0.21).toFixed(1)} Q${(TL.x+CW*0.47).toFixed(1)},${(TL.y+CH*0.12).toFixed(1)} ${(TR.x-CW*0.04).toFixed(1)},${(TR.y+CH*0.22).toFixed(1)}" fill="none" stroke="#777" stroke-width=".9"/>`;
-  const f2=`<path d="M${(BL.x+CW*0.06).toFixed(1)},${(BL.y-CH*0.10).toFixed(1)} Q${(BL.x+CW*0.47).toFixed(1)},${(BL.y-CH*0.18).toFixed(1)} ${(BR.x-CW*0.07).toFixed(1)},${(BR.y-CH*0.07).toFixed(1)}" fill="none" stroke="#aaa" stroke-width=".8"/>`;
-
-  return svgBase(u,`${top}${drop}${pillow}${pillowFold}${matt}${f1}${f2}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);
+  return svgBase(u,`${grupo}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);
 }
 
 /* Friso: caída corta con barra y remates redondos, pliegues y borde
@@ -1981,6 +1977,59 @@ function svgFriso(p,u){
   let divs='';
   for(let i=1;i<nH;i++){const x=(ML+CW*i/nH).toFixed(1);divs+=`<line x1="${x}" y1="${topY.toFixed(1)}" x2="${x}" y2="${hemY.toFixed(1)}" stroke="#666" stroke-width="1"/>`;}
   return svgBase(u,`${rod}${finL}${finR}${top}${sideL}${sideR}${plie}${feston}${divs}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);
+}
+
+/* Cojín: almohadón cuadrado mullido (esquinas redondeadas, lados con un
+   ligero arco hacia fuera) con un par de pliegues suaves. Sin sistema
+   de recogida ni soporte: es una pieza suelta, no una cortina. */
+function svgCojin(p,u){
+  const{ML,MT,CW,CH}=SV;
+  const TL={x:98,y:52},TR={x:222,y:52},BR={x:222,y:168},BL={x:98,y:168},r=16;
+  const body=`<path d="
+    M${TL.x+r},${TL.y}
+    Q${(TL.x+r+TR.x-r)/2},${TL.y-10} ${TR.x-r},${TR.y}
+    Q${TR.x},${TR.y} ${TR.x},${TR.y+r}
+    Q${TR.x+10},${(TR.y+r+BR.y-r)/2} ${BR.x},${BR.y-r}
+    Q${BR.x},${BR.y} ${BR.x-r},${BR.y}
+    Q${(BR.x-r+BL.x+r)/2},${BR.y+10} ${BL.x+r},${BL.y}
+    Q${BL.x},${BL.y} ${BL.x},${BL.y-r}
+    Q${BL.x-10},${(BL.y-r+TL.y+r)/2} ${TL.x},${TL.y+r}
+    Q${TL.x},${TL.y} ${TL.x+r},${TL.y}
+    Z" fill="none" stroke="#111" stroke-width="1.6" stroke-linejoin="round"/>`;
+  const crease1=`<path d="M118,88 Q160,102 202,90" fill="none" stroke="#111" stroke-width="1"/>`;
+  const crease2=`<path d="M124,118 Q160,130 196,120" fill="none" stroke="#999" stroke-width=".8"/>`;
+
+  // Encaje: misma escala en X e Y (no deformar el cuadrado), limitada por la
+  // altura disponible, y centrado horizontalmente en el hueco de dibujo.
+  const srcX=88,srcY=42,srcW=144,srcH=136;
+  const scale=CH/srcH;
+  const tx=ML+(CW-srcW*scale)/2-srcX*scale,ty=MT-srcY*scale;
+  const grupo=`<g transform="translate(${tx.toFixed(2)},${ty.toFixed(2)}) scale(${scale.toFixed(4)})">${body}${crease1}${crease2}</g>`;
+
+  return svgBase(u,`${grupo}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);
+}
+
+/* Cabecero: panel rectangular en perspectiva (caja abierta, con la cara
+   superior y el lateral derecho asomando), tal como un cabecero de pared
+   dibujado en 3/4. Sin sistema de recogida ni soporte. */
+function svgCabecero(p,u){
+  const{ML,MT,CW,CH}=SV;
+  const front=`<path d="M40,50 L260,50 L260,150 L40,150 Z" fill="none" stroke="#111" stroke-width="1.8" stroke-linejoin="round"/>`;
+  const top=`<path d="M40,50 L18,32 L238,32 L260,50" fill="none" stroke="#111" stroke-width="1.6" stroke-linejoin="round"/>`;
+  const right=`<path d="M238,32 L238,132 L260,150" fill="none" stroke="#111" stroke-width="1.6" stroke-linejoin="round"/>`;
+  let dots='';
+  [[40,50],[260,50],[260,150],[40,150],[18,32],[238,32],[238,132]].forEach(([x,y])=>{
+    dots+=`<circle cx="${x}" cy="${y}" r="1.6" fill="#111"/>`;
+  });
+
+  // Encaje: misma escala en X e Y (no deformar el rectángulo), limitada por
+  // el ancho disponible, y centrado verticalmente en el hueco de dibujo.
+  const srcX=18,srcY=32,srcW=242,srcH=118;
+  const scale=CW/srcW;
+  const tx=ML-srcX*scale,ty=MT+(CH-srcH*scale)/2-srcY*scale;
+  const grupo=`<g transform="translate(${tx.toFixed(2)},${ty.toFixed(2)}) scale(${scale.toFixed(4)})">${front}${top}${right}${dots}</g>`;
+
+  return svgBase(u,`${grupo}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);
 }
 
 function svgBrisa(p,u){
@@ -2143,7 +2192,7 @@ function svgConSop(p){
   // Ampliar el viewBox: 60px a la derecha (SOP) y una banda superior (sistema)
   let extraTop=0;
   const tLow=(p.tipo||'').toLowerCase();
-  const sinSistema=['enroll','estor','roman','brisa','vertical','lama','paquetto','colcha','vánova','vanova','nórdica','nordica'].some(k=>tLow.includes(k));
+  const sinSistema=['enroll','estor','roman','brisa','vertical','lama','paquetto','colcha','vánova','vanova','nórdica','nordica','tapic','tapiz','cojin','cojín','cabecer'].some(k=>tLow.includes(k));
   const conSistema=!sinSistema&&p.sistema;
   // Ampliación derecha mayor cuando hay sistema, para que quepa alineado con SOP
   const extraDer=conSistema?120:60;
@@ -2185,9 +2234,11 @@ function svgConSop(p){
     ).join('');
     var _sisH=12+lineasSis*lh;
   }
-  // El SOP baja según cuántas líneas ocupe el sistema
+  // El SOP baja según cuántas líneas ocupe el sistema. Tapicería, Colcha,
+  // Cojín y Cabecero no llevan soporte de pared/techo: no se muestra.
+  const sinSoporte=['tapic','tapiz','colcha','vánova','vanova','nórdica','nordica','cojin','cojín','cabecer'].some(k=>tLow.includes(k));
   const sopY=conSistema?(typeof _sisH!=='undefined'?_sisH+2:30):14;
-  const txt=`<text x="${sopX}" y="${sopY}" text-anchor="start" font-size="11" font-weight="bold" fill="#1c3a6e" font-family="Arial">SOP: ${sop||'____'}</text>`;
+  const txt=sinSoporte?'':`<text x="${sopX}" y="${sopY}" text-anchor="start" font-size="11" font-weight="bold" fill="#1c3a6e" font-family="Arial">SOP: ${sop||'____'}</text>`;
   return s.replace('</svg>',sisTxt+txt+'</svg>');
 }
 
@@ -2648,6 +2699,8 @@ function getSVG(p){
   if(!t||t==='cortina')return svgBlanco(p,u);
   if(t.includes('colcha')||t.includes('vánova')||t.includes('vanova')||t.includes('nórdica')||t.includes('nordica'))return svgColcha(p,u);
   if(t.includes('friso'))return svgFriso(p,u);
+  if(t.includes('cojin')||t.includes('cojín'))return svgCojin(p,u);
+  if(t.includes('cabecero')||t.includes('cabecera'))return svgCabecero(p,u);
   if(t.includes('paquetto'))return svgPaquetto(p,u);
   if(t.includes('brisa')||t.includes('dia y noche')||t.includes('día y noche'))return svgBrisa(p,u);
   if(t.includes('vertical')||t.includes('lama'))return svgVertical(p,u);
@@ -2658,7 +2711,7 @@ function getSVG(p){
   if(t.includes('onda')||t.includes('cortop'))return svgOndaPerfecta(p,u);
   // Plana y Plana Doble Tejido → siempre svgPalas (cortina plana), nunca Onda
   if(t.includes('plana')||t.includes('plano')||t.includes('doble'))return svgPalas(p,u);
-  if(t.includes('pala')||t.includes('tabla')||t.includes('presilla')||t.includes('plegon')||t.includes('plegón')||t.includes('fruncid'))return svgPalas(p,u);
+  if(t.includes('pala')||t.includes('tabla')||t.includes('presilla')||t.includes('plegon')||t.includes('plegón')||t.includes('fruncid')||t.includes('visillo'))return svgPalas(p,u);
   if(t.includes('panel')||t.includes('japon'))return svgPanelJapones(p,u);
   // Fallback: guia manual → plana
   if(s.includes('guia'))return svgPalas(p,u);
@@ -2705,14 +2758,16 @@ function fichaFilas(p){
   if(esTap){
     return '<div class="fdat-row"><div class="fdat-k">Tejido</div><div class="fdat-v sm">'+he(p.tejido||'—')+'</div></div>';
   }
-  // Colcha/Vánova/Nórdica: sin sistema, confección, hojas ni recogida (no lleva riel de recogida)
-  const esColcha=(p.tipo||'').toLowerCase().includes('colcha')||(p.tipo||'').toLowerCase().includes('nórdica')||(p.tipo||'').toLowerCase().includes('nordica')||(p.tipo||'').toLowerCase().includes('vánova')||(p.tipo||'').toLowerCase().includes('vanova');
-  if(esColcha){
-    let rowsColcha='';
-    rowsColcha+='<div class="fdat-row"><div class="fdat-k">Ancho</div><div class="fdat-v big">'+fmtCm(p.ancho)+'</div></div>';
-    rowsColcha+='<div class="fdat-row"><div class="fdat-k">Alto</div><div class="fdat-v big">'+fmtCm((p.alto||'')+(p.extra?' '+p.extra:''))+'</div></div>';
-    rowsColcha+='<div class="fdat-row"><div class="fdat-k">Tejido</div><div class="fdat-v sm">'+he(p.tejido||'—')+'</div></div>';
-    return rowsColcha;
+  // Colcha/Vánova/Nórdica, Cojín, Cabecero: sin sistema, confección, hojas ni
+  // recogida (no llevan riel de recogida ni soporte)
+  const _tSimple=(p.tipo||'').toLowerCase();
+  const esSimple=['colcha','nórdica','nordica','vánova','vanova','cojin','cojín','cabecer'].some(k=>_tSimple.includes(k));
+  if(esSimple){
+    let rowsSimple='';
+    rowsSimple+='<div class="fdat-row"><div class="fdat-k">Ancho</div><div class="fdat-v big">'+fmtCm(p.ancho)+'</div></div>';
+    rowsSimple+='<div class="fdat-row"><div class="fdat-k">Alto</div><div class="fdat-v big">'+fmtCm((p.alto||'')+(p.extra?' '+p.extra:''))+'</div></div>';
+    rowsSimple+='<div class="fdat-row"><div class="fdat-k">Tejido</div><div class="fdat-v sm">'+he(p.tejido||'—')+'</div></div>';
+    return rowsSimple;
   }
   const esVert=['vertical','lama','brisa'].some(k=>(p.tipo||'').toLowerCase().includes(k));
   const recLabel=esVert&&p.apertura?('Nº '+p.apertura):({'D':'>> Derecha','IZQ':'<< Izquierda','CEN':'<< Central >>'}[p.recogida]||p.recogida||'D');
@@ -2794,7 +2849,7 @@ function cabCliente(){return`<div class="cli-box"><div class="cli-box-tit">Datos
     const fichas=gr.map((p,pi)=>`<div class="ficha">
       <div class="ficha-tit">
         <span class="ficha-tag">${he(p.tipo)||'Cortina'}</span>
-        <span class="ficha-est">${he(p.estancia)||(gi*CPH+pi+1)+'. Cortina'}</span>
+        <span class="ficha-est">${he(p.estancia)||(gi*CPH+pi+1)+'. '+(p.tipo||'Cortina')}</span>
         <span class="ficha-num">Nº ${gi*CPH+pi+1}/${cortinas.length}</span>
       </div>
       <div class="ficha-inner">

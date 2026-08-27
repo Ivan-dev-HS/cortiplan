@@ -110,6 +110,48 @@ test('Colcha no genera línea de corte (sin riel); Friso sí', () => {
   assert.deepStrictEqual(JSON.parse(JSON.stringify(STATE.lineas.map(l => l.estancia))), ['Test friso']);
 });
 
+console.log('\nTapicería (y afines sin soporte)');
+
+test('svgConSop no muestra "SOP:" para Tapicería, Colcha, Cojín ni Cabecero', () => {
+  const tipos = ['Tapiceria', 'Colcha/Vánova/Nórdica', 'Cojín', 'Cabecero'];
+  for (const tipo of tipos) {
+    const svg = app.svgConSop({ tipo, ancho: '150', alto: '200', soporte: 'T' });
+    assert.ok(!svg.includes('SOP:'), `${tipo} no debería mostrar SOP`);
+  }
+});
+test('svgConSop sí muestra "SOP:" para una cortina normal', () => {
+  const svg = app.svgConSop({ tipo: 'Paquetto', ancho: '150', alto: '200', soporte: 'T' });
+  assert.ok(svg.includes('SOP:'));
+});
+
+console.log('\nVisillo, Cojín y Cabecero');
+
+test('normalizaTipo reconoce visillo, cojín y cabecero/cabecera', () => {
+  assert.strictEqual(app.normalizaTipo('VISILLO BORDADO'), 'Visillo');
+  assert.strictEqual(app.normalizaTipo('cojin 45x45'), 'Cojín');
+  assert.strictEqual(app.normalizaTipo('CABECERO TAPIZADO'), 'Cabecero');
+  assert.strictEqual(app.normalizaTipo('cabecera cama'), 'Cabecero');
+});
+test('normalizaTipoCanotex — visillo, cojín y cabecero solo por descripción', () => {
+  assert.strictEqual(app.normalizaTipoCanotex('XXX', 'VISILLO BORDADO', ''), 'Visillo');
+  assert.strictEqual(app.normalizaTipoCanotex('XXX', 'COJIN 45X45', ''), 'Cojín');
+  assert.strictEqual(app.normalizaTipoCanotex('XXX', 'CABECERO TAPIZADO', ''), 'Cabecero');
+});
+test('getSVG dibuja Visillo (como Palas/Tablas), Cojín y Cabecero sin lanzar excepción', () => {
+  assert.doesNotThrow(() => app.getSVG({ tipo: 'Visillo', ancho: '150', alto: '250', hojas: '2' }));
+  assert.doesNotThrow(() => app.getSVG({ tipo: 'Cojín', ancho: '45', alto: '45' }));
+  assert.doesNotThrow(() => app.getSVG({ tipo: 'Cabecero', ancho: '150', alto: '110' }));
+});
+test('Cojín y Cabecero no generan línea de corte; Visillo sí', () => {
+  app.resetCortinas();
+  app.addCortina({ tipo: 'Cojín', ancho: '45', alto: '45', estancia: 'Test cojín' });
+  app.addCortina({ tipo: 'Cabecero', ancho: '150', alto: '110', estancia: 'Test cabecero' });
+  app.addCortina({ tipo: 'Visillo', ancho: '150', alto: '250', estancia: 'Test visillo' });
+  const STATE = app.__internals.STATE;
+  assert.strictEqual(STATE.cortinas.length, 3);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(STATE.lineas.map(l => l.estancia))), ['Test visillo']);
+});
+
 console.log('\nFunciones puras del parser');
 
 test('fmtCm — número simple añade "cm"', () => {
