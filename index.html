@@ -3362,22 +3362,24 @@ async function buildCortePDFBytes(){
       const colorSistema=normalizaColorSis(l.sistema)||normalizaColorSis(l.tejido)||'';
       const colorFinal=l.color||colorSistema||'';
 
+      // Estor: nº de varillas ((alto-5)/20 - 1) para observaciones
+      const _tlE=(l.tipo||'').toLowerCase();
+      const esEstorC=_tlE.includes('estor')&&!_tlE.includes('enroll');
+
       // Sistema limpio: sin el color si lo extrajimos
       const sistemaLimpio=(()=>{
         let s=l.sistema||'';
         // "Mando cadena ..." es un valor de respaldo para el campo Sistema de
         // la ficha (Paquetto/Estor sin sistema real en el presupuesto); no es
-        // un sistema real, así que no debe aparecer en TIPO DE SISTEMA del
-        // corte (el lado del mando ya tiene su propia columna).
-        if(/^Mando\s+cadena\s+\w+$/i.test(s.trim()))return'';
+        // un sistema real. En Paquetto/Estor, TIPO DE SISTEMA es el propio
+        // artículo (Paquetto/Estor), no el lado del mando (que ya tiene su
+        // propia columna).
+        if(/^Mando\s+cadena\s+\w+$/i.test(s.trim()))return isPaq?(esEstorC?'Estor':'Paquetto'):'';
         // Quitar palabras de color del nombre del sistema (ya van en su columna)
         s=s.replace(/\b(blanco|blanca|bco|bca|negro|negra|ngr|plata|plt|marr[oó]n|gris|grs|beige|crema|aluminio|alu|dorado|oro|bronce|cobre|inox|acero|cromo|n[ií]quel|nikel|antracita|grafito|plomo|marfil|hueso|n[aá]car|arena|anodizado)\b/gi,'').replace(/\s{2,}/g,' ').trim();
         return s.substring(0,16);
       })();
 
-      // Estor: nº de varillas ((alto-5)/20 - 1) para observaciones
-      const _tlE=(l.tipo||'').toLowerCase();
-      const esEstorC=_tlE.includes('estor')&&!_tlE.includes('enroll');
       let obsFinal=l.obs||'';
       if(esEstorC){
         const _aE=parseFloat(String(l.alto||'0').replace(',','.'))||0;
