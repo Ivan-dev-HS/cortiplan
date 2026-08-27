@@ -123,6 +123,10 @@ test('svgConSop sí muestra "SOP:" para una cortina normal', () => {
   const svg = app.svgConSop({ tipo: 'Paquetto', ancho: '150', alto: '200', soporte: 'T' });
   assert.ok(svg.includes('SOP:'));
 });
+test('svgConSop no muestra "SOP:" para cualquier tipo sin dibujo (regla general, no solo los tipos ya conocidos)', () => {
+  const svg = app.svgConSop({ tipo: 'Un tipo inventado que no existe', ancho: '150', alto: '200', soporte: 'T' });
+  assert.ok(!svg.includes('SOP:'));
+});
 
 console.log('\nVisillo, Cojín y Cabecero');
 
