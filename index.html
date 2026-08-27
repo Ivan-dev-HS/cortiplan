@@ -279,6 +279,7 @@ input, select, textarea { font-family: inherit; }
 .toolbar .btn-dl:hover { background: #166534; }
 .toolbar .btn-dl2 { background: #1e3a8a; color: #fff; border-color: #1e3a8a; }
 .toolbar .btn-dl2:hover { background: #1d4ed8; }
+.corte-frame { width: 100%; max-width: 900px; height: calc(100vh - 160px); min-height: 420px; border: var(--border); border-radius: var(--r); background: #fff; }
 
 /* Empty state */
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 12px; opacity: .3; pointer-events: none; }
@@ -534,7 +535,6 @@ input, select, textarea { font-family: inherit; }
         </div>
         <div class="pcards" id="lineas"></div>
       </section>
-      <button class="btn btn-green" onclick="generarCorte()">✂️ Generar PDF Corte</button>
     </div>
     <button class="btn btn-ghost" onclick="limpiarTodo()">↺ Limpiar todo</button>
   </div>
@@ -556,7 +556,7 @@ const RE_INSTAL_WORD=/INSTAL[·.]?L?ACI[OÓ]N?/;
 const RE_HAY_INSTALACION=new RegExp('UD\\.?\\s*'+RE_INSTAL_WORD.source+'|'+RE_INSTAL_WORD.source+'[^\\n]{0,40}ZONA\\s*:|'+RE_INSTAL_WORD.source+'\\s+(?:INCLU\\w*|INCLOS\\w*)','i');
 // Solo el bloque con zona/dirección propia (para localizar dónde buscar nombre/tfno/dirección).
 const RE_INSTALACION_ZONA=new RegExp('UD\\.?\\s*'+RE_INSTAL_WORD.source+'|'+RE_INSTAL_WORD.source+'[^\\n]{0,40}ZONA\\s*:','i');
-const STATE={cortinas:[],lineas:[],pcnt:0,lcnt:0,svgUid:0,objectUrl:null,liveActive:true,_liveTimer:null,instZona:'',instRef:'',instNombre:'',instDireccion:'',instTel:'',hayInstalacion:false,_instRawHit:false,_instRawZona:'',_instRawRef:''};
+const STATE={cortinas:[],lineas:[],pcnt:0,lcnt:0,svgUid:0,objectUrl:null,corteObjectUrl:null,liveActive:true,_liveTimer:null,_corteLiveTimer:null,instZona:'',instRef:'',instNombre:'',instDireccion:'',instTel:'',hayInstalacion:false,_instRawHit:false,_instRawZona:'',_instRawRef:''};
 /* ─── LIVE PREVIEW ─── */
 function scheduleLiveRefresh(){
   if(!STATE.liveActive)return;
@@ -567,6 +567,16 @@ function bindClientLive(){
   ['cnom','ctel','cdir','cpob','cpre','cfec','notas','inom','itel','idir','ipob','irefped'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.addEventListener('input',scheduleLiveRefresh);
+  });
+}
+function scheduleCorteLiveRefresh(){
+  clearTimeout(STATE._corteLiveTimer);
+  STATE._corteLiveTimer=setTimeout(()=>{ previewCorte(); },350);
+}
+function bindCorteLive(){
+  ['kref','kfec'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.addEventListener('input',scheduleCorteLiveRefresh);
   });
 }
 
@@ -581,7 +591,14 @@ function openSidebar(){$('sidebar').classList.add('open');$('overlay').classList
 $('btnMenu').addEventListener('click',openSidebar);
 $('btnCloseSb').addEventListener('click',closeSidebar);
 $('overlay').addEventListener('click',closeSidebar);
-function setModo(m){const isInst=m==='inst';$('btnInst').classList.toggle('active',isInst);$('btnCorte').classList.toggle('active',!isInst);$('panelInst').classList.toggle('show',isInst);$('panelCorte').classList.toggle('show',!isInst);}
+function setModo(m){
+  const isInst=m==='inst';
+  $('btnInst').classList.toggle('active',isInst);
+  $('btnCorte').classList.toggle('active',!isInst);
+  $('panelInst').classList.toggle('show',isInst);
+  $('panelCorte').classList.toggle('show',!isInst);
+  if(isInst)generarInst(true);else previewCorte();
+}
 function hideEmptyState(){const e=$('emptyState');if(e)e.style.display='none';}
 function updateBadge(){const b=$('cntBadge');if(b)b.textContent=STATE.cortinas.length;}
 const upzone=$('upzone'),fileInput=$('fileInput');
@@ -1344,7 +1361,7 @@ function addCortina(d={}){
   if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'&&tipo!=='Cojín'&&tipo!=='Cabecero')rerenderAllLineas();
   updateBadge();
 }
-function addLinea(d={}){STATE.lcnt++;const l={id:'l'+STATE.lcnt,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',sistema:d.sistema||'',tipo:d.tipo||'',tejido:d.tejido||'',recogida:d.recogida||'D',hojas:d.hojas||'1',color:d.color||'',soportes:d.soportes||'',correderas:d.correderas||'CONVENCIONAL',manual:d.manual||'MANUAL',unidades:d.unidades||'1',obs:d.obs||''};STATE.lineas.push(l);renderLinea(l,STATE.lineas.length-1);}
+function addLinea(d={}){STATE.lcnt++;const l={id:'l'+STATE.lcnt,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',sistema:d.sistema||'',tipo:d.tipo||'',tejido:d.tejido||'',recogida:d.recogida||'D',hojas:d.hojas||'1',color:d.color||'',soportes:d.soportes||'',correderas:d.correderas||'CONVENCIONAL',manual:d.manual||'MANUAL',unidades:d.unidades||'1',obs:d.obs||''};STATE.lineas.push(l);renderLinea(l,STATE.lineas.length-1);scheduleCorteLiveRefresh();}
 /* Calcular la longitud de la diagonal (inclinada) de una llucana por Pitágoras:
    cateto horizontal = ancho_abajo - ancho_arriba (si no hay arriba → ancho completo = triángulo)
    cateto vertical   = altura
@@ -1550,9 +1567,9 @@ function remLinea(id){
   const el=document.querySelector(`.pcard[data-lid="${id}"]`);
   if(el){
     el.classList.add('removing');
-    setTimeout(()=>{STATE.lineas=STATE.lineas.filter(l=>l.id!==id);rerenderAllLineas();},200);
+    setTimeout(()=>{STATE.lineas=STATE.lineas.filter(l=>l.id!==id);rerenderAllLineas();scheduleCorteLiveRefresh();},200);
   } else {
-    STATE.lineas=STATE.lineas.filter(l=>l.id!==id);rerenderAllLineas();
+    STATE.lineas=STATE.lineas.filter(l=>l.id!==id);rerenderAllLineas();scheduleCorteLiveRefresh();
   }
 }
 function updCortina(id,field,val){
@@ -1602,7 +1619,7 @@ function updCortina(id,field,val){
   }
   scheduleLiveRefresh();
 }
-function updLinea(id,field,val){const l=STATE.lineas.find(x=>x.id===id);if(!l)return;l[field]=val;const head=document.querySelector(`.pcard[data-lid="${id}"] .est`);if(head&&field==='estancia')head.textContent=val||'(sin nombre)';}
+function updLinea(id,field,val){const l=STATE.lineas.find(x=>x.id===id);if(!l)return;l[field]=val;const head=document.querySelector(`.pcard[data-lid="${id}"] .est`);if(head&&field==='estancia')head.textContent=val||'(sin nombre)';scheduleCorteLiveRefresh();}
 function renderPcard(c,idx){
   const div=document.createElement('div');div.className='pcard';div.dataset.id=c.id;
   const opts=['Onda Perfecta','Palas/Tablas','Fruncida','Presilla','Plegón','Plegón Encarado','Plana','Plana Doble Tejido','Paquetto','Estor','Enrollable','Vertical','Brisa','Ollados','Barra con Anillas','Panel Japonés','Tapiceria','Colcha/Vánova/Nórdica','Friso','Visillo','Cojín','Cabecero'];
@@ -1742,8 +1759,9 @@ function rerenderAllCards(){
   updateBadge();
 }
 function rerenderAllLineas(){$('lineas').innerHTML='';STATE.lineas.forEach((l,i)=>renderLinea(l,i));}
-function limpiarTodo(){['cnom','ctel','cdir','cpob','cpre','cfec','notas','kref','kfec'].forEach(id=>{const el=$(id);if(el)el.value='';});resetCortinas();resetInstalacion();STATE.liveActive=false;addCortina();$('main').innerHTML='<div class="empty-state" id="emptyState"><div class="ei">📂</div><p>Arrastra un PDF o imagen<br>y elige el tipo de documento</p></div>';setSt('','Esperando archivo…');clearDbg();revokeObjUrl();fileInput.value='';}
+function limpiarTodo(){['cnom','ctel','cdir','cpob','cpre','cfec','notas','kref','kfec'].forEach(id=>{const el=$(id);if(el)el.value='';});resetCortinas();resetInstalacion();STATE.liveActive=false;addCortina();$('main').innerHTML='<div class="empty-state" id="emptyState"><div class="ei">📂</div><p>Arrastra un PDF o imagen<br>y elige el tipo de documento</p></div>';setSt('','Esperando archivo…');clearDbg();revokeObjUrl();revokeCorteObjUrl();fileInput.value='';}
 function revokeObjUrl(){if(STATE.objectUrl){URL.revokeObjectURL(STATE.objectUrl);STATE.objectUrl=null;}}
+function revokeCorteObjUrl(){if(STATE.corteObjectUrl){URL.revokeObjectURL(STATE.corteObjectUrl);STATE.corteObjectUrl=null;}}
 
 /* ═══ SVG ═══ */
 const SV={W:310,H:205,ML:14,MR:62,MT:46,MB:14};
@@ -3202,12 +3220,11 @@ function calcularSoportes(sistemaStr, ancho){
   return ''; // supera el límite → en blanco
 }
 
-async function generarCorte(){
+async function buildCortePDFBytes(){
   const ref=$('kref').value,fec=$('kfec').value;
   const lineasValidas=STATE.lineas.filter(l=>l.ancho||l.alto||l.estancia);
-  if(!lineasValidas.length){alert('Añade al menos una línea de corte.');return;}
-  setSt('spin','Generando PDF corte…');
-  try{
+  if(!lineasValidas.length)return null;
+  {
     await ensurePDFLib();
     const{PDFDocument,StandardFonts,rgb}=PDFLib;
     const pdfDoc=await PDFDocument.create();
@@ -3406,27 +3423,53 @@ async function generarCorte(){
       });
     });
 
-    revokeObjUrl();
     const bytes=await pdfDoc.save();
-    const blob=new Blob([bytes],{type:'application/pdf'});
+    return{bytes,count:lineas.length,ref};
+  }
+}
+
+// Botón de la barra superior: genera y abre/descarga el PDF de corte para imprimir o guardar.
+async function generarCorte(){
+  setSt('spin','Generando PDF corte…');
+  try{
+    const res=await buildCortePDFBytes();
+    if(!res){setSt('er','Añade al menos una línea de corte.');alert('Añade al menos una línea de corte.');return;}
+    revokeObjUrl();
+    const blob=new Blob([res.bytes],{type:'application/pdf'});
     STATE.objectUrl=URL.createObjectURL(blob);
     // Abrir en ventana nueva (igual que hoja instalación)
     const win=window.open(STATE.objectUrl,'_blank');
     if(!win){
       // Si popup bloqueado → descargar directamente
       const a=document.createElement('a');a.href=STATE.objectUrl;
-      a.download='corte_'+(ref||'pedido')+'.pdf';
+      a.download='corte_'+(res.ref||'pedido')+'.pdf';
       a.style.display='none';document.body.appendChild(a);a.click();document.body.removeChild(a);
     }
-    setSt('ok','✓ PDF corte generado · '+lineas.length+' línea(s)');
+    setSt('ok','✓ PDF corte generado · '+res.count+' línea(s)');
     dbg('PDF corte generado','ok');
   }catch(err){setSt('er','Error: '+err.message);dbg('❌ '+err.message,'er');console.error(err);}
+}
+
+// Vista previa en vivo (barra superior + iframe), igual que la hoja de instalación.
+async function previewCorte(){
+  try{
+    const res=await buildCortePDFBytes();
+    if(!res)return;
+    hideEmptyState();
+    const blob=new Blob([res.bytes],{type:'application/pdf'});
+    revokeCorteObjUrl();
+    STATE.corteObjectUrl=URL.createObjectURL(blob);
+    $('main').innerHTML=`<div class="toolbar">
+      <button class="btn-tool btn-print" onclick="generarCorte()">🖨 Imprimir / Guardar PDF</button>
+    </div><iframe src="${STATE.corteObjectUrl}" class="corte-frame"></iframe>`;
+  }catch(err){console.error(err);}
 }
 
 async function ensurePDFLib(){if(!window.PDFLib){try{await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js');}catch(e){await loadScript('https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js');}}}
 
 addCortina();
 bindClientLive();
+bindCorteLive();
 </script>
 </body>
 <script>
