@@ -484,6 +484,10 @@ input, select, textarea { font-family: inherit; }
             <div class="fld"><label>Fecha</label><input id="cfec" type="text" placeholder="dd/mm/aaaa"></div>
           </div>
         </div>
+        <label class="inst-check" for="cliCheck" style="margin-top:10px">
+          <input type="checkbox" id="cliCheck" checked onchange="toggleCliente(this.checked)">
+          <span class="slbl" style="margin:0">Incluir datos del cliente</span>
+        </label>
       </section>
       <hr class="divider">
       <section>
@@ -1276,6 +1280,7 @@ function setVal(id,val){const el=$(id);if(el&&val&&val.trim())el.value=val.trim(
 function resetCortinas(){STATE.cortinas=[];STATE.lineas=[];STATE.pcnt=0;STATE.lcnt=0;$('pcards').innerHTML='';$('lineas').innerHTML='';updateBadge();}
 function resetInstalacion(){
   STATE.instZona='';STATE.instRef='';STATE.instNombre='';STATE.instDireccion='';STATE.instTel='';STATE.hayInstalacion=false;STATE._instRawHit=false;STATE._instRawZona='';STATE._instRawRef='';
+  const chkCli=$('cliCheck');if(chkCli)chkCli.checked=true;
   const chk=$('instCheck');if(chk)chk.checked=false;
   const box=$('instFields');if(box)box.classList.remove('show');
   ['inom','itel','idir','ipob'].forEach(id=>{const el=$(id);if(el)el.value='';});
@@ -1319,6 +1324,11 @@ function aplicarInstalacionUI(){
   const dir=STATE.instDireccion||$('cdir').value||'';
   const pob=STATE.instZona||$('cpob').value||'';
   $('inom').value=nom;$('itel').value=tel;$('idir').value=dir;$('ipob').value=pob;
+}
+/* Mostrar/ocultar la caja "Datos del cliente" en la hoja impresa, para poder dejar
+   ver solo los datos de instalación cuando no se quiere que salgan los del cliente. */
+function toggleCliente(checked){
+  scheduleLiveRefresh();
 }
 /* Igual que toggleInstalacion, para el recuadro de Ref. del pedido junto al de instalación. */
 function toggleRefPedido(checked){
@@ -2849,6 +2859,7 @@ function buildInstHTML(){
   // marcados a mano por el usuario.
   const hayInst=!!$('instCheck')?.checked;
   const hayRef=!!$('refCheck')?.checked;
+  const hayCliente=!!$('cliCheck')?.checked;
 
   function instBox(){
   // Mismos campos que Datos del cliente: Nombre, Teléfono, Dirección, Población.
@@ -2865,7 +2876,7 @@ function refBox(){
   const refLimpia=($('irefped')?.value||'').trim();
   return`<div class="cli-box ref-box"><div class="cli-box-tit">Ref. del pedido</div><div class="cli-box-body"><div class="cli-row"><span class="cli-k">Ref.</span><span class="cli-v${refLimpia?'':' cli-fill'}">${refLimpia?he(refLimpia):''}</span></div></div></div>`;
 }
-function cabCliente(){return`<div class="cli-box"><div class="cli-box-tit">Datos del cliente</div><div class="cli-box-body"><div class="cli-row"><span class="cli-k">Nombre</span><span class="cli-v">${he(nom)||'—'}</span></div><div class="cli-row"><span class="cli-k">Teléfono</span><span class="cli-v">${he(tel)||'—'}</span></div><div class="cli-row"><span class="cli-k">Dirección</span><span class="cli-v" style="font-size:10.5px">${he(dir)||'—'}</span></div><div class="cli-row"><span class="cli-k">Población</span><span class="cli-v">${he(pob)||'—'}</span></div></div></div>`;}
+function cabCliente(){if(!hayCliente)return'';return`<div class="cli-box"><div class="cli-box-tit">Datos del cliente</div><div class="cli-box-body"><div class="cli-row"><span class="cli-k">Nombre</span><span class="cli-v">${he(nom)||'—'}</span></div><div class="cli-row"><span class="cli-k">Teléfono</span><span class="cli-v">${he(tel)||'—'}</span></div><div class="cli-row"><span class="cli-k">Dirección</span><span class="cli-v" style="font-size:10.5px">${he(dir)||'—'}</span></div><div class="cli-row"><span class="cli-k">Población</span><span class="cli-v">${he(pob)||'—'}</span></div></div></div>`;}
 
   return grupos.map((gr,gi)=>{
     const ultima=gi===nH-1;
