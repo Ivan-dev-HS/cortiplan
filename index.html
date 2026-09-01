@@ -907,10 +907,10 @@ function estrategiaCanotex(txt){
       let m=nl.match(/TEJIDO:\s*([A-Z0-9][^\n.,]+?)(?:\s*\.|$)/i);
       if(m&&m[1])return m[1].trim();
       // Patrón 2: ", TEJIDO XXX" (inline en descripción enrollable)
-      m=nl.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/]+?)(?:\.|SOP|$)/i);
+      m=nl.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.|SOP|$)/i);
       if(m&&m[1])return m[1].trim();
       // Patrón 3: "TEJIDO XXX." al final de línea
-      m=nl.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/]+?)(?:\.|SOP|BLANCO|GRIS|NEGRO|BLANCA|$)/i);
+      m=nl.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.|SOP|BLANCO|GRIS|NEGRO|BLANCA|$)/i);
       if(m&&m[1]&&m[1].length>2)return m[1].trim();
     }
     return '';
@@ -953,9 +953,10 @@ function estrategiaCanotex(txt){
       // Anotación tras el alto: "+40" (de "162H+40"), "TT", "ACB", "PIE"…
       let sufAlto=(pm[4]||'').trim().replace(/^H\b\.?/i,'').replace(/[.\s]+$/,'').trim();
       const extra=sufAlto;
-      const resto=line.replace(/^[A-Z0-9]+\s+MEDIDA:\s*\d+(?:[.,]\d+)?(?:\s*[-+]\s*\d+(?:[.,]\d+)?)*\s*[xX×]\s*\d+(?:[.,]\d+)?[A-Z.\+0-9\s]*?(?=\s+(?:RECOG|CONFE|MANDO|COLOR|CAIDA|SOP)|$)/i,'');
+      const resto=line.replace(/^[A-Z0-9]+\s+MEDIDA:\s*\d+(?:[.,]\d+)?(?:\s*[-+]\s*\d+(?:[.,]\d+)?)*\s*[xX×]\s*\d+(?:[.,]\d+)?[A-Z.\+0-9\s-]*?(?=\s+(?:RECOG|CONFE|MANDO|MOTOR|COLOR|CAIDA|SOP)|$)/i,'');
       const confeM=resto.match(/CONFE:\s*(\d+)\s*HOJAS?/i),hojas=confeM?confeM[1]:'1';
-      const recogM=resto.match(/RECOG:([A-Z]+)/i)||resto.match(/MANDO:\s*([A-Z]+)/i),recRaw=recogM&&recogM[1]?recogM[1]:'D';
+      // El lado del mando puede venir como "RECOG:", "MANDO:" (manual) o "MOTOR:" (motorizado).
+      const recogM=resto.match(/RECOG:([A-Z]+)/i)||resto.match(/MANDO:\s*([A-Z]+)/i)||resto.match(/MOTOR:\s*([A-Z]+)/i),recRaw=recogM&&recogM[1]?recogM[1]:'D';
       // Verticales: RECOGIDO:Nº 2 → número de apertura 1-10
       const aperturaM=resto.match(/RECOGIDO:?\s*N?[ºo°]?\s*(\d{1,2})/i);
       const apertura=aperturaM?aperturaM[1]:'';
@@ -1029,13 +1030,13 @@ function estrategiaCanotex(txt){
         // UD. descripción
         if(!tipoDesc&&/^UD\.\s*/i.test(nl)){
           tipoDesc=nl.replace(/^UD\.\s*/i,'').replace(/\(ONDA[^)]*\)/,'').trim();
-          const t=nl.match(/TEJIDO\s+([A-Z0-9][A-Z0-9\s\/]+?)(?:\.|$)/i);
+          const t=nl.match(/TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.|$)/i);
           if(t&&t[1]&&!tejido)tejido=t[1].trim();
         }
         // Línea sin "UD." pero con descripción de tipo
         if(!tipoDesc&&/ENROLLABLE|ESTOR|ROMAN|ROLLER|DIA\s*Y\s*NOCHE|VERTICAL|BRISA|PLEG[OÓ]N|PRESILLA|FRUNCID|ONDA\s*PERFECTA|PALAS|TABLAS|PLISAD/i.test(nl))tipoDesc=nl;
         // Tejido con "REF." → "TEJIDO REF. GRECIA 05"
-        if(!tejido){const tRef=nl.match(/TEJIDO\s+REF\.?\s*([A-Z0-9][A-Z0-9\s\/]*)/i);if(tRef&&tRef[1])tejido=('REF. '+tRef[1]).trim();}
+        if(!tejido){const tRef=nl.match(/TEJIDO\s+REF\.?\s*([A-Z0-9][A-Z0-9\s\/%]*)/i);if(tRef&&tRef[1])tejido=('REF. '+tRef[1]).trim();}
         // Soporte en descripción: "SOPORTE TECHO CLIC", "SOP. FRONTAL", "SOP. SOSTRE",
         // "CON SOP. FRENTE", "SOPORTE RAPIDO NEGRO", "SOPORTE PARED"…
         if(!sopDesc){
@@ -1053,9 +1054,24 @@ function estrategiaCanotex(txt){
         }
         // Tejido embebido inline: "CADENA (T43), TEJIDO XXX" o "TEJIDO THECNIC..."
         if(!tejido){
-          const tInline=nl.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/]+?)(?:\.|SOP|$)/i)||
-                        nl.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/]+?)(?:\.\s*$|SOP|\s*$)/i);
-          if(tInline&&tInline[1]&&tInline[1].trim().length>2)tejido=tInline[1].trim();
+          const tInline=nl.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.|SOP|$)/i)||
+                        nl.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.\s*$|SOP|\s*$)/i);
+          if(tInline&&tInline[1]&&tInline[1].trim().length>2){
+            tejido=tInline[1].trim();
+            // El nombre del tejido (con su referencia/color) a veces sigue en la línea
+            // siguiente, cuando el PDF corta la frase justo tras el primer punto:
+            // "TEJIDO SUPREM HELIOS." / "PH01 BLANCO. SOPORTE TECHO CLIC." Si la línea
+            // encontrada termina justo ahí (punto a final de línea), se une con la
+            // siguiente hasta la etiqueta de soporte/campo siguiente.
+            if(/\.\s*$/.test(nl)){
+              const idxNl=descLineas.indexOf(nl);
+              const sig=idxNl>=0?descLineas[idxNl+1]:null;
+              if(sig&&!/^(SOPORTE|SOP[.:]|CON\s+SOP|TEJIDO|SISTEMA|MEDIDA|UD\.|CONFE|RECOG|MANDO|MOTOR|COLOR|CAIDA|GUIA)/i.test(sig)){
+                const cont=sig.replace(/\s*(SOPORTE|SOP[.:]|CON\s+SOP).*$/i,'').replace(/\.\s*$/,'').trim();
+                if(cont)tejido=(tejido+' '+cont).replace(/\s{2,}/g,' ').trim();
+              }
+            }
+          }
         }
       }
 
@@ -1085,6 +1101,8 @@ function estrategiaCanotex(txt){
         const bloqueB=descLineas.join(' ');
         mandoBrisa=/TIRADOR/i.test(bloqueB)?'tirador':'cadena';
       }
+      // Motorizada: "MOTOR: D" en la línea de medida, o "...ENROLLABLE MOTORIZADA..." en la descripción.
+      const motorizada=/MOTOR:\s*[A-Z]+/i.test(resto)||/MOTORIZ/i.test(descLineas.join(' '));
       const recFinal=(parseInt(hojas)||1)>=2?'CEN':normalizeRecogida(recRaw);
       let sistemaFinal=sistema;
       if(tipo==='Enrollable'){
@@ -1123,6 +1141,7 @@ function estrategiaCanotex(txt){
         apertura:apertura||'',
         mandoBrisa:mandoBrisa||'',
         colorGuia:colorGuia||'',
+        motorizada,
       });
       dbg(`  ✅ #${results.length} [${currentEstancia||'?'}] ${tipo} ${ancho}×${alto}${cantidad>1?' ×'+cantidad:''}`,'ok');
       i=j;continue;
@@ -1230,9 +1249,9 @@ function buscarTejidoFallback(lines,desde,hasta){
     let m=l.match(/^TEJIDO[S]?:?\s*(.+)$/i);
     if(m)return m[1].replace(/\s*\d+[,\.]\d{2}\s*$/,'').trim();
     // Patrón inline enrollable: ", TEJIDO THECNIC BASIC..."
-    m=l.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/]+?)(?:\.|SOP|$)/i);
+    m=l.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.|SOP|$)/i);
     if(m&&m[1])return m[1].trim();
-    m=l.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/]+?)(?:\.\s*$|SOP)/i);
+    m=l.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.\s*$|SOP)/i);
     if(m&&m[1]&&m[1].length>2)return m[1].trim();
   }
   return '';
