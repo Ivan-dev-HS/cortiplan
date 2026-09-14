@@ -213,6 +213,12 @@ input, select, textarea { font-family: inherit; }
 .r2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .r3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
 
+/* Checkbox de datos de instalación */
+.inst-check { display: flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
+.inst-check input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--acc); cursor: pointer; flex-shrink: 0; }
+.inst-fields { display: none; margin-top: 10px; }
+.inst-fields.show { display: flex; }
+
 /* Cards */
 .pcards { display: flex; flex-direction: column; gap: 8px; }
 .pcard {
@@ -232,8 +238,10 @@ input, select, textarea { font-family: inherit; }
 }
 .pch .num { font-size: 9px; font-weight: 800; color: var(--acc); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
 .pch .est { font-size: 11px; font-weight: 600; color: var(--txt); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pch .btn-rem { background: none; border: none; color: var(--txt3); font-size: 14px; padding: 2px 6px; border-radius: 4px; line-height: 1; }
-.pch .btn-rem:hover { color: var(--red); background: rgba(220,38,38,.1); }
+.pch .btn-rem { background: none; border: none; color: var(--txt3); font-size: 14px; padding: 2px 6px; border-radius: 4px; line-height: 1; transition: color .15s, background .15s, transform .1s; }
+.pch .btn-rem:hover { color: var(--acc); background: var(--acc-light); }
+.pch .btn-rem:active { transform: scale(.88); }
+.pch .btn-rem-danger:hover { color: var(--red); background: rgba(220,38,38,.1); }
 .pcb { padding: 11px; display: flex; flex-direction: column; gap: 8px; }
 
 /* Buttons */
@@ -244,23 +252,34 @@ input, select, textarea { font-family: inherit; }
 .btn-green:hover { background: #166534; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(21,128,61,.25); }
 .btn-ghost { background: transparent; color: var(--txt2); border: var(--border); width: 100%; }
 .btn-ghost:hover { border-color: var(--acc); color: var(--acc); background: var(--acc-light); }
-.btn-sm { padding: 5px 12px; font-size: 10px; min-height: 30px; background: var(--s2); color: var(--txt2); border: var(--border); border-radius: 6px; font-weight: 700; }
+.btn-sm { padding: 5px 12px; font-size: 10px; min-height: 30px; background: var(--s2); color: var(--txt2); border: var(--border); border-radius: 6px; font-weight: 700; transition: all var(--tr); }
 .btn-sm:hover { border-color: var(--acc); color: var(--acc); background: var(--acc-light); }
+.btn-primary:active, .btn-green:active, .btn-ghost:active, .btn-sm:active, .modo-btn:active { transform: scale(.97); }
+.btn:focus-visible, .modo-btn:focus-visible, .theme-toggle:focus-visible, .pwa-install-btn:focus-visible, .pch .btn-rem:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 
 /* Panels */
 .panel { display: none; flex-direction: column; gap: 14px; }
 .panel.show { display: flex; }
 
-/* Toolbar */
-.toolbar { display: flex; gap: 8px; width: 100%; max-width: 900px; flex-wrap: wrap; align-items: center; }
-.toolbar .btn-tool { background: var(--s1); color: var(--txt2); border: var(--border); padding: 9px 16px; border-radius: var(--r); font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all var(--tr); }
-.toolbar .btn-tool:hover { border-color: var(--acc); color: var(--acc); background: var(--acc-light); }
-.toolbar .btn-print { background: var(--acc); color: #fff; border-color: var(--acc); }
-.toolbar .btn-print:hover { background: var(--acc2); box-shadow: 0 3px 12px rgba(37,99,235,.3); }
+/* Toolbar — pegada arriba al hacer scroll, para tener Imprimir/Guardar PDF siempre a mano */
+.toolbar {
+  display: flex; gap: 8px; width: 100%; max-width: 900px; flex-wrap: wrap; align-items: center; justify-content: flex-end;
+  position: sticky; top: 0; z-index: 5;
+  background: var(--bg);
+  margin: -24px 0 0; padding: 16px 0 12px;
+  box-shadow: 0 10px 16px -12px rgba(15,23,42,.18);
+}
+.toolbar .btn-tool { background: var(--s1); color: var(--txt2); border: var(--border); padding: 10px 18px; min-height: 42px; border-radius: var(--r); font-size: 12.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: all var(--tr); }
+.toolbar .btn-tool:hover { border-color: var(--acc); color: var(--acc); background: var(--acc-light); transform: translateY(-1px); }
+.toolbar .btn-tool:active { transform: translateY(0) scale(.97); }
+.toolbar .btn-tool:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.toolbar .btn-print { background: var(--acc); color: #fff; border-color: var(--acc); box-shadow: 0 2px 10px rgba(37,99,235,.25); font-size: 13px; }
+.toolbar .btn-print:hover { background: var(--acc2); box-shadow: 0 4px 14px rgba(37,99,235,.35); }
 .toolbar .btn-dl { background: #15803d; color: #fff; border-color: #15803d; }
 .toolbar .btn-dl:hover { background: #166534; }
 .toolbar .btn-dl2 { background: #1e3a8a; color: #fff; border-color: #1e3a8a; }
 .toolbar .btn-dl2:hover { background: #1d4ed8; }
+.corte-frame { width: 100%; max-width: 900px; height: calc(100vh - 160px); min-height: 420px; border: var(--border); border-radius: var(--r); background: #fff; }
 
 /* Empty state */
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 12px; opacity: .3; pointer-events: none; }
@@ -274,6 +293,7 @@ input, select, textarea { font-family: inherit; }
 .hoja-marca-wrap { text-align: left; align-self: start; display: flex; flex-direction: column; align-items: flex-start; }
 .hoja-cab.sin-inst { grid-template-columns: 1fr; }
 .inst-box { min-width: 260px; }
+.cli-box.ref-box { min-width: 130px; }
 .cli-fill { border-bottom: 1px solid #9aadcc; min-height: 13px; }
 .hoja-marca { font-size: 19px; font-weight: 900; color: #1c3a6e; letter-spacing: -.3px; }
 .hoja-subtit { font-size: 8px; color: #9aadcc; text-transform: uppercase; letter-spacing: .5px; margin-top: 1px; }
@@ -355,6 +375,8 @@ input, select, textarea { font-family: inherit; }
   .hoja-pie { grid-template-columns: 1fr 160px !important; margin: 0 12px 10px !important; }
   .hoja-body { padding: 4px 10px 6px !important; gap: 6px !important; }
   .fdat-row { min-height: 22px !important; }
+  /* Recuadros sin tinte gris/azul al imprimir: todo en blanco, solo con los bordes */
+  .hoja-cab, .hoja-op, .ficha-tit, .ficha-draw, .fdat-k, .hoja-resumen { background: #fff !important; }
   @page { size: A4 portrait; margin: 8mm 7mm; }
 }
 
@@ -462,6 +484,30 @@ input, select, textarea { font-family: inherit; }
             <div class="fld"><label>Fecha</label><input id="cfec" type="text" placeholder="dd/mm/aaaa"></div>
           </div>
         </div>
+        <label class="inst-check" for="cliCheck" style="margin-top:10px">
+          <input type="checkbox" id="cliCheck" checked onchange="toggleCliente(this.checked)">
+          <span class="slbl" style="margin:0">Incluir datos del cliente</span>
+        </label>
+      </section>
+      <hr class="divider">
+      <section>
+        <label class="inst-check" for="instCheck">
+          <input type="checkbox" id="instCheck" onchange="toggleInstalacion(this.checked)">
+          <span class="slbl" style="margin:0">Incluir datos de instalación</span>
+        </label>
+        <div class="fg inst-fields" id="instFields">
+          <div class="fld"><label>Nombre contacto</label><input id="inom" type="text" placeholder="Nombre en la instalación"></div>
+          <div class="fld"><label>Teléfono</label><input id="itel" type="tel" placeholder="600 000 000"></div>
+          <div class="fld"><label>Dirección</label><input id="idir" type="text" placeholder="Calle, número…"></div>
+          <div class="fld"><label>Población / Zona</label><input id="ipob" type="text" placeholder="Ciudad"></div>
+        </div>
+        <label class="inst-check" for="refCheck" style="margin-top:10px">
+          <input type="checkbox" id="refCheck" onchange="toggleRefPedido(this.checked)">
+          <span class="slbl" style="margin:0">Incluir Ref. del pedido</span>
+        </label>
+        <div class="fg inst-fields" id="refFields">
+          <div class="fld"><label>Referencia</label><input id="irefped" type="text" placeholder="A691"></div>
+        </div>
       </section>
       <hr class="divider">
       <section>
@@ -476,10 +522,6 @@ input, select, textarea { font-family: inherit; }
         <span class="slbl">Notas para el operario</span>
         <div class="fld"><textarea id="notas" placeholder="Indicaciones especiales…"></textarea></div>
       </section>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <button class="btn btn-primary" onclick="generarInst()">👁 Vista previa</button>
-        <button class="btn btn-green" onclick="generarInstPDF()">🖨 Generar e Imprimir PDF</button>
-      </div>
     </div>
     <div class="panel" id="panelCorte">
       <section>
@@ -497,7 +539,6 @@ input, select, textarea { font-family: inherit; }
         </div>
         <div class="pcards" id="lineas"></div>
       </section>
-      <button class="btn btn-green" onclick="generarCorte()">✂️ Generar PDF Corte</button>
     </div>
     <button class="btn btn-ghost" onclick="limpiarTodo()">↺ Limpiar todo</button>
   </div>
@@ -511,7 +552,15 @@ input, select, textarea { font-family: inherit; }
 'use strict';
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const CFG={EMPRESA_TELS:new Set(['973235776','900100200']),MAX_LINEAS_CORTE:10,OCR_SCALE:2.8,CORTINAS_POR_HOJA:4};
-const STATE={cortinas:[],lineas:[],pcnt:0,lcnt:0,svgUid:0,objectUrl:null,liveActive:false,_liveTimer:null,instZona:'',instRef:'',instNombre:'',instDireccion:'',instTel:'',hayInstalacion:false,_instRawHit:false,_instRawZona:'',_instRawRef:''};
+// Palabra "instalación", en español o catalán ("instal·lació"/"instal·lacio", con o sin
+// el punto volado, con o sin la N final): Canotex emite presupuestos en los dos idiomas.
+const RE_INSTAL_WORD=/INSTAL[·.]?L?ACI[OÓ]N?/;
+// Detecta que el presupuesto incluye instalación: como línea de artículo ("UD. INSTALACION…"),
+// como bloque con zona ("INSTALACION … ZONA:") o como simple nota ("INSTALACION/INSTAL·LACIO INCLUIDA/INCLOSA").
+const RE_HAY_INSTALACION=new RegExp('UD\\.?\\s*'+RE_INSTAL_WORD.source+'|'+RE_INSTAL_WORD.source+'[^\\n]{0,40}ZONA\\s*:|'+RE_INSTAL_WORD.source+'\\s+(?:INCLU\\w*|INCLOS\\w*)','i');
+// Solo el bloque con zona/dirección propia (para localizar dónde buscar nombre/tfno/dirección).
+const RE_INSTALACION_ZONA=new RegExp('UD\\.?\\s*'+RE_INSTAL_WORD.source+'|'+RE_INSTAL_WORD.source+'[^\\n]{0,40}ZONA\\s*:','i');
+const STATE={cortinas:[],lineas:[],pcnt:0,lcnt:0,svgUid:0,objectUrl:null,corteObjectUrl:null,liveActive:true,_liveTimer:null,_corteLiveTimer:null,instZona:'',instRef:'',instNombre:'',instDireccion:'',instTel:'',hayInstalacion:false,_instRawHit:false,_instRawZona:'',_instRawRef:''};
 /* ─── LIVE PREVIEW ─── */
 function scheduleLiveRefresh(){
   if(!STATE.liveActive)return;
@@ -519,9 +568,19 @@ function scheduleLiveRefresh(){
   STATE._liveTimer=setTimeout(()=>{ generarInst(true); },350);
 }
 function bindClientLive(){
-  ['cnom','ctel','cdir','cpob','cpre','cfec','notas'].forEach(id=>{
+  ['cnom','ctel','cdir','cpob','cpre','cfec','notas','inom','itel','idir','ipob','irefped'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.addEventListener('input',scheduleLiveRefresh);
+  });
+}
+function scheduleCorteLiveRefresh(){
+  clearTimeout(STATE._corteLiveTimer);
+  STATE._corteLiveTimer=setTimeout(()=>{ previewCorte(); },350);
+}
+function bindCorteLive(){
+  ['kref','kfec'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.addEventListener('input',scheduleCorteLiveRefresh);
   });
 }
 
@@ -536,7 +595,14 @@ function openSidebar(){$('sidebar').classList.add('open');$('overlay').classList
 $('btnMenu').addEventListener('click',openSidebar);
 $('btnCloseSb').addEventListener('click',closeSidebar);
 $('overlay').addEventListener('click',closeSidebar);
-function setModo(m){const isInst=m==='inst';$('btnInst').classList.toggle('active',isInst);$('btnCorte').classList.toggle('active',!isInst);$('panelInst').classList.toggle('show',isInst);$('panelCorte').classList.toggle('show',!isInst);}
+function setModo(m){
+  const isInst=m==='inst';
+  $('btnInst').classList.toggle('active',isInst);
+  $('btnCorte').classList.toggle('active',!isInst);
+  $('panelInst').classList.toggle('show',isInst);
+  $('panelCorte').classList.toggle('show',!isInst);
+  if(isInst)generarInst(true);else previewCorte();
+}
 function hideEmptyState(){const e=$('emptyState');if(e)e.style.display='none';}
 function updateBadge(){const b=$('cntBadge');if(b)b.textContent=STATE.cortinas.length;}
 const upzone=$('upzone'),fileInput=$('fileInput');
@@ -552,7 +618,6 @@ async function processPDF(file){
   const arr=await file.arrayBuffer();
   const pdf=await pdfjsLib.getDocument({data:arr}).promise;
   let allItems=[],allLines=[];let hasText=false;
-  const pageStarts=[]; // índice de línea donde empieza cada página
 
   // Línea incompleta: termina con campo abierto, código de producto o palabra clave sin cerrar
   const INCOMPLETE_RE=/^(UD\.|TEJIDO:|SISTEMA\s+DE|MEDIDA:|CORTOP|CORTPLADO|CORTPLA|CORTPA|PAQUETTO|P\d{2}[A-Z])|[-:]\s*$|(TEJIDO|SISTEMA|RECOG|MANDO|CONFEC|COLOR|SOPORT|CORREDER|MANUAL|MEDIDA|ANCHO|ALTO)\s*:?\s*$/i;
@@ -560,7 +625,6 @@ async function processPDF(file){
   const CONTINUATION_RE=/^(DOBLE\s+TEJIDO|CONFECCIONA|PERFECTA|ENROLLABLE|CADENA|SISTEMA|MANUAL|MANAUL|GUIA|GUÍA|BLANCA?|NACAR|GRIS|BEIGE|NEGRO|BLANCO|C\/|DE\s+|CON\s+|SIN\s+|Y\s+[A-Z]|ONDA|BARRA|PROFESIONAL|1\s*VÍA|1\s*VIA|CUERDA|MOTORIZ|PLISADO|VARILLA|PERFOR|REFORZ)/i;
 
   for(let pi=1;pi<=pdf.numPages;pi++){
-    pageStarts.push(allLines.length);
     const page=await pdf.getPage(pi);
     const ct=await page.getTextContent();
     const byY=new Map();
@@ -624,6 +688,7 @@ async function processPDF(file){
     try{
       const ocrText=await pdfToOCR(file);
       const lines=(ocrText||'').split('\n').filter(l=>l!=null&&typeof l==='string'&&l.trim());
+      resetInstalacion();
       parsear(lines,false);
     }catch(ocrErr){setSt('er','Error OCR: '+ocrErr.message);dbg('❌ OCR: '+ocrErr.message,'er');return;}
     setSt('ok','✓ OCR: '+file.name);
@@ -634,9 +699,9 @@ async function processPDF(file){
     const _txtCompleto=allLines.join(' \n ');
     // Buscar "INSTALACION" incluso si pdf.js separó caracteres con espacios
     const _txtSinEsp=_txtCompleto.replace(/\s+/g,'');
-    // Solo la línea de artículo: "INSTALACION UD. INSTALACION CORTINA ZONA:…"
-    const INST_RE=/UD\.?\s*INSTALACI[OÓ]N|INSTALACI[OÓ]N[^\n]{0,40}ZONA\s*:/i;
-    STATE._instRawHit=INST_RE.test(_txtCompleto)||INST_RE.test(_txtSinEsp);
+    // Línea de artículo ("UD. INSTALACION CORTINA ZONA:…"), zona propia, o nota simple
+    // ("INSTALACION/INSTAL·LACIO INCLUIDA/INCLOSA").
+    STATE._instRawHit=RE_HAY_INSTALACION.test(_txtCompleto)||RE_HAY_INSTALACION.test(_txtSinEsp);
     dbg('🔎 ¿Instalación en PDF? '+(STATE._instRawHit?'SÍ':'NO'),STATE._instRawHit?'ok':'warn');
     // REF del pedido: extraer siempre (con o sin instalación)
     {
@@ -653,8 +718,6 @@ async function processPDF(file){
     if(allItems.length)extraerClientePorCoordenadas(allItems);
     parsear(allLines,true);
     setSt('ok','✓ '+file.name);
-    // IA: revisar saltos de página por si alguna cortina quedó dividida
-    if(pdf.numPages>1)iaRevisarSaltosPagina(allLines,pageStarts);
   }
 }
 
@@ -692,7 +755,7 @@ async function pdfToOCR(file){
   for(let i=1;i<=pdf.numPages;i++){setSt('spin',`OCR pág ${i}/${pdf.numPages}…`);const page=await pdf.getPage(i);const vp=page.getViewport({scale:CFG.OCR_SCALE});const canvas=document.createElement('canvas');canvas.width=vp.width;canvas.height=vp.height;await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;combined+=await runOCR(preprocessImage(canvas))+'\n';}
   return combined;
 }
-async function processImage(file){setSt('spin','OCR imagen…');const bmp=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=bmp.width;canvas.height=bmp.height;canvas.getContext('2d').drawImage(bmp,0,0);const text=await runOCR(preprocessImage(canvas));const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);dbg(`🔍 OCR: ${lines.length} líneas`,'ok');parsear(lines,false);setSt('ok','✓ '+file.name);}
+async function processImage(file){setSt('spin','OCR imagen…');const bmp=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=bmp.width;canvas.height=bmp.height;canvas.getContext('2d').drawImage(bmp,0,0);const text=await runOCR(preprocessImage(canvas));const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);dbg(`🔍 OCR: ${lines.length} líneas`,'ok');resetInstalacion();parsear(lines,false);setSt('ok','✓ '+file.name);}
 function preprocessImage(srcCanvas){const minDim=1200;let sw=srcCanvas.width;const scale=sw<minDim?minDim/sw:1;const canvas=document.createElement('canvas');canvas.width=Math.round(sw*scale);canvas.height=Math.round(srcCanvas.height*scale);const ctx=canvas.getContext('2d');ctx.drawImage(srcCanvas,0,0,canvas.width,canvas.height);const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);const data=imgData.data;for(let i=0;i<data.length;i+=4){const gray=0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];const c=Math.min(255,Math.max(0,(gray-128)*1.4+128));data[i]=data[i+1]=data[i+2]=c>145?255:0;}ctx.putImageData(imgData,0,0);return canvas;}
 async function runOCR(canvas){if(!window.Tesseract){setSt('spin','Cargando OCR…');await loadScript('https://unpkg.com/tesseract.js@4/dist/tesseract.min.js');}const{data:{text}}=await Tesseract.recognize(canvas,'spa+eng',{logger:m=>{if(m.status==='recognizing text')setSt('spin','OCR: '+Math.round((m.progress||0)*100)+'%');}});return text;}
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('No se pudo cargar: '+src));document.head.appendChild(s);});}
@@ -737,7 +800,7 @@ function parsear(rawLines,skipClientExtract=false){
   // Dirección y teléfono de instalación: líneas que siguen justo a la línea
   // "…INSTALACION … ZONA:…" (p.ej. "C/ JOSEP IRLA, 24", "ESC. 1 5ºB", "TFNO 615489660")
   {
-    const instIdx=_instLines.findIndex(l=>/UD\.?\s*INSTALACI[OÓ]N|INSTALACI[OÓ]N[^\n]{0,40}ZONA\s*:/i.test(l));
+    const instIdx=_instLines.findIndex(l=>RE_INSTALACION_ZONA.test(l));
     if(instIdx>=0){
       const STOP_INST=/^(BRUTO|ACEPTACI[OÓ]N|NOMBRE\s*:|FIRMA|TOTAL|SEG[UÚ]N|CIF\.?\s|PENEDES|Tel\s*:|info@|\*|RGPD|FORMAPAGO|FORMA\s+DE\s+PAGO|TRANSFERENCIA|N\/C\.|SUMA\s+Y\s+SIGUE|SUMA|PRESUPUESTO|P[ÁA]G\.|ARTÍCULO|DESCRIPCI[OÓ]N|CANTIDAD|PRECIO|Nif:|Inscrita|Reg\.|Tomo|Folio|Hoja\s+L|^\d{6,}\s)/i;
       // Detecta si una línea parece dirección (calle, avda, nº, piso…)
@@ -762,8 +825,8 @@ function parsear(rawLines,skipClientExtract=false){
       if(tel)STATE.instTel=tel;
     }
   }
-  // La caja de instalación se muestra SOLO si aparece la palabra "INSTALACION"
-  STATE.hayInstalacion=/UD\.?\s*INSTALACI[OÓ]N|INSTALACI[OÓ]N[^\n]{0,40}ZONA\s*:/i.test(_instFull)||!!STATE._instRawHit;
+  // La caja de instalación se muestra SOLO si aparece la palabra "INSTALACION"/"INSTAL·LACIO"
+  STATE.hayInstalacion=RE_HAY_INSTALACION.test(_instFull)||!!STATE._instRawHit;
   if(STATE._instRawHit&&!STATE.instZona&&STATE._instRawZona)STATE.instZona=STATE._instRawZona;
   if(!STATE.instRef&&STATE._instRawRef)STATE.instRef=STATE._instRawRef;
   if(!STATE.hayInstalacion){STATE.instZona='';}
@@ -798,7 +861,13 @@ function parsear(rawLines,skipClientExtract=false){
   if(!cortinas.length){cortinas=estrategiaNumerica(lines);if(cortinas.length)dbg(`✅ Numérica: ${cortinas.length}`,'ok');}
   if(!cortinas.length){dbg('⚠️ Extracción libre','warn');cortinas=estrategiaLibre(lines);}
   resetCortinas();
-  if(cortinas.length){cortinas.forEach(c=>addCortina(c));rerenderAllCards();dbg(`📦 ${cortinas.length} cortina(s)`,'ok');}
+  aplicarInstalacionUI();
+  aplicarRefUI();
+  if(cortinas.length){
+    cortinas.forEach(c=>addCortina(c));rerenderAllCards();dbg(`📦 ${cortinas.length} cortina(s)`,'ok');
+    // Previsualizar automáticamente: no hace falta pulsar "Vista previa"
+    generarInst();
+  }
   else{addCortina();dbg('⚠️ Sin cortinas detectadas.','warn');}
 }
 
@@ -838,10 +907,10 @@ function estrategiaCanotex(txt){
       let m=nl.match(/TEJIDO:\s*([A-Z0-9][^\n.,]+?)(?:\s*\.|$)/i);
       if(m&&m[1])return m[1].trim();
       // Patrón 2: ", TEJIDO XXX" (inline en descripción enrollable)
-      m=nl.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/]+?)(?:\.|SOP|$)/i);
+      m=nl.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.|SOP|$)/i);
       if(m&&m[1])return m[1].trim();
       // Patrón 3: "TEJIDO XXX." al final de línea
-      m=nl.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/]+?)(?:\.|SOP|BLANCO|GRIS|NEGRO|BLANCA|$)/i);
+      m=nl.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.|SOP|BLANCO|GRIS|NEGRO|BLANCA|$)/i);
       if(m&&m[1]&&m[1].length>2)return m[1].trim();
     }
     return '';
@@ -884,9 +953,10 @@ function estrategiaCanotex(txt){
       // Anotación tras el alto: "+40" (de "162H+40"), "TT", "ACB", "PIE"…
       let sufAlto=(pm[4]||'').trim().replace(/^H\b\.?/i,'').replace(/[.\s]+$/,'').trim();
       const extra=sufAlto;
-      const resto=line.replace(/^[A-Z0-9]+\s+MEDIDA:\s*\d+(?:[.,]\d+)?(?:\s*[-+]\s*\d+(?:[.,]\d+)?)*\s*[xX×]\s*\d+(?:[.,]\d+)?[A-Z.\+0-9\s]*?(?=\s+(?:RECOG|CONFE|MANDO|COLOR|CAIDA|SOP)|$)/i,'');
+      const resto=line.replace(/^[A-Z0-9]+\s+MEDIDA:\s*\d+(?:[.,]\d+)?(?:\s*[-+]\s*\d+(?:[.,]\d+)?)*\s*[xX×]\s*\d+(?:[.,]\d+)?[A-Z.\+0-9\s-]*?(?=\s+(?:RECOG|CONFE|MANDO|MOTOR|COLOR|CAIDA|SOP)|$)/i,'');
       const confeM=resto.match(/CONFE:\s*(\d+)\s*HOJAS?/i),hojas=confeM?confeM[1]:'1';
-      const recogM=resto.match(/RECOG:([A-Z]+)/i)||resto.match(/MANDO:\s*([A-Z]+)/i),recRaw=recogM&&recogM[1]?recogM[1]:'D';
+      // El lado del mando puede venir como "RECOG:", "MANDO:" (manual) o "MOTOR:" (motorizado).
+      const recogM=resto.match(/RECOG:([A-Z]+)/i)||resto.match(/MANDO:\s*([A-Z]+)/i)||resto.match(/MOTOR:\s*([A-Z]+)/i),recRaw=recogM&&recogM[1]?recogM[1]:'D';
       // Verticales: RECOGIDO:Nº 2 → número de apertura 1-10
       const aperturaM=resto.match(/RECOGIDO:?\s*N?[ºo°]?\s*(\d{1,2})/i);
       const apertura=aperturaM?aperturaM[1]:'';
@@ -960,13 +1030,13 @@ function estrategiaCanotex(txt){
         // UD. descripción
         if(!tipoDesc&&/^UD\.\s*/i.test(nl)){
           tipoDesc=nl.replace(/^UD\.\s*/i,'').replace(/\(ONDA[^)]*\)/,'').trim();
-          const t=nl.match(/TEJIDO\s+([A-Z0-9][A-Z0-9\s\/]+?)(?:\.|$)/i);
+          const t=nl.match(/TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.|$)/i);
           if(t&&t[1]&&!tejido)tejido=t[1].trim();
         }
         // Línea sin "UD." pero con descripción de tipo
         if(!tipoDesc&&/ENROLLABLE|ESTOR|ROMAN|ROLLER|DIA\s*Y\s*NOCHE|VERTICAL|BRISA|PLEG[OÓ]N|PRESILLA|FRUNCID|ONDA\s*PERFECTA|PALAS|TABLAS|PLISAD/i.test(nl))tipoDesc=nl;
         // Tejido con "REF." → "TEJIDO REF. GRECIA 05"
-        if(!tejido){const tRef=nl.match(/TEJIDO\s+REF\.?\s*([A-Z0-9][A-Z0-9\s\/]*)/i);if(tRef&&tRef[1])tejido=('REF. '+tRef[1]).trim();}
+        if(!tejido){const tRef=nl.match(/TEJIDO\s+REF\.?\s*([A-Z0-9][A-Z0-9\s\/%]*)/i);if(tRef&&tRef[1])tejido=('REF. '+tRef[1]).trim();}
         // Soporte en descripción: "SOPORTE TECHO CLIC", "SOP. FRONTAL", "SOP. SOSTRE",
         // "CON SOP. FRENTE", "SOPORTE RAPIDO NEGRO", "SOPORTE PARED"…
         if(!sopDesc){
@@ -984,9 +1054,24 @@ function estrategiaCanotex(txt){
         }
         // Tejido embebido inline: "CADENA (T43), TEJIDO XXX" o "TEJIDO THECNIC..."
         if(!tejido){
-          const tInline=nl.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/]+?)(?:\.|SOP|$)/i)||
-                        nl.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/]+?)(?:\.\s*$|SOP|\s*$)/i);
-          if(tInline&&tInline[1]&&tInline[1].trim().length>2)tejido=tInline[1].trim();
+          const tInline=nl.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.|SOP|$)/i)||
+                        nl.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.\s*$|SOP|\s*$)/i);
+          if(tInline&&tInline[1]&&tInline[1].trim().length>2){
+            tejido=tInline[1].trim();
+            // El nombre del tejido (con su referencia/color) a veces sigue en la línea
+            // siguiente, cuando el PDF corta la frase justo tras el primer punto:
+            // "TEJIDO SUPREM HELIOS." / "PH01 BLANCO. SOPORTE TECHO CLIC." Si la línea
+            // encontrada termina justo ahí (punto a final de línea), se une con la
+            // siguiente hasta la etiqueta de soporte/campo siguiente.
+            if(/\.\s*$/.test(nl)){
+              const idxNl=descLineas.indexOf(nl);
+              const sig=idxNl>=0?descLineas[idxNl+1]:null;
+              if(sig&&!/^(SOPORTE|SOP[.:]|CON\s+SOP|TEJIDO|SISTEMA|MEDIDA|UD\.|CONFE|RECOG|MANDO|MOTOR|COLOR|CAIDA|GUIA)/i.test(sig)){
+                const cont=sig.replace(/\s*(SOPORTE|SOP[.:]|CON\s+SOP).*$/i,'').replace(/\.\s*$/,'').trim();
+                if(cont)tejido=(tejido+' '+cont).replace(/\s{2,}/g,' ').trim();
+              }
+            }
+          }
         }
       }
 
@@ -1005,7 +1090,7 @@ function estrategiaCanotex(txt){
         const mD=resto.match(/MANDO[:\s]*([A-Z]+)/i);
         if(mD&&mD[1]&&(codigo==='PAQUETTO'||codigo.startsWith('P05'))){
           const mv=mD[1].toUpperCase();
-          sistema='Mando cadena '+(mv==='D'?'derecha':mv==='IZ'||mv==='IZQ'?'izquierda':mv.toLowerCase());
+          sistema='Mando cadena '+(mv==='D'?'derecha':mv==='I'||mv==='IZ'||mv==='IZQ'?'izquierda':mv.toLowerCase());
         }
       }
 
@@ -1016,6 +1101,8 @@ function estrategiaCanotex(txt){
         const bloqueB=descLineas.join(' ');
         mandoBrisa=/TIRADOR/i.test(bloqueB)?'tirador':'cadena';
       }
+      // Motorizada: "MOTOR: D" en la línea de medida, o "...ENROLLABLE MOTORIZADA..." en la descripción.
+      const motorizada=/MOTOR:\s*[A-Z]+/i.test(resto)||/MOTORIZ/i.test(descLineas.join(' '));
       const recFinal=(parseInt(hojas)||1)>=2?'CEN':normalizeRecogida(recRaw);
       let sistemaFinal=sistema;
       if(tipo==='Enrollable'){
@@ -1033,19 +1120,6 @@ function estrategiaCanotex(txt){
       }
       const metros=calcularMetrosTela(tipo,ancho,extra);
 
-      // Si es enrollable y tejido sigue vacío → agente IA asíncrono
-      if(!tejido&&tipo==='Enrollable'&&descLineas.length>0){
-        dbg('🤖 IA analizando '+codigo+'...','warn');
-        const bloqueIA=[line,...descLineas.slice(0,6)].join('\n');
-        const idxResult=results.length; // índice del resultado que se añadirá
-        iaAnalizarCortina(bloqueIA).then(r=>{
-          if(r&&r.tejido&&results[idxResult]&&!results[idxResult].tejido){
-            results[idxResult].tejido=r.tejido;
-            dbg('🤖 IA tejido: '+r.tejido,'ok');
-            rerenderAllCards();
-          }
-        });
-      }
       const esTap=tipo==='Tapiceria';
       // Cantidad de la línea (primera columna numérica "N,00"): N cortinas separadas
       const cantM=resto.match(/\b([1-9])\s*,00\b/);
@@ -1067,6 +1141,7 @@ function estrategiaCanotex(txt){
         apertura:apertura||'',
         mandoBrisa:mandoBrisa||'',
         colorGuia:colorGuia||'',
+        motorizada,
       });
       dbg(`  ✅ #${results.length} [${currentEstancia||'?'}] ${tipo} ${ancho}×${alto}${cantidad>1?' ×'+cantidad:''}`,'ok');
       i=j;continue;
@@ -1113,7 +1188,16 @@ function esTapiceria(codigo,udDesc){
 }
 function normalizaTipoCanotex(codigo,udDesc,sistema){
   const c=codigo.toUpperCase(),d=(udDesc||'').toLowerCase(),s=(sistema||'').toLowerCase();
+  // Cabecero/Cojín van ANTES que Tapicería: un cabecero tapizado ("CABECERO
+  // TAPIZADO") contiene la palabra "tapizado", así que si no se comprueban
+  // primero, esTapiceria() se adelantaría y lo clasificaría mal.
+  if(d.includes('cabecero')||d.includes('cabecera'))return'Cabecero';
+  if(d.includes('cojin')||d.includes('cojín'))return'Cojín';
   if(esTapiceria(c,d))return'Tapiceria';
+  // Colcha/Vánova/Funda Nórdica, Friso y Visillo: solo por descripción (no hay código Canotex conocido)
+  if(d.includes('colcha')||d.includes('vanova')||d.includes('vànova')||d.includes('nordica')||d.includes('nórdica')||d.includes('edredon')||d.includes('edredón'))return'Colcha/Vánova/Nórdica';
+  if(d.includes('friso'))return'Friso';
+  if(d.includes('visillo'))return'Visillo';
   // Onda Perfecta SOLO por código o descripción explícita
   // (NO por "barra guia": ese sistema también lo usan plegones, presillas, etc.)
   if(c==='CORTOP'||d.includes('onda perfecta'))return'Onda Perfecta';
@@ -1165,150 +1249,19 @@ function buscarTejidoFallback(lines,desde,hasta){
     let m=l.match(/^TEJIDO[S]?:?\s*(.+)$/i);
     if(m)return m[1].replace(/\s*\d+[,\.]\d{2}\s*$/,'').trim();
     // Patrón inline enrollable: ", TEJIDO THECNIC BASIC..."
-    m=l.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/]+?)(?:\.|SOP|$)/i);
+    m=l.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.|SOP|$)/i);
     if(m&&m[1])return m[1].trim();
-    m=l.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/]+?)(?:\.\s*$|SOP)/i);
+    m=l.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.\s*$|SOP)/i);
     if(m&&m[1]&&m[1].length>2)return m[1].trim();
   }
   return '';
 }
 
-/* ─── AGENTE IA PARA DETECCIÓN DE ENROLLABLES ───
-   Llamado cuando el parser no puede determinar tejido/tipo.
-   Usa Claude Sonnet para analizar el bloque de texto crudo.
-─────────────────────────────────────────────── */
-
-/* ───────────────────────────────────────────────
-   IA: REVISAR SALTOS DE PÁGINA
-   Analiza la frontera entre páginas con Claude para
-   detectar cortinas cuya información quedó dividida
-   y completar/añadir los datos que falten.
-─────────────────────────────────────────────── */
-async function iaRevisarSaltosPagina(allLines,pageStarts){
-  try{
-    for(let b=1;b<pageStarts.length;b++){
-      const idx=pageStarts[b];
-      // Ventana: últimas 14 líneas de la pág anterior + primeras 14 de la siguiente
-      const antes=allLines.slice(Math.max(0,idx-14),idx).join('\n');
-      const despues=allLines.slice(idx,Math.min(allLines.length,idx+14)).join('\n');
-      // Solo consultar si hay indicios de producto cerca de la frontera
-      if(!/MEDIDA:|TEJIDO|SISTEMA|CORTINA|UD\./i.test(antes+despues))continue;
-
-      dbg(`🤖 IA revisando salto de página ${b}/${pageStarts.length-1}…`,'warn');
-      const resp=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          model:'claude-sonnet-4-6',
-          max_tokens:500,
-          messages:[{role:'user',content:`Texto de un presupuesto de cortinas Canotex. La primera parte es el FINAL de una página y la segunda el INICIO de la siguiente. Comprueba si hay algún producto/cortina cuya información quedó DIVIDIDA entre ambas páginas (ej: el código y medida en una página y el tejido/sistema/descripción en la otra).
-
-=== FINAL PÁGINA ANTERIOR ===
-${antes}
-
-=== INICIO PÁGINA SIGUIENTE ===
-${despues}
-
-Responde SOLO JSON sin markdown:
-{"dividida":true|false,"cortinas":[{"estancia":"","ancho":"","alto":"","tipo":"Enrollable|Onda Perfecta|Paquetto|Plana|Plana Doble Tejido|Palas/Tablas|Ollados|Vertical|Brisa","tejido":"","sistema":"","recogida":"D|IZQ|CEN","apertura":"","hojas":"1"}]}
-
-Si no hay ninguna cortina dividida: {"dividida":false,"cortinas":[]}. Solo incluye cortinas realmente divididas entre páginas, con TODOS los datos que puedas reconstruir de ambos fragmentos.`}]
-        })
-      });
-      if(!resp.ok){dbg('🤖 IA no disponible ('+resp.status+')','warn');continue;}
-      const data=await resp.json();
-      const texto=(data.content||[]).map(i=>i.type==='text'?i.text:'').join('').replace(/```json|```/g,'').trim();
-      let r;try{r=JSON.parse(texto);}catch(e){dbg('🤖 IA respuesta no parseable','warn');continue;}
-      if(!r||!r.dividida||!Array.isArray(r.cortinas)||!r.cortinas.length){
-        dbg(`🤖 Salto ${b}: sin cortinas divididas`,'ok');continue;
-      }
-
-      // Fusionar cada cortina reconstruida con las existentes
-      for(const ic of r.cortinas){
-        if(!ic||(!ic.ancho&&!ic.alto))continue;
-        const aN=parseFloat(String(ic.ancho||'').replace(',','.'))||0;
-        const hN=parseFloat(String(ic.alto||'').replace(',','.'))||0;
-        // Buscar cortina existente con la misma medida (tolerancia 1cm)
-        const match=STATE.cortinas.find(c=>{
-          const ca=parseFloat(c.ancho)||0,ch=parseFloat(c.alto)||0;
-          return aN&&hN&&Math.abs(ca-aN)<=1&&Math.abs(ch-hN)<=1;
-        });
-        if(match){
-          // Completar SOLO los campos vacíos
-          let cambios=[];
-          ['tejido','sistema','tipo','estancia','apertura'].forEach(f=>{
-            if(!match[f]&&ic[f]){match[f]=f==='tipo'?normalizaTipo(ic[f]):ic[f];cambios.push(f);}
-          });
-          if(!match.recogida||match.recogida==='D'){
-            if(ic.recogida&&ic.recogida!=='D'){match.recogida=ic.recogida;cambios.push('recogida');}
-          }
-          if(cambios.length){
-            dbg(`🤖 IA completó ${match.estancia||aN+'x'+hN}: ${cambios.join(', ')}`,'ok');
-          }
-          // Actualizar también la línea de corte correspondiente (misma medida)
-          const lMatch=STATE.lineas.find(l=>{
-            const la=parseFloat(l.ancho)||0,lh=parseFloat(l.alto)||0;
-            return aN&&hN&&Math.abs(la-aN)<=1&&Math.abs(lh-hN)<=1;
-          });
-          if(lMatch){
-            let lCambios=[];
-            ['tejido','sistema','tipo','estancia'].forEach(f=>{
-              if(!lMatch[f]&&match[f]){lMatch[f]=match[f];lCambios.push(f);}
-            });
-            if((!lMatch.recogida||lMatch.recogida==='D')&&match.recogida&&match.recogida!=='D'){
-              lMatch.recogida=match.recogida;lCambios.push('recogida');
-            }
-            if(lCambios.length){
-              dbg(`🤖 IA completó línea de corte ${lMatch.estancia||aN+'x'+hN}: ${lCambios.join(', ')}`,'ok');
-            }
-          }
-        }else{
-          // Cortina no detectada por el parser → añadirla
-          dbg(`🤖 IA recuperó cortina dividida: ${ic.estancia||''} ${aN}x${hN}`,'ok');
-          addCortina({
-            estancia:ic.estancia||'',ancho:String(aN||''),alto:String(hN||''),
-            tipo:ic.tipo||'',tejido:ic.tejido||'',sistema:ic.sistema||'',
-            recogida:ic.recogida||'D',hojas:ic.hojas||'1',apertura:ic.apertura||''
-          });
-        }
-      }
-      rerenderAllCards();
-      rerenderAllLineas();
-      updateBadge();
-      if(STATE.liveActive)scheduleLiveRefresh();
-    }
-  }catch(err){
-    dbg('🤖 Error IA saltos: '+err.message,'warn');
-  }
-}
-
-async function iaAnalizarCortina(bloqueTexto){
-  try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:300,
-        messages:[{role:'user',content:`Analiza este texto de un presupuesto de cortinas Canotex y extrae los datos. Responde SOLO JSON sin markdown ni explicacion:
-
-${bloqueTexto}
-
-JSON a extraer:
-{"tipo":"Enrollable|Onda Perfecta|Paquetto|Plana|Plana Doble Tejido|Palas/Tablas|Ollados","tejido":"nombre tejido o vacio","sistema":"mecanismo o vacio","mando":"D o IZQ o vacio"}`}]
-      })
-    });
-    if(!resp.ok)return null;
-    const data=await resp.json();
-    const txt=(data.content||[]).find(b=>b.type==='text')?.text||'';
-    return JSON.parse(txt.replace(/```json|```/g,'').trim());
-  }catch(e){dbg('IA: '+e.message,'warn');return null;}
-}
 function estrategiaMedidaDirecta(txt){const results=[],seen=new Set();const medRe=/MEDIDA[S]?:?\s*(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)\s*H?/gi;let m;while((m=medRe.exec(txt))!==null){const key=m[1]+'x'+m[2];if(seen.has(key))continue;seen.add(key);const from=Math.max(0,m.index-300),to=Math.min(txt.length,m.index+500);const ctx=txt.substring(from,to);const tejido=extractField(ctx,/TEJIDO[S]?:?\s*([^\n]+)/i);const sistema=extractField(ctx,/SISTEMA[^:]*:\s*([^\n]+)/i);const hojaM=ctx.match(/(\d+)\s*HOJA[S]?/i);const recM=ctx.match(/RECOG:?\s*([A-Z]{1,8})/i)||ctx.match(/MANDO:?\s*([A-Z]{1,6})/i);const tipo=normalizaTipoCanotex('',extractField(ctx,/(?:CORTINA|ESTOR|PAQUETTO|ENROLLABLE|ONDA|PALAS)[^\n]{0,60}/i),sistema);results.push({estancia:`Cortina ${results.length+1}`,ancho:m[1].replace(',','.'),alto:m[2].replace(',','.'),hojas:hojaM?hojaM[1]:'1',recogida:normalizeRecogida(recM?recM[1]:''),tejido,sistema,tipo});}return results;}
 function estrategiaNumerica(lines){const results=[];let currentEst='';lines.forEach(line=>{if(/^[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑA-Z\s]{3,35}$/.test(line))currentEst=line.trim();const m=line.match(/(\d{2,4}(?:[.,]\d+)?)\s*[xX×]\s*(\d{2,4}(?:[.,]\d+)?)/);if(m&&currentEst&&parseFloat(m[1])>50&&parseFloat(m[2])>50){results.push({estancia:currentEst,ancho:m[1].replace(',','.'),alto:m[2].replace(',','.'),hojas:'1',recogida:'D',tejido:'',sistema:'',tipo:''});currentEst='';}});return results;}
 function estrategiaLibre(lines){const results=[];lines.forEach(line=>{const m=line.match(/(\d{2,3}(?:[.,]\d+)?)\s*[xX×]\s*(\d{2,3}(?:[.,]\d+)?)/);if(m&&parseFloat(m[1])>50&&parseFloat(m[2])>50)results.push({estancia:`Cortina ${results.length+1}`,ancho:m[1].replace(',','.'),alto:m[2].replace(',','.'),hojas:'1',recogida:'D',tejido:'',sistema:'',tipo:''});});return results.slice(0,20);}
 function extractField(txt,pat){const m=(txt||'').match(pat);return(m&&m[1]!=null)?String(m[1]).trim().replace(/\s+/g,' '):'';}
-function normalizeRecogida(raw){const r=(raw||'').trim().toUpperCase();if(/^IZ$|IZQ|ESQ|IZQUI/.test(r))return'IZQ';if(/CEN|CENT/.test(r))return'CEN';if(/LAT/.test(r))return'D';return'D';}
+function normalizeRecogida(raw){const r=(raw||'').trim().toUpperCase();if(/^I$|^IZ$|IZQ|ESQ|IZQUI/.test(r))return'IZQ';if(/CEN|CENT/.test(r))return'CEN';if(/LAT/.test(r))return'D';return'D';}
 
 // Normaliza colores de sistemas, incluyendo abreviaturas de los presupuestos
 function normalizaColorSis(v){
@@ -1335,13 +1288,82 @@ function normalizaColorSis(v){
   return'';
 }
 
-function normalizaTipo(raw){if(!raw)return'';const lo=raw.toLowerCase();const MAP=[{k:['onda'],v:'Onda Perfecta'},{k:['fruncid'],v:'Fruncida'},{k:['presilla'],v:'Presilla'},{k:['plegon encarado','plegón encarado'],v:'Plegón Encarado'},{k:['plegon','plegón'],v:'Plegón'},{k:['pala','tabla'],v:'Palas/Tablas'},{k:['paquetto'],v:'Paquetto'},{k:['brisa','dia y noche','día y noche'],v:'Brisa'},{k:['vertical','lama'],v:'Vertical'},{k:['estor'],v:'Estor'},{k:['enroll','roman'],v:'Enrollable'},{k:['ollado','ojal'],v:'Ollados'},{k:['anilla','barra'],v:'Barra con Anillas'},{k:['panel'],v:'Panel Japonés'},{k:['tapic','tapiz','tapizado'],v:'Tapiceria'}];for(const{k,v}of MAP)if(k.some(x=>lo.includes(x)))return v;return raw;}
+function normalizaTipo(raw){if(!raw)return'';const lo=raw.toLowerCase();const MAP=[{k:['onda'],v:'Onda Perfecta'},{k:['fruncid'],v:'Fruncida'},{k:['presilla'],v:'Presilla'},{k:['plegon encarado','plegón encarado'],v:'Plegón Encarado'},{k:['plegon','plegón'],v:'Plegón'},{k:['pala','tabla'],v:'Palas/Tablas'},{k:['paquetto'],v:'Paquetto'},{k:['brisa','dia y noche','día y noche'],v:'Brisa'},{k:['vertical','lama'],v:'Vertical'},{k:['estor'],v:'Estor'},{k:['enroll','roman'],v:'Enrollable'},{k:['ollado','ojal'],v:'Ollados'},{k:['anilla','barra'],v:'Barra con Anillas'},{k:['panel'],v:'Panel Japonés'},
+  // Cabecero/Cojín ANTES que Tapicería: "CABECERO TAPIZADO" contiene "tapizado".
+  {k:['cabecero','cabecera'],v:'Cabecero'},{k:['cojin','cojín'],v:'Cojín'},
+  {k:['tapic','tapiz','tapizado'],v:'Tapiceria'},{k:['colcha','vanova','vànova','vanua','nordica','nórdica','edredon','edredón'],v:'Colcha/Vánova/Nórdica'},{k:['friso'],v:'Friso'},{k:['visillo'],v:'Visillo'}];for(const{k,v}of MAP)if(k.some(x=>lo.includes(x)))return v;return raw;}
 function isEnroll(tipo){const t=(tipo||'').toLowerCase();return t.includes('enrollable')||t.includes('roman');}
 function setVal(id,val){const el=$(id);if(el&&val&&val.trim())el.value=val.trim();}
 
 /* ─── GESTIÓN CORTINAS ─── */
 function resetCortinas(){STATE.cortinas=[];STATE.lineas=[];STATE.pcnt=0;STATE.lcnt=0;$('pcards').innerHTML='';$('lineas').innerHTML='';updateBadge();}
-function resetInstalacion(){STATE.instZona='';STATE.instRef='';STATE.instNombre='';STATE.instDireccion='';STATE.instTel='';STATE.hayInstalacion=false;STATE._instRawHit=false;STATE._instRawZona='';STATE._instRawRef='';}
+function resetInstalacion(){
+  STATE.instZona='';STATE.instRef='';STATE.instNombre='';STATE.instDireccion='';STATE.instTel='';STATE.hayInstalacion=false;STATE._instRawHit=false;STATE._instRawZona='';STATE._instRawRef='';
+  const chkCli=$('cliCheck');if(chkCli)chkCli.checked=true;
+  const chk=$('instCheck');if(chk)chk.checked=false;
+  const box=$('instFields');if(box)box.classList.remove('show');
+  ['inom','itel','idir','ipob'].forEach(id=>{const el=$(id);if(el)el.value='';});
+  const chkRef=$('refCheck');if(chkRef)chkRef.checked=false;
+  const boxRef=$('refFields');if(boxRef)boxRef.classList.remove('show');
+  const irp=$('irefped');if(irp)irp.value='';
+}
+/* Activar/desactivar manualmente la caja de instalación en la hoja.
+   Al marcarla sin datos detectados, se rellena con los del cliente (misma dirección
+   salvo que el usuario la cambie). Al desmarcarla, se borran los campos y desaparece
+   de la hoja impresa. */
+function toggleInstalacion(checked){
+  STATE.hayInstalacion=checked;
+  const box=$('instFields');
+  if(box)box.classList.toggle('show',checked);
+  if(checked){
+    const vacios=['inom','itel','idir','ipob'].every(id=>{const el=$(id);return!el||!el.value.trim();});
+    if(vacios){
+      setVal('inom',$('cnom').value);
+      setVal('itel',$('ctel').value);
+      setVal('idir',$('cdir').value);
+      setVal('ipob',$('cpob').value);
+    }
+  }else{
+    STATE.instNombre='';STATE.instDireccion='';STATE.instTel='';STATE.instZona='';
+    ['inom','itel','idir','ipob'].forEach(id=>{const el=$(id);if(el)el.value='';});
+  }
+  scheduleLiveRefresh();
+}
+/* Tras detectar (o no) instalación en el documento, sincronizar el checkbox y los
+   campos del sidebar. Si el presupuesto no traía nombre/dirección/teléfono propios
+   de la instalación, se usan los datos del cliente (misma dirección salvo que se
+   indique otra distinta en el presupuesto). */
+function aplicarInstalacionUI(){
+  const chk=$('instCheck');if(!chk)return;
+  chk.checked=!!STATE.hayInstalacion;
+  const box=$('instFields');if(box)box.classList.toggle('show',!!STATE.hayInstalacion);
+  if(!STATE.hayInstalacion)return;
+  const nom=STATE.instNombre||$('cnom').value||'';
+  const tel=STATE.instTel||$('ctel').value||'';
+  const dir=STATE.instDireccion||$('cdir').value||'';
+  const pob=STATE.instZona||$('cpob').value||'';
+  $('inom').value=nom;$('itel').value=tel;$('idir').value=dir;$('ipob').value=pob;
+}
+/* Mostrar/ocultar la caja "Datos del cliente" en la hoja impresa, para poder dejar
+   ver solo los datos de instalación cuando no se quiere que salgan los del cliente. */
+function toggleCliente(checked){
+  scheduleLiveRefresh();
+}
+/* Igual que toggleInstalacion, para el recuadro de Ref. del pedido junto al de instalación. */
+function toggleRefPedido(checked){
+  const box=$('refFields');if(box)box.classList.toggle('show',checked);
+  if(!checked){const el=$('irefped');if(el)el.value='';}
+  scheduleLiveRefresh();
+}
+/* Igual que aplicarInstalacionUI: sincroniza el checkbox de Ref. del pedido tras detectar
+   (o no) la referencia en el documento. */
+function aplicarRefUI(){
+  const chk=$('refCheck');if(!chk)return;
+  const hayRef=!!(STATE.instRef&&STATE.instRef.trim());
+  chk.checked=hayRef;
+  const box=$('refFields');if(box)box.classList.toggle('show',hayRef);
+  if(hayRef)$('irefped').value=STATE.instRef;
+}
 function addCortina(d={}){
   STATE.pcnt++;const id='p'+STATE.pcnt;
   const tipo=normalizaTipo(d.tipo||'');
@@ -1353,22 +1375,22 @@ function addCortina(d={}){
   enBlanco:d.enBlanco||false,
   llu2:d.llu2||'',llu2Ancho:d.llu2Ancho||'',llu2Alto:d.llu2Alto||'',llu2AnchoArriba:d.llu2AnchoArriba||'',llu2AltoCorto:d.llu2AltoCorto||'',llu2Inclinada:d.llu2Inclinada||'',llu2Hojas:d.llu2Hojas||'1',llu2Recogida:d.llu2Recogida||'D'};
   STATE.cortinas.push(c);
-  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'){
+  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'&&tipo!=='Cojín'&&tipo!=='Cabecero'){
     STATE.lcnt++;
     const corrIni=(c.tipo||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
     const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
-    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':'')),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
+    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':'')),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
     // Cortina en L → segunda guía independiente (su propia línea de corte)
     if(c.formaL&&c.anchoL){
       STATE.lcnt++;
-      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
     }
   }
   rerenderAllCards();
-  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa')rerenderAllLineas();
+  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'&&tipo!=='Cojín'&&tipo!=='Cabecero')rerenderAllLineas();
   updateBadge();
 }
-function addLinea(d={}){STATE.lcnt++;const l={id:'l'+STATE.lcnt,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',sistema:d.sistema||'',tipo:d.tipo||'',tejido:d.tejido||'',recogida:d.recogida||'D',hojas:d.hojas||'1',color:d.color||'',soportes:d.soportes||'',correderas:d.correderas||'CONVENCIONAL',manual:d.manual||'MANUAL',unidades:d.unidades||'1',obs:d.obs||''};STATE.lineas.push(l);renderLinea(l,STATE.lineas.length-1);}
+function addLinea(d={}){STATE.lcnt++;const l={id:'l'+STATE.lcnt,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',sistema:d.sistema||'',tipo:d.tipo||'',tejido:d.tejido||'',recogida:d.recogida||'D',hojas:d.hojas||'1',color:d.color||'',soportes:d.soportes||'',soporte:d.soporte||'T',correderas:d.correderas||'CONVENCIONAL',manual:d.manual||'MANUAL',unidades:d.unidades||'1',obs:d.obs||''};STATE.lineas.push(l);renderLinea(l,STATE.lineas.length-1);scheduleCorteLiveRefresh();}
 /* Calcular la longitud de la diagonal (inclinada) de una llucana por Pitágoras:
    cateto horizontal = ancho_abajo - ancho_arriba (si no hay arriba → ancho completo = triángulo)
    cateto vertical   = altura
@@ -1505,7 +1527,7 @@ function separarL(id){
   b.formaL='';b.anchoL='';b.altoL='';b.hojasL='1';b.recogidaL='D';
   b.estancia=(a.estancia||'')+' (2)';
   // Limpiar la L de la primera
-  a.formaL='';a.anchoL='';a.hojasL='1';a.recogidaL='D';
+  a.formaL='';a.anchoL='';a.altoL='';a.hojasL='1';a.recogidaL='D';
   STATE.pcnt++;
   b.id='p'+STATE.pcnt;
   STATE.cortinas.splice(i+1,0,b);
@@ -1521,20 +1543,20 @@ function reconstruirLineas(){
   STATE.lineas=[];STATE.lcnt=0;
   STATE.cortinas.forEach(c=>{
     const t=c.tipo||'';
-    if(t==='Enrollable'||t==='Vertical'||t==='Brisa')return;
+    if(t==='Enrollable'||t==='Vertical'||t==='Brisa'||t==='Colcha/Vánova/Nórdica'||t==='Cojín'||t==='Cabecero')return;
     STATE.lcnt++;
     const corrIni=(t||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
     const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
-    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':'')),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
+    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':'')),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
     if(c.formaL&&c.anchoL){
       STATE.lcnt++;
-      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
     }
     // Llucana con 2º tramo → segunda guía independiente
     if(c.llucana&&c.llu2&&c.llu2Ancho){
       STATE.lcnt++;
       const incT=c.llu2Inclinada||calcLluc2Inclinada(c);
-      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo llucana)',ancho:c.llu2Ancho,alto:c.llu2Alto||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.llu2Recogida||'D',hojas:c.llu2Hojas||'1',color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Llucana · inclinación '+(c.llu2==='izq'?'izq':'dcha')+(incT?' · inclinada '+incT+' cm':'')});
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo llucana)',ancho:c.llu2Ancho,alto:c.llu2Alto||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.llu2Recogida||'D',hojas:c.llu2Hojas||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Llucana · inclinación '+(c.llu2==='izq'?'izq':'dcha')+(incT?' · inclinada '+incT+' cm':'')});
     }
   });
   rerenderAllLineas();
@@ -1574,9 +1596,9 @@ function remLinea(id){
   const el=document.querySelector(`.pcard[data-lid="${id}"]`);
   if(el){
     el.classList.add('removing');
-    setTimeout(()=>{STATE.lineas=STATE.lineas.filter(l=>l.id!==id);rerenderAllLineas();},200);
+    setTimeout(()=>{STATE.lineas=STATE.lineas.filter(l=>l.id!==id);rerenderAllLineas();scheduleCorteLiveRefresh();},200);
   } else {
-    STATE.lineas=STATE.lineas.filter(l=>l.id!==id);rerenderAllLineas();
+    STATE.lineas=STATE.lineas.filter(l=>l.id!==id);rerenderAllLineas();scheduleCorteLiveRefresh();
   }
 }
 function updCortina(id,field,val){
@@ -1626,10 +1648,10 @@ function updCortina(id,field,val){
   }
   scheduleLiveRefresh();
 }
-function updLinea(id,field,val){const l=STATE.lineas.find(x=>x.id===id);if(!l)return;l[field]=val;const head=document.querySelector(`.pcard[data-lid="${id}"] .est`);if(head&&field==='estancia')head.textContent=val||'(sin nombre)';}
+function updLinea(id,field,val){const l=STATE.lineas.find(x=>x.id===id);if(!l)return;l[field]=val;const head=document.querySelector(`.pcard[data-lid="${id}"] .est`);if(head&&field==='estancia')head.textContent=val||'(sin nombre)';scheduleCorteLiveRefresh();}
 function renderPcard(c,idx){
   const div=document.createElement('div');div.className='pcard';div.dataset.id=c.id;
-  const opts=['Onda Perfecta','Palas/Tablas','Fruncida','Presilla','Plegón','Plegón Encarado','Plana','Plana Doble Tejido','Paquetto','Estor','Enrollable','Vertical','Brisa','Ollados','Barra con Anillas','Panel Japonés','Tapiceria'];
+  const opts=['Onda Perfecta','Palas/Tablas','Fruncida','Presilla','Plegón','Plegón Encarado','Plana','Plana Doble Tejido','Paquetto','Estor','Enrollable','Vertical','Brisa','Ollados','Barra con Anillas','Panel Japonés','Tapiceria','Colcha/Vánova/Nórdica','Friso','Visillo','Cojín','Cabecero'];
   const tLow=(c.tipo||'').toLowerCase();
   const esVertBri=tLow.includes('vertical')||tLow.includes('brisa')||tLow.includes('lama');
   const esBrisa=tLow.includes('brisa');
@@ -1682,7 +1704,7 @@ function renderPcard(c,idx){
       ?`<button class="btn-rem" title="Separar el 2º tramo de la llucana" onclick="separarLlucana('${c.id}')" style="font-size:12px">⇄</button>`
       :(haySiguiente?`<button class="btn-rem" title="Unir la siguiente cortina como 2º tramo de la llucana" onclick="unirLlucana('${c.id}')" style="font-size:12px">⌐</button>`:''))
     :'';
-  div.innerHTML=`<div class="pch"><span class="num">#${idx+1}</span><span class="est">${he(c.estancia||'(sin nombre)')}</span>${btnL}${btnLluc}${btnBlanco}${btnLluc2}<button class="btn-rem" title="Duplicar cortina" onclick="dupCortina('${c.id}')" style="font-size:12px">⧉</button><button class="btn-rem" onclick="remCortina('${c.id}')">✕</button></div>
+  div.innerHTML=`<div class="pch"><span class="num">#${idx+1}</span><span class="est">${he(c.estancia||'(sin nombre)')}</span>${btnL}${btnLluc}${btnBlanco}${btnLluc2}<button class="btn-rem" title="Duplicar cortina" onclick="dupCortina('${c.id}')" style="font-size:12px">⧉</button><button class="btn-rem btn-rem-danger" title="Eliminar cortina" onclick="remCortina('${c.id}')">✕</button></div>
     <div class="pcb">
       <div class="fld"><label>Estancia</label><input type="text" value="${he(c.estancia)}" placeholder="Comedor…" onchange="updCortina('${c.id}','estancia',this.value)"></div>
       <div class="r2"><div class="fld"><label>Ancho cm</label><input type="text" inputmode="decimal" value="${he(c.ancho)}" placeholder="170" onchange="updCortina('${c.id}','ancho',this.value)"></div><div class="fld"><label>Alto cm</label><input type="text" inputmode="decimal" value="${he(c.alto)}" placeholder="257" onchange="updCortina('${c.id}','alto',this.value)"></div></div>
@@ -1717,7 +1739,7 @@ function renderPcard(c,idx){
         <div class="fld"><label>Alto lado corto</label><input type="text" inputmode="decimal" value="${he(c.llucAltoCorto||'')}" placeholder="150" onchange="updCortina('${c.id}','llucAltoCorto',this.value)"></div>
       </div>
       <div class="fld"><label>Inclinada (auto)</label><input type="text" inputmode="decimal" value="${he(c.llucInclinada||'')}" placeholder="${he(calcLlucInclinada(c)||'auto')}" onchange="updCortina('${c.id}','llucInclinada',this.value)"></div>`:''}
-      ${(c.llucana&&c.llu2)?`<div style="border-top:1px dashed var(--bd);margin:6px 0 2px;padding-top:6px">
+      ${(c.llucana&&c.llu2)?`<div style="border-top:1px dashed var(--s3);margin:6px 0 2px;padding-top:6px">
         <span class="slbl" style="margin-bottom:6px">2º tramo de la llucana</span>
         <div class="fld"><label>Lado de la inclinación (2º)</label><select onchange="updCortina('${c.id}','llu2',this.value)">
           <option value="izq"${c.llu2==='izq'?' selected':''}>Inclinación a la izquierda</option>
@@ -1747,13 +1769,14 @@ function renderPcard(c,idx){
 }
 function renderLinea(l,idx){
   const div=document.createElement('div');div.className='pcard';div.dataset.lid=l.id;
-  div.innerHTML=`<div class="pch"><span class="num">L${idx+1}</span><span class="est">${he(l.estancia||'(sin nombre)')}</span><button class="btn-rem" onclick="remLinea('${l.id}')">✕</button></div>
+  div.innerHTML=`<div class="pch"><span class="num">L${idx+1}</span><span class="est">${he(l.estancia||'(sin nombre)')}</span><button class="btn-rem btn-rem-danger" title="Eliminar línea" onclick="remLinea('${l.id}')">✕</button></div>
     <div class="pcb">
       <div class="fld"><label>Estancia / Ref</label><input type="text" value="${he(l.estancia)}" onchange="updLinea('${l.id}','estancia',this.value)"></div>
       <div class="r2"><div class="fld"><label>Ancho cm</label><input type="text" inputmode="decimal" value="${he(l.ancho)}" onchange="updLinea('${l.id}','ancho',this.value)"></div><div class="fld"><label>Alto cm</label><input type="text" inputmode="decimal" value="${he(l.alto)}" onchange="updLinea('${l.id}','alto',this.value)"></div></div>
       <div class="fld"><label>Tipo Sistema</label><input type="text" value="${he(l.sistema)}" onchange="updLinea('${l.id}','sistema',this.value)"></div>
       <div class="r2"><div class="fld"><label>Confección</label><input type="text" value="${he(l.tipo)}" onchange="updLinea('${l.id}','tipo',this.value)"></div><div class="fld"><label>Hojas</label><input type="text" inputmode="numeric" value="${he(l.hojas)}" onchange="updLinea('${l.id}','hojas',this.value)"></div></div>
-      <div class="r2"><div class="fld"><label>Color</label><input type="text" value="${he(l.color)}" onchange="updLinea('${l.id}','color',this.value)"></div><div class="fld"><label>Soportes</label><input type="text" value="${he(l.soportes)}" onchange="updLinea('${l.id}','soportes',this.value)"></div></div>
+      <div class="r2"><div class="fld"><label>Color</label><input type="text" value="${he(l.color)}" onchange="updLinea('${l.id}','color',this.value)"></div><div class="fld"><label>Nº soportes</label><input type="text" value="${he(l.soportes)}" onchange="updLinea('${l.id}','soportes',this.value)"></div></div>
+      <div class="fld"><label>Ubicación soporte</label><select onchange="updLinea('${l.id}','soporte',this.value)"><option value="T"${!/PARED|FRONTAL|FRENTE/i.test(l.soporte||'')?' selected':''}>Techo</option><option value="FRENTE"${/PARED|FRONTAL|FRENTE/i.test(l.soporte||'')?' selected':''}>Frente</option></select></div>
       <div class="r2"><div class="fld"><label>Correderas</label><select onchange="updLinea('${l.id}','correderas',this.value)"><option value="CONVENCIONAL"${l.correderas==='CONVENCIONAL'?' selected':''}>CONVENCIONAL</option><option value="OP8"${l.correderas==='OP8'?' selected':''}>//OP8</option><option value="OP6"${l.correderas==='OP6'?' selected':''}>//OP6</option></select></div><div class="fld"><label>Manual/Cuerda</label><select onchange="updLinea('${l.id}','manual',this.value)"><option value="MANUAL"${l.manual==='MANUAL'?' selected':''}>Manual</option><option value="CUERDA"${l.manual==='CUERDA'?' selected':''}>Cuerda</option></select></div></div>
       <div class="r2"><div class="fld"><label>Mando/Recogida</label><input type="text" value="${he(l.recogida)}" onchange="updLinea('${l.id}','recogida',this.value)"></div><div class="fld"><label>Tejido</label><input type="text" value="${he(l.tejido)}" onchange="updLinea('${l.id}','tejido',this.value)"></div></div>
       <div class="r2"><div class="fld"><label>Observaciones</label><input type="text" value="${he(l.obs)}" onchange="updLinea('${l.id}','obs',this.value)"></div><div class="fld"><label>Unidades</label><input type="text" inputmode="numeric" value="${he(l.unidades)}" onchange="updLinea('${l.id}','unidades',this.value)"></div></div>
@@ -1766,8 +1789,9 @@ function rerenderAllCards(){
   updateBadge();
 }
 function rerenderAllLineas(){$('lineas').innerHTML='';STATE.lineas.forEach((l,i)=>renderLinea(l,i));}
-function limpiarTodo(){['cnom','ctel','cdir','cpob','cpre','cfec','notas','kref','kfec'].forEach(id=>{const el=$(id);if(el)el.value='';});resetCortinas();resetInstalacion();STATE.liveActive=false;addCortina();$('main').innerHTML='<div class="empty-state" id="emptyState"><div class="ei">📂</div><p>Arrastra un PDF o imagen<br>y elige el tipo de documento</p></div>';setSt('','Esperando archivo…');clearDbg();revokeObjUrl();fileInput.value='';}
+function limpiarTodo(){['cnom','ctel','cdir','cpob','cpre','cfec','notas','kref','kfec'].forEach(id=>{const el=$(id);if(el)el.value='';});resetCortinas();resetInstalacion();STATE.liveActive=false;addCortina();$('main').innerHTML='<div class="empty-state" id="emptyState"><div class="ei">📂</div><p>Arrastra un PDF o imagen<br>y elige el tipo de documento</p></div>';setSt('','Esperando archivo…');clearDbg();revokeObjUrl();revokeCorteObjUrl();fileInput.value='';}
 function revokeObjUrl(){if(STATE.objectUrl){URL.revokeObjectURL(STATE.objectUrl);STATE.objectUrl=null;}}
+function revokeCorteObjUrl(){if(STATE.corteObjectUrl){URL.revokeObjectURL(STATE.corteObjectUrl);STATE.corteObjectUrl=null;}}
 
 /* ═══ SVG ═══ */
 const SV={W:310,H:205,ML:14,MR:62,MT:46,MB:14};
@@ -1946,6 +1970,115 @@ function svgPanelJapones(p,u){
   const r2=`<rect x="${(ML-4).toFixed(1)}" y="${(MT-5).toFixed(1)}" width="${(CW+8).toFixed(1)}" height="4" fill="none" stroke="#111" stroke-width="1.5"/>`;
   return svgBase(u,`${r1}${r2}${pan}${recArrow(u,p.recogida,p.hojas)}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);}
 
+/* Colcha / Vánova / Funda Nórdica: cama con almohada girada, colchón asomando
+   a la izquierda, el borde de la colcha vuelto hacia atrás (embozo, doble
+   curva) y cayendo por delante con dos puntas redondeadas desiguales.
+   Sin sistema de recogida (no lleva riel ni cadena de mando).
+   Dibujada en coordenadas propias (canvas 310x205, igual que svgBase) y
+   reescalada con un <g transform> al hueco real ML..ML+CW / MT..MT+CH,
+   para poder ajustar las curvas a ojo sin recalcular fracciones de CW/CH. */
+function svgColcha(p,u){
+  const{ML,MT,CW,CH}=SV;
+  const pillow=`<path d="M44.9,81.6Q42.0,72.0 51.8,70.2L108.2,59.8Q118.0,58.0 121.5,67.4L128.5,86.6Q132.0,96.0 122.2,98.0L63.8,110.0Q54.0,112.0 51.1,102.4Z" fill="none" stroke="#111" stroke-width="1.5" stroke-linejoin="round"/>`;
+  const pillowFold=`<path d="M56,90 Q93,98 122,80" fill="none" stroke="#111" stroke-width="1"/>`;
+  const matt=`<path d="M18,120 L46,112 L50,150 L20,158 Z" fill="none" stroke="#111" stroke-width="1.4" stroke-linejoin="round"/>
+    <line x1="22" y1="130" x2="48" y2="123" stroke="#111" stroke-width=".9"/>
+    <line x1="21" y1="142" x2="49" y2="135" stroke="#111" stroke-width=".9"/>`;
+  // Embozo: borde de la colcha vuelto hacia atrás cerca de la almohada
+  const fold=`<path d="M22,150 Q150,96 292,132" fill="none" stroke="#111" stroke-width="1.6"/>
+    <path d="M30,162 Q150,112 286,148" fill="none" stroke="#111" stroke-width="1.6"/>`;
+  // Colcha: contorno único de punta a punta del embozo, con dos caídas
+  // redondeadas desiguales abajo (izq. más baja/grande, dcha. más alta)
+  const body=`<path d="M22,150 C10,175 30,205 75,205 C130,205 180,195 250,185 C275,180 292,160 292,132" fill="none" stroke="#111" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>`;
+  // Pliegues suaves sobre la superficie, paralelos al borde inferior
+  const w1=`<path d="M60,178 Q150,158 250,168" fill="none" stroke="#777" stroke-width=".9"/>`;
+  const w2=`<path d="M50,192 Q150,172 244,184" fill="none" stroke="#aaa" stroke-width=".8"/>`;
+
+  // Encaje del dibujo (diseñado en 310x205) al hueco real de contenido
+  const sx=CW/277,sy=CH/162,tx=ML-15*sx,ty=MT-46*sy;
+  const grupo=`<g transform="translate(${tx.toFixed(2)},${ty.toFixed(2)}) scale(${sx.toFixed(4)},${sy.toFixed(4)})">${body}${fold}${pillow}${pillowFold}${matt}${w1}${w2}</g>`;
+
+  return svgBase(u,`${grupo}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);
+}
+
+/* Friso: caída corta con barra y remates redondos, pliegues y borde
+   inferior festoneado (sin flecha de recogida: es una pieza fija). */
+function svgFriso(p,u){
+  const{ML,MT,CW,CH}=SV,nH=Math.max(1,parseInt(p.hojas)||1);
+  const rodY=MT-10;
+  const rod=`<line x1="${(ML-6).toFixed(1)}" y1="${rodY.toFixed(1)}" x2="${(ML+CW+6).toFixed(1)}" y2="${rodY.toFixed(1)}" stroke="#111" stroke-width="2.2"/>`;
+  const finL=`<circle cx="${(ML-8).toFixed(1)}" cy="${rodY.toFixed(1)}" r="3.5" fill="none" stroke="#111" stroke-width="1.6"/>`;
+  const finR=`<circle cx="${(ML+CW+8).toFixed(1)}" cy="${rodY.toFixed(1)}" r="3.5" fill="none" stroke="#111" stroke-width="1.6"/>`;
+  const dropH=CH*0.42,topY=MT-2,botY=topY+dropH,hemY=botY-8;
+  const top=`<line x1="${ML.toFixed(1)}" y1="${topY.toFixed(1)}" x2="${(ML+CW).toFixed(1)}" y2="${topY.toFixed(1)}" stroke="#111" stroke-width="1.4"/>`;
+  const sideL=`<line x1="${ML.toFixed(1)}" y1="${topY.toFixed(1)}" x2="${ML.toFixed(1)}" y2="${hemY.toFixed(1)}" stroke="#111" stroke-width="1.3"/>`;
+  const sideR=`<line x1="${(ML+CW).toFixed(1)}" y1="${topY.toFixed(1)}" x2="${(ML+CW).toFixed(1)}" y2="${hemY.toFixed(1)}" stroke="#111" stroke-width="1.3"/>`;
+  const nFest=Math.max(4,Math.round(CW/22)),fw=CW/nFest;
+  let feston='';
+  for(let i=0;i<nFest;i++){
+    const x1=ML+i*fw,x2=x1+fw,cx=(x1+x2)/2;
+    feston+=`<path d="M${x1.toFixed(1)},${hemY.toFixed(1)} Q${cx.toFixed(1)},${botY.toFixed(1)} ${x2.toFixed(1)},${hemY.toFixed(1)}" fill="none" stroke="#111" stroke-width="1.3"/>`;
+  }
+  const nPl=Math.max(3,Math.round(CW/28));
+  let plie='';
+  for(let i=1;i<nPl;i++){const x=(ML+CW*i/nPl).toFixed(1);plie+=`<line x1="${x}" y1="${topY.toFixed(1)}" x2="${x}" y2="${hemY.toFixed(1)}" stroke="#aaa" stroke-width=".8" stroke-dasharray="3,3"/>`;}
+  let divs='';
+  for(let i=1;i<nH;i++){const x=(ML+CW*i/nH).toFixed(1);divs+=`<line x1="${x}" y1="${topY.toFixed(1)}" x2="${x}" y2="${hemY.toFixed(1)}" stroke="#666" stroke-width="1"/>`;}
+  return svgBase(u,`${rod}${finL}${finR}${top}${sideL}${sideR}${plie}${feston}${divs}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);
+}
+
+/* Cojín: almohadón cuadrado mullido (esquinas redondeadas, lados con un
+   ligero arco hacia fuera) con un par de pliegues suaves. Sin sistema
+   de recogida ni soporte: es una pieza suelta, no una cortina. */
+function svgCojin(p,u){
+  const{ML,MT,CW,CH}=SV;
+  const TL={x:98,y:52},TR={x:222,y:52},BR={x:222,y:168},BL={x:98,y:168},r=16;
+  const body=`<path d="
+    M${TL.x+r},${TL.y}
+    Q${(TL.x+r+TR.x-r)/2},${TL.y-10} ${TR.x-r},${TR.y}
+    Q${TR.x},${TR.y} ${TR.x},${TR.y+r}
+    Q${TR.x+10},${(TR.y+r+BR.y-r)/2} ${BR.x},${BR.y-r}
+    Q${BR.x},${BR.y} ${BR.x-r},${BR.y}
+    Q${(BR.x-r+BL.x+r)/2},${BR.y+10} ${BL.x+r},${BL.y}
+    Q${BL.x},${BL.y} ${BL.x},${BL.y-r}
+    Q${BL.x-10},${(BL.y-r+TL.y+r)/2} ${TL.x},${TL.y+r}
+    Q${TL.x},${TL.y} ${TL.x+r},${TL.y}
+    Z" fill="none" stroke="#111" stroke-width="1.6" stroke-linejoin="round"/>`;
+  const crease1=`<path d="M118,88 Q160,102 202,90" fill="none" stroke="#111" stroke-width="1"/>`;
+  const crease2=`<path d="M124,118 Q160,130 196,120" fill="none" stroke="#999" stroke-width=".8"/>`;
+
+  // Encaje: misma escala en X e Y (no deformar el cuadrado), limitada por la
+  // altura disponible, y centrado horizontalmente en el hueco de dibujo.
+  const srcX=88,srcY=42,srcW=144,srcH=136;
+  const scale=CH/srcH;
+  const tx=ML+(CW-srcW*scale)/2-srcX*scale,ty=MT-srcY*scale;
+  const grupo=`<g transform="translate(${tx.toFixed(2)},${ty.toFixed(2)}) scale(${scale.toFixed(4)})">${body}${crease1}${crease2}</g>`;
+
+  return svgBase(u,`${grupo}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);
+}
+
+/* Cabecero: panel rectangular en perspectiva (caja abierta, con la cara
+   superior y el lateral derecho asomando), tal como un cabecero de pared
+   dibujado en 3/4. Sin sistema de recogida ni soporte. */
+function svgCabecero(p,u){
+  const{ML,MT,CW,CH}=SV;
+  const front=`<path d="M40,50 L260,50 L260,150 L40,150 Z" fill="none" stroke="#111" stroke-width="1.8" stroke-linejoin="round"/>`;
+  const top=`<path d="M40,50 L18,32 L238,32 L260,50" fill="none" stroke="#111" stroke-width="1.6" stroke-linejoin="round"/>`;
+  const right=`<path d="M238,32 L238,132 L260,150" fill="none" stroke="#111" stroke-width="1.6" stroke-linejoin="round"/>`;
+  let dots='';
+  [[40,50],[260,50],[260,150],[40,150],[18,32],[238,32],[238,132]].forEach(([x,y])=>{
+    dots+=`<circle cx="${x}" cy="${y}" r="1.6" fill="#111"/>`;
+  });
+
+  // Encaje: misma escala en X e Y (no deformar el rectángulo), limitada por
+  // el ancho disponible, y centrado verticalmente en el hueco de dibujo.
+  const srcX=18,srcY=32,srcW=242,srcH=118;
+  const scale=CW/srcW;
+  const tx=ML-srcX*scale,ty=MT+(CH-srcH*scale)/2-srcY*scale;
+  const grupo=`<g transform="translate(${tx.toFixed(2)},${ty.toFixed(2)}) scale(${scale.toFixed(4)})">${front}${top}${right}${dots}</g>`;
+
+  return svgBase(u,`${grupo}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);
+}
 
 function svgBrisa(p,u){
   const{ML,MT,CW,CH}=SV;
@@ -2103,11 +2236,15 @@ function svgConSop(p){
   if(p.enBlanco)return getSVG(p);   // ficha en blanco: sin sistema ni SOP
   // Inserta las etiquetas junto al dibujo, fuera de la cortina
   let s=getSVG(p);
+  // svgBlanco() no incluye <defs> (a diferencia de todo dibujo real, que
+  // pasa siempre por svgBase). Sirve para detectar "sin dibujo" en general,
+  // no solo para los tipos ya conocidos que caen en él (p.ej. Tapicería).
+  const sinDibujo=!s.includes('<defs');
   const sop=he(p.soporte||'');
   // Ampliar el viewBox: 60px a la derecha (SOP) y una banda superior (sistema)
   let extraTop=0;
   const tLow=(p.tipo||'').toLowerCase();
-  const sinSistema=['enroll','estor','roman','brisa','vertical','lama','paquetto'].some(k=>tLow.includes(k));
+  const sinSistema=sinDibujo||['enroll','estor','roman','brisa','vertical','lama','paquetto','colcha','vánova','vanova','nórdica','nordica','tapic','tapiz','cojin','cojín','cabecer'].some(k=>tLow.includes(k));
   const conSistema=!sinSistema&&p.sistema;
   // Ampliación derecha mayor cuando hay sistema, para que quepa alineado con SOP
   const extraDer=conSistema?120:60;
@@ -2149,9 +2286,12 @@ function svgConSop(p){
     ).join('');
     var _sisH=12+lineasSis*lh;
   }
-  // El SOP baja según cuántas líneas ocupe el sistema
+  // El SOP baja según cuántas líneas ocupe el sistema. Se omite si no hay
+  // dibujo (nada que anotar) o si el tipo no lleva soporte de pared/techo
+  // (Colcha, Cojín, Cabecero: sí tienen dibujo, pero no soporte).
+  const sinSoporte=sinDibujo||['colcha','vánova','vanova','nórdica','nordica','cojin','cojín','cabecer'].some(k=>tLow.includes(k));
   const sopY=conSistema?(typeof _sisH!=='undefined'?_sisH+2:30):14;
-  const txt=`<text x="${sopX}" y="${sopY}" text-anchor="start" font-size="11" font-weight="bold" fill="#1c3a6e" font-family="Arial">SOP: ${sop||'____'}</text>`;
+  const txt=sinSoporte?'':`<text x="${sopX}" y="${sopY}" text-anchor="start" font-size="11" font-weight="bold" fill="#1c3a6e" font-family="Arial">SOP: ${sop||'____'}</text>`;
   return s.replace('</svg>',sisTxt+txt+'</svg>');
 }
 
@@ -2404,6 +2544,12 @@ function cuerpoConfeccion(tipo,x,y,w,h,hojas,ondaCm,recogida,u){
     const aY=y+h*0.68,aB=y+h*0.97,d1=x+w/3,d2=x+w*2/3;
     [[x,d1],[d1,d2],[d2,x+w]].forEach(([x1,x2])=>{
       o+=`<path d="M${x1.toFixed(1)},${aY.toFixed(1)} Q${((x1+x2)/2).toFixed(1)},${aB.toFixed(1)} ${x2.toFixed(1)},${aY.toFixed(1)}" fill="none" stroke="#333" stroke-width="1.3"/>`;});
+  } else if(t.includes('vertical')||t.includes('lama')){
+    // VERTICAL DE LAMAS → mismas líneas verticales que la cortina vertical normal,
+    // sin contorno (svgVertical tampoco dibuja un recuadro, solo lamas)
+    const n=Math.max(3,Math.round(w/7)),step=w/(n-1||1);
+    for(let i=0;i<n;i++){const lx=(x+i*step).toFixed(1);
+      o+=`<line x1="${lx}" y1="${y.toFixed(1)}" x2="${lx}" y2="${(y+h).toFixed(1)}" stroke="#222" stroke-width="2.2"/>`;}
   } else {
     // PLANA y resto → tela lisa con divisiones de hoja
     o+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="none" stroke="#111" stroke-width="1.4"/>`;
@@ -2411,16 +2557,25 @@ function cuerpoConfeccion(tipo,x,y,w,h,hojas,ondaCm,recogida,u){
       o+=`<line x1="${dx}" y1="${y.toFixed(1)}" x2="${dx}" y2="${(y+h).toFixed(1)}" stroke="#aaa" stroke-width=".8" stroke-dasharray="3,3"/>`;}
   }
 
-  // Flecha de recogida dentro del tramo.
-  // Si el tramo va partido en 2 hojas → flechas dobles, como en una cortina normal.
-  const fy=(y+h*0.45).toFixed(1);
-  if(recogida==='CEN'||nH>=2){
-    o+=`<line x1="${(x+w*0.42).toFixed(1)}" y1="${fy}" x2="${(x+w*0.18).toFixed(1)}" y2="${fy}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
-    o+=`<line x1="${(x+w*0.58).toFixed(1)}" y1="${fy}" x2="${(x+w*0.82).toFixed(1)}" y2="${fy}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
-  } else if(recogida==='IZQ'){
-    o+=`<line x1="${(x+w*0.68).toFixed(1)}" y1="${fy}" x2="${(x+w*0.22).toFixed(1)}" y2="${fy}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+  if(t.includes('paquetto')||t.includes('estor')){
+    // PAQUETTO / ESTOR → cuerda de mando en el lateral (como en la cortina normal), sin flecha
+    const isIZQ=(recogida==='IZQ');
+    const mandoX=(isIZQ?x-9:x+w+7);
+    const cadEndP=y+h*0.32;
+    o+=`<line x1="${mandoX.toFixed(1)}" y1="${(y-4).toFixed(1)}" x2="${mandoX.toFixed(1)}" y2="${cadEndP.toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/>
+    <rect x="${(mandoX-2.5).toFixed(1)}" y="${cadEndP.toFixed(1)}" width="5" height="11" rx="2.5" fill="none" stroke="#111" stroke-width="1.3"/>`;
   } else {
-    o+=`<line x1="${(x+w*0.32).toFixed(1)}" y1="${fy}" x2="${(x+w*0.78).toFixed(1)}" y2="${fy}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+    // Flecha de recogida dentro del tramo.
+    // Si el tramo va partido en 2 hojas → flechas dobles, como en una cortina normal.
+    const fy=(y+h*0.45).toFixed(1);
+    if(recogida==='CEN'||nH>=2){
+      o+=`<line x1="${(x+w*0.42).toFixed(1)}" y1="${fy}" x2="${(x+w*0.18).toFixed(1)}" y2="${fy}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+      o+=`<line x1="${(x+w*0.58).toFixed(1)}" y1="${fy}" x2="${(x+w*0.82).toFixed(1)}" y2="${fy}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+    } else if(recogida==='IZQ'){
+      o+=`<line x1="${(x+w*0.68).toFixed(1)}" y1="${fy}" x2="${(x+w*0.22).toFixed(1)}" y2="${fy}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+    } else {
+      o+=`<line x1="${(x+w*0.32).toFixed(1)}" y1="${fy}" x2="${(x+w*0.78).toFixed(1)}" y2="${fy}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+    }
   }
   return o;
 }
@@ -2537,6 +2692,15 @@ function cuerpoInclinado(tipo,x1,y1,x2,y2,h,hojas,ondaCm,recogida,u){
       const f0=i*(pF+gapF), f1=f0+pF;
       o+=`<path d="M${px(f0).toFixed(1)},${py(f0).toFixed(1)} L${px(f1).toFixed(1)},${py(f1).toFixed(1)} L${px(f1).toFixed(1)},${(py(f1)+h).toFixed(1)} L${px(f0).toFixed(1)},${(py(f0)+h).toFixed(1)} Z" fill="none" stroke="#111" stroke-width="1.3"/>`;
     }
+  } else if(t.includes('vertical')||t.includes('lama')){
+    // VERTICAL DE LAMAS → líneas verticales (las lamas cuelgan rectas, aunque el
+    // riel siga la inclinación de la esquina) repartidas a lo largo del tramo,
+    // igual que en la cortina vertical normal, sin contorno.
+    const dLen=Math.hypot(dx,dy)||1,n=Math.max(3,Math.round(dLen/7));
+    for(let i=0;i<n;i++){
+      const f=i/(n-1||1);
+      o+=`<line x1="${px(f).toFixed(1)}" y1="${py(f).toFixed(1)}" x2="${px(f).toFixed(1)}" y2="${(py(f)+h).toFixed(1)}" stroke="#222" stroke-width="2.2"/>`;
+    }
   } else {
     // Contorno del paralelogramo (tela)
     o+=`<path d="M${x1.toFixed(1)},${y1.toFixed(1)} L${x2.toFixed(1)},${y2.toFixed(1)} L${x2.toFixed(1)},${(y2+h).toFixed(1)} L${x1.toFixed(1)},${(y1+h).toFixed(1)} Z" fill="none" stroke="#111" stroke-width="1.4"/>`;
@@ -2563,15 +2727,28 @@ function cuerpoInclinado(tipo,x1,y1,x2,y2,h,hojas,ondaCm,recogida,u){
     }
   }
 
-  // Flechas de recogida, siguiendo la inclinación del tramo
-  const fy=f=>(py(f)+h*0.45).toFixed(1);
-  if(recogida==='CEN'||nH>=2){
-    o+=`<line x1="${px(0.42).toFixed(1)}" y1="${fy(0.42)}" x2="${px(0.18).toFixed(1)}" y2="${fy(0.18)}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
-    o+=`<line x1="${px(0.58).toFixed(1)}" y1="${fy(0.58)}" x2="${px(0.82).toFixed(1)}" y2="${fy(0.82)}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
-  } else if(recogida==='IZQ'){
-    o+=`<line x1="${px(0.68).toFixed(1)}" y1="${fy(0.68)}" x2="${px(0.22).toFixed(1)}" y2="${fy(0.22)}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+  if(t.includes('paquetto')||t.includes('estor')){
+    // PAQUETTO / ESTOR → cuerda de mando en el lateral (como en la cortina normal), sin flecha.
+    // Usar SIEMPRE el extremo físicamente izq/dcha (no x1/x2, que según la esquina de la L
+    // pueden venir invertidos: x1 es el punto que toca la esquina, no necesariamente el de la izq).
+    const isIZQ=(recogida==='IZQ');
+    const izqEsX1=x1<=x2;
+    const mandoX=(isIZQ?(izqEsX1?x1:x2)-9:(izqEsX1?x2:x1)+7);
+    const mandoYTop=(isIZQ?(izqEsX1?y1:y2):(izqEsX1?y2:y1));
+    const cadEndP=mandoYTop+h*0.32;
+    o+=`<line x1="${mandoX.toFixed(1)}" y1="${(mandoYTop-4).toFixed(1)}" x2="${mandoX.toFixed(1)}" y2="${cadEndP.toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/>
+    <rect x="${(mandoX-2.5).toFixed(1)}" y="${cadEndP.toFixed(1)}" width="5" height="11" rx="2.5" fill="none" stroke="#111" stroke-width="1.3"/>`;
   } else {
-    o+=`<line x1="${px(0.32).toFixed(1)}" y1="${fy(0.32)}" x2="${px(0.78).toFixed(1)}" y2="${fy(0.78)}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+    // Flechas de recogida, siguiendo la inclinación del tramo
+    const fy=f=>(py(f)+h*0.45).toFixed(1);
+    if(recogida==='CEN'||nH>=2){
+      o+=`<line x1="${px(0.42).toFixed(1)}" y1="${fy(0.42)}" x2="${px(0.18).toFixed(1)}" y2="${fy(0.18)}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+      o+=`<line x1="${px(0.58).toFixed(1)}" y1="${fy(0.58)}" x2="${px(0.82).toFixed(1)}" y2="${fy(0.82)}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+    } else if(recogida==='IZQ'){
+      o+=`<line x1="${px(0.68).toFixed(1)}" y1="${fy(0.68)}" x2="${px(0.22).toFixed(1)}" y2="${fy(0.22)}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+    } else {
+      o+=`<line x1="${px(0.32).toFixed(1)}" y1="${fy(0.32)}" x2="${px(0.78).toFixed(1)}" y2="${fy(0.78)}" stroke="#111" stroke-width="2" marker-end="url(#ar${u})"/>`;
+    }
   }
   return o;
 }
@@ -2588,6 +2765,10 @@ function getSVG(p){
   if(p.llucana)return svgLlucana(p,u);
   // Sin tipo definido → ficha en blanco para rellenar a mano
   if(!t||t==='cortina')return svgBlanco(p,u);
+  if(t.includes('colcha')||t.includes('vánova')||t.includes('vanova')||t.includes('nórdica')||t.includes('nordica'))return svgColcha(p,u);
+  if(t.includes('friso'))return svgFriso(p,u);
+  if(t.includes('cojin')||t.includes('cojín'))return svgCojin(p,u);
+  if(t.includes('cabecero')||t.includes('cabecera'))return svgCabecero(p,u);
   if(t.includes('paquetto'))return svgPaquetto(p,u);
   if(t.includes('brisa')||t.includes('dia y noche')||t.includes('día y noche'))return svgBrisa(p,u);
   if(t.includes('vertical')||t.includes('lama'))return svgVertical(p,u);
@@ -2598,7 +2779,7 @@ function getSVG(p){
   if(t.includes('onda')||t.includes('cortop'))return svgOndaPerfecta(p,u);
   // Plana y Plana Doble Tejido → siempre svgPalas (cortina plana), nunca Onda
   if(t.includes('plana')||t.includes('plano')||t.includes('doble'))return svgPalas(p,u);
-  if(t.includes('pala')||t.includes('tabla')||t.includes('presilla')||t.includes('plegon')||t.includes('plegón')||t.includes('fruncid'))return svgPalas(p,u);
+  if(t.includes('pala')||t.includes('tabla')||t.includes('presilla')||t.includes('plegon')||t.includes('plegón')||t.includes('fruncid')||t.includes('visillo'))return svgPalas(p,u);
   if(t.includes('panel')||t.includes('japon'))return svgPanelJapones(p,u);
   // Fallback: guia manual → plana
   if(s.includes('guia'))return svgPalas(p,u);
@@ -2645,6 +2826,17 @@ function fichaFilas(p){
   if(esTap){
     return '<div class="fdat-row"><div class="fdat-k">Tejido</div><div class="fdat-v sm">'+he(p.tejido||'—')+'</div></div>';
   }
+  // Colcha/Vánova/Nórdica, Cojín, Cabecero: sin sistema, confección, hojas ni
+  // recogida (no llevan riel de recogida ni soporte)
+  const _tSimple=(p.tipo||'').toLowerCase();
+  const esSimple=['colcha','nórdica','nordica','vánova','vanova','cojin','cojín','cabecer'].some(k=>_tSimple.includes(k));
+  if(esSimple){
+    let rowsSimple='';
+    rowsSimple+='<div class="fdat-row"><div class="fdat-k">Ancho</div><div class="fdat-v big">'+fmtCm(p.ancho)+'</div></div>';
+    rowsSimple+='<div class="fdat-row"><div class="fdat-k">Alto</div><div class="fdat-v big">'+fmtCm((p.alto||'')+(p.extra?' '+p.extra:''))+'</div></div>';
+    rowsSimple+='<div class="fdat-row"><div class="fdat-k">Tejido</div><div class="fdat-v sm">'+he(p.tejido||'—')+'</div></div>';
+    return rowsSimple;
+  }
   const esVert=['vertical','lama','brisa'].some(k=>(p.tipo||'').toLowerCase().includes(k));
   const recLabel=esVert&&p.apertura?('Nº '+p.apertura):({'D':'>> Derecha','IZQ':'<< Izquierda','CEN':'<< Central >>'}[p.recogida]||p.recogida||'D');
   let rows='';
@@ -2690,30 +2882,43 @@ function buildInstHTML(){
   const pre=$('cpre').value,fec=$('cfec').value,notas=$('notas').value;
   const hoy=new Date().toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'});
   const cortinas=STATE.cortinas.filter(c=>c.ancho||c.alto||c.estancia);
-  if(!cortinas.length){alert('No hay cortinas con datos.');return null;}
+  // Sin datos todavía (p.ej. recién arrancada o cortina en blanco): no hay nada que
+  // previsualizar aún. Sin alert(): esto se llama también en segundo plano mientras
+  // se escribe, y un aviso emergente en mitad de la escritura sería muy molesto.
+  if(!cortinas.length)return null;
   const CPH=CFG.CORTINAS_POR_HOJA;
   const grupos=[];for(let i=0;i<cortinas.length;i+=CPH)grupos.push(cortinas.slice(i,i+CPH));
   const nH=grupos.length;
+  // Los checkboxes "Incluir datos de instalación" / "Incluir Ref. del pedido" del
+  // sidebar son la fuente de verdad: auto-marcados si el presupuesto los trae, o
+  // marcados a mano por el usuario.
+  const hayInst=!!$('instCheck')?.checked;
+  const hayRef=!!$('refCheck')?.checked;
+  const hayCliente=!!$('cliCheck')?.checked;
 
   function instBox(){
-  // Solo si el presupuesto contiene instalación.
   // Mismos campos que Datos del cliente: Nombre, Teléfono, Dirección, Población.
-  if(!STATE.hayInstalacion)return'';
-  const zonaLimpia=(STATE.instZona||'').trim();
-  const dirLimpia=(STATE.instDireccion||'').trim();
-  const telLimpio=(STATE.instTel||'').trim();
+  if(!hayInst)return'';
+  const nomLimpio=($('inom')?.value||'').trim();
+  const telLimpio=($('itel')?.value||'').trim();
+  const dirLimpia=($('idir')?.value||'').trim();
+  const zonaLimpia=($('ipob')?.value||'').trim();
   const fila=(k,v)=>`<div class="cli-row"><span class="cli-k">${k}</span><span class="cli-v${v?'':' cli-fill'}">${v?he(v):''}</span></div>`;
-  const nomLimpio=(STATE.instNombre||'').trim();
   return`<div class="cli-box inst-box"><div class="cli-box-tit">Datos de instalación</div><div class="cli-box-body">${fila('Nombre',nomLimpio)}${fila('Teléfono',telLimpio)}${fila('Dirección',dirLimpia)}${fila('Población',zonaLimpia)}</div></div>`;
 }
-function cabCliente(){return`<div class="cli-box"><div class="cli-box-tit">Datos del cliente</div><div class="cli-box-body"><div class="cli-row"><span class="cli-k">Nombre</span><span class="cli-v">${he(nom)||'—'}</span></div><div class="cli-row"><span class="cli-k">Teléfono</span><span class="cli-v">${he(tel)||'—'}</span></div><div class="cli-row"><span class="cli-k">Dirección</span><span class="cli-v" style="font-size:10.5px">${he(dir)||'—'}</span></div><div class="cli-row"><span class="cli-k">Población</span><span class="cli-v">${he(pob)||'—'}</span></div></div></div>`;}
+function refBox(){
+  if(!hayRef)return'';
+  const refLimpia=($('irefped')?.value||'').trim();
+  return`<div class="cli-box ref-box"><div class="cli-box-tit">Ref. del pedido</div><div class="cli-box-body"><div class="cli-row"><span class="cli-k">Ref.</span><span class="cli-v${refLimpia?'':' cli-fill'}">${refLimpia?he(refLimpia):''}</span></div></div></div>`;
+}
+function cabCliente(){if(!hayCliente)return'';return`<div class="cli-box"><div class="cli-box-tit">Datos del cliente</div><div class="cli-box-body"><div class="cli-row"><span class="cli-k">Nombre</span><span class="cli-v">${he(nom)||'—'}</span></div><div class="cli-row"><span class="cli-k">Teléfono</span><span class="cli-v">${he(tel)||'—'}</span></div><div class="cli-row"><span class="cli-k">Dirección</span><span class="cli-v" style="font-size:10.5px">${he(dir)||'—'}</span></div><div class="cli-row"><span class="cli-k">Población</span><span class="cli-v">${he(pob)||'—'}</span></div></div></div>`;}
 
   return grupos.map((gr,gi)=>{
     const ultima=gi===nH-1;
     const fichas=gr.map((p,pi)=>`<div class="ficha">
       <div class="ficha-tit">
         <span class="ficha-tag">${he(p.tipo)||'Cortina'}</span>
-        <span class="ficha-est">${he(p.estancia)||(gi*CPH+pi+1)+'. Cortina'}</span>
+        <span class="ficha-est">${he(p.estancia)||(gi*CPH+pi+1)+'. '+(p.tipo||'Cortina')}</span>
         <span class="ficha-num">Nº ${gi*CPH+pi+1}/${cortinas.length}</span>
       </div>
       <div class="ficha-inner">
@@ -2728,7 +2933,8 @@ function cabCliente(){return`<div class="cli-box"><div class="cli-box-tit">Datos
       ?`<div class="hoja-pie"><div class="notas-box"><div class="nt">Notas para el operario</div><div class="nc">${notas?he(notas).replace(/\n/g,'<br>'):'—'}</div></div><div class="firma-box"><div style="flex:1"></div><div class="firma-lin"></div><div class="firma-lbl">Firma del operario</div></div></div>`
       :`<div class="cont-lbl">Hoja ${gi+1}/${nH} · continúa >></div>`;
 
-    return`<div class="hoja"><div class="hoja-cab ${STATE.hayInstalacion?'':'sin-inst'}"><div class="hoja-marca-wrap">${cabCliente()}<div class="hoja-docref" style="margin-top:4px;text-align:left"><strong>Presup. ${he(pre)||'—'}</strong> &nbsp;·&nbsp; ${fec?he(fec):hoy} &nbsp;·&nbsp; Hoja ${gi+1}/${nH}</div></div>${instBox()}</div><div class="hoja-op"><div class="hoja-op-item"><b>Fecha instalación</b><div class="hoja-op-line"></div></div><div class="hoja-op-item"><b>Hora</b><div class="hoja-op-line"></div></div><div class="hoja-op-item"><b>Operario</b><div class="hoja-op-line"></div></div><div class="hoja-op-item"><b>Vehículo</b><div class="hoja-op-line"></div></div></div><div class="hoja-body">${fichas}</div>${pie}</div>`;
+    const cajasDerecha=(hayInst||hayRef)?`<div style="display:flex;gap:10px;align-items:flex-start">${instBox()}${refBox()}</div>`:'';
+    return`<div class="hoja"><div class="hoja-cab ${(hayInst||hayRef)?'':'sin-inst'}"><div class="hoja-marca-wrap">${cabCliente()}<div class="hoja-docref" style="margin-top:4px;text-align:left"><strong>Presup. ${he(pre)||'—'}</strong> &nbsp;·&nbsp; ${fec?he(fec):hoy} &nbsp;·&nbsp; Hoja ${gi+1}/${nH}</div></div>${cajasDerecha}</div><div class="hoja-op"><div class="hoja-op-item"><b>Fecha instalación</b><div class="hoja-op-line"></div></div><div class="hoja-op-item"><b>Hora</b><div class="hoja-op-line"></div></div><div class="hoja-op-item"><b>Operario</b><div class="hoja-op-line"></div></div><div class="hoja-op-item"><b>Vehículo</b><div class="hoja-op-line"></div></div></div><div class="hoja-body">${fichas}</div>${pie}</div>`;
   }).join('');
 }
 
@@ -2779,7 +2985,7 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
   grid-template-columns:1fr auto!important;
   padding:6px 14px 5px!important;
   border-bottom:2.5px solid #1c2b4a!important;
-  background:linear-gradient(135deg,#f8f9fc,#eef0f8)!important;
+  background:#fff!important;
 }
 .hoja-marca{font-size:15px!important;font-weight:900!important;letter-spacing:-0.2px!important;color:#1c2b4a!important}
 .hoja-subtit{font-size:6.5px!important;letter-spacing:0.4px!important;color:#999!important}
@@ -2789,6 +2995,7 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
 /* ── BOX CLIENTE ── */
 .cli-box{min-width:210px!important;border:1.5px solid #1c2b4a!important;border-radius:3px!important}
 .inst-box{min-width:228px!important}
+.ref-box{min-width:120px!important}
 .cli-fill{border-bottom:1px solid #9aadcc!important;min-height:12px!important;display:block!important}
 .cli-box-tit{font-size:6.5px!important;padding:3px 10px!important;letter-spacing:0.6px!important;background:#1c2b4a!important;color:#fff!important}
 .cli-box-body{padding:5px 10px!important;gap:4px!important}
@@ -2797,7 +3004,7 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
 .cli-k{font-size:7px!important;min-width:55px!important;color:#aaa!important;font-weight:700!important;text-transform:uppercase!important}
 
 /* ── BARRA OPERARIO ── */
-.hoja-op{border-bottom:1px solid #e0e5ef!important;background:#f3f5fb!important}
+.hoja-op{border-bottom:1px solid #e0e5ef!important;background:#fff!important}
 .hoja-op-item{padding:3px 14px!important}
 .hoja-op-item b{font-size:6.5px!important;letter-spacing:0.3px!important;color:#1c2b4a!important}
 .hoja-op-line{margin-top:5px!important;border-color:#bbb!important}
@@ -2818,7 +3025,7 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
   padding:4px 12px!important;
   gap:10px!important;
   border-bottom:1.5px solid #c0cce0!important;
-  background:linear-gradient(90deg,#edf2fb,#f5f7fd)!important;
+  background:#fff!important;
   min-height:24px!important;
 }
 .ficha-est{font-size:13px!important;letter-spacing:0.3px!important;font-weight:900!important;color:#1c2b4a!important}
@@ -2839,7 +3046,7 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
   align-items:center!important;
   justify-content:center!important;
   padding:2mm!important;
-  background:#f7f9fc!important;
+  background:#fff!important;
   overflow:hidden!important;
 }
 .ficha-draw svg{
@@ -2860,7 +3067,7 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
 }
 .fdat-row:last-child{border-bottom:none!important}
 .fdat-k{
-  background:#f3f5fb!important;
+  background:#fff!important;
   font-size:6.5px!important;
   font-weight:700!important;
   text-transform:uppercase!important;
@@ -2909,7 +3116,7 @@ body{background:#fff;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
   padding:5px 14px 8px!important;
   gap:16px!important;
   border-top:2px solid #1c2b4a!important;
-  background:#f3f5fb!important;
+  background:#fff!important;
 }
 .resumen-item{font-size:9px!important;color:#555!important}
 .resumen-item strong{font-size:13px!important;display:block!important;color:#1c2b4a!important;font-weight:900!important}
@@ -3059,12 +3266,11 @@ function calcularSoportes(sistemaStr, ancho){
   return ''; // supera el límite → en blanco
 }
 
-async function generarCorte(){
+async function buildCortePDFBytes(){
   const ref=$('kref').value,fec=$('kfec').value;
   const lineasValidas=STATE.lineas.filter(l=>l.ancho||l.alto||l.estancia);
-  if(!lineasValidas.length){alert('Añade al menos una línea de corte.');return;}
-  setSt('spin','Generando PDF corte…');
-  try{
+  if(!lineasValidas.length)return null;
+  {
     await ensurePDFLib();
     const{PDFDocument,StandardFonts,rgb}=PDFLib;
     const pdfDoc=await PDFDocument.create();
@@ -3108,12 +3314,12 @@ async function generarCorte(){
       {lbl:'MEDIDA',              r:11},
       {lbl:'ENVÍO\nPARTIDO',      r:8 },
       {lbl:'COLOR',               r:7 },
-      {lbl:'SOPORTES',            r:8 },
+      {lbl:'SOPORTES\nTECHO/FRENTE', r:12},
       {lbl:'TIPO\nCONFECCIÓN',    r:13},
       {lbl:'CORREDERAS\nCONV //OP8 //OP6', r:12},
       {lbl:'MANUAL\nCUERDA',      r:8 },
       {lbl:'MANDO Y\nRECOGIDO',   r:10},
-      {lbl:'OBSERVACIONES',       r:14},
+      {lbl:'OBSERVACIONES',       r:11},
       {lbl:'UUDS\nENVÍO',         r:6 },
     ];
     const totR=COLS.reduce((a,c)=>a+c.r,0);
@@ -3205,6 +3411,11 @@ async function generarCorte(){
       // Sistema limpio: sin el color si lo extrajimos
       const sistemaLimpio=(()=>{
         let s=l.sistema||'';
+        // "Mando cadena ..." es un valor de respaldo para el campo Sistema de
+        // la ficha (Paquetto/Estor sin sistema real en el presupuesto); no es
+        // un sistema real, así que no debe aparecer en TIPO DE SISTEMA del
+        // corte (el lado del mando ya tiene su propia columna).
+        if(/^Mando\s+cadena\s+\w+$/i.test(s.trim()))return'';
         // Quitar palabras de color del nombre del sistema (ya van en su columna)
         s=s.replace(/\b(blanco|blanca|bco|bca|negro|negra|ngr|plata|plt|marr[oó]n|gris|grs|beige|crema|aluminio|alu|dorado|oro|bronce|cobre|inox|acero|cromo|n[ií]quel|nikel|antracita|grafito|plomo|marfil|hueso|n[aá]car|arena|anodizado)\b/gi,'').replace(/\s{2,}/g,' ').trim();
         return s.substring(0,16);
@@ -3220,13 +3431,19 @@ async function generarCorte(){
           const _txtV=_nvE+' varillas';
           obsFinal=obsFinal?obsFinal+' · '+_txtV:_txtV;}
       }
+      // Nº de soportes + dónde van (techo o frente/pared). PARED/FRONTAL/FRENTE → Frente;
+      // cualquier otro valor (vacío, TECHO, TECHO CLIC, RAP, CLIC…) → Techo, que es el caso
+      // por defecto también al leer el presupuesto (ver estrategiaCanotex, soporte||'T').
+      const numSoportes=isPaq?String(paqData.soportes):(calcularSoportes(l.sistema,l.ancho)||(l.soportes||''));
+      const esFrente=/PARED|FRONTAL|FRENTE/i.test(l.soporte||'');
+      const soportesTxt=numSoportes?(numSoportes+' '+(esFrente?'Frente':'Techo')):'';
       const vals=[
         // Col 0: TIPO DE SISTEMA → "Estor" si es estor, si no el sistema
         esEstorC?'Estor':sistemaLimpio,
         (l.ancho&&l.alto)?l.ancho+'x'+l.alto+'H':(l.ancho||l.alto||''), // Medida
         partida,                                                           // Envío Partido (2 si >270)
         colorFinal,                                                        // Color (campo color + color sistema)
-        isPaq?String(paqData.soportes):calcularSoportes(l.sistema,l.ancho)||(l.soportes||''), // Soportes
+        soportesTxt,                                                       // Soportes (nº + techo/frente)
         // Col 5: TIPO CONFECCIÓN → tipo de cortina
         (()=>{
           const t=(l.tipo||'').toLowerCase();
@@ -3258,27 +3475,53 @@ async function generarCorte(){
       });
     });
 
-    revokeObjUrl();
     const bytes=await pdfDoc.save();
-    const blob=new Blob([bytes],{type:'application/pdf'});
+    return{bytes,count:lineas.length,ref};
+  }
+}
+
+// Botón de la barra superior: genera y abre/descarga el PDF de corte para imprimir o guardar.
+async function generarCorte(){
+  setSt('spin','Generando PDF corte…');
+  try{
+    const res=await buildCortePDFBytes();
+    if(!res){setSt('er','Añade al menos una línea de corte.');alert('Añade al menos una línea de corte.');return;}
+    revokeObjUrl();
+    const blob=new Blob([res.bytes],{type:'application/pdf'});
     STATE.objectUrl=URL.createObjectURL(blob);
     // Abrir en ventana nueva (igual que hoja instalación)
     const win=window.open(STATE.objectUrl,'_blank');
     if(!win){
       // Si popup bloqueado → descargar directamente
       const a=document.createElement('a');a.href=STATE.objectUrl;
-      a.download='corte_'+(ref||'pedido')+'.pdf';
+      a.download='corte_'+(res.ref||'pedido')+'.pdf';
       a.style.display='none';document.body.appendChild(a);a.click();document.body.removeChild(a);
     }
-    setSt('ok','✓ PDF corte generado · '+lineas.length+' línea(s)');
+    setSt('ok','✓ PDF corte generado · '+res.count+' línea(s)');
     dbg('PDF corte generado','ok');
   }catch(err){setSt('er','Error: '+err.message);dbg('❌ '+err.message,'er');console.error(err);}
+}
+
+// Vista previa en vivo (barra superior + iframe), igual que la hoja de instalación.
+async function previewCorte(){
+  try{
+    const res=await buildCortePDFBytes();
+    if(!res)return;
+    hideEmptyState();
+    const blob=new Blob([res.bytes],{type:'application/pdf'});
+    revokeCorteObjUrl();
+    STATE.corteObjectUrl=URL.createObjectURL(blob);
+    $('main').innerHTML=`<div class="toolbar">
+      <button class="btn-tool btn-print" onclick="generarCorte()">🖨 Imprimir / Guardar PDF</button>
+    </div><iframe src="${STATE.corteObjectUrl}" class="corte-frame"></iframe>`;
+  }catch(err){console.error(err);}
 }
 
 async function ensurePDFLib(){if(!window.PDFLib){try{await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js');}catch(e){await loadScript('https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js');}}}
 
 addCortina();
 bindClientLive();
+bindCorteLive();
 </script>
 </body>
 <script>
