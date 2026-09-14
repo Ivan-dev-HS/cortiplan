@@ -1379,18 +1379,18 @@ function addCortina(d={}){
     STATE.lcnt++;
     const corrIni=(c.tipo||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
     const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
-    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':'')),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
+    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':'')),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
     // Cortina en L → segunda guía independiente (su propia línea de corte)
     if(c.formaL&&c.anchoL){
       STATE.lcnt++;
-      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
     }
   }
   rerenderAllCards();
   if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'&&tipo!=='Cojín'&&tipo!=='Cabecero')rerenderAllLineas();
   updateBadge();
 }
-function addLinea(d={}){STATE.lcnt++;const l={id:'l'+STATE.lcnt,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',sistema:d.sistema||'',tipo:d.tipo||'',tejido:d.tejido||'',recogida:d.recogida||'D',hojas:d.hojas||'1',color:d.color||'',soportes:d.soportes||'',correderas:d.correderas||'CONVENCIONAL',manual:d.manual||'MANUAL',unidades:d.unidades||'1',obs:d.obs||''};STATE.lineas.push(l);renderLinea(l,STATE.lineas.length-1);scheduleCorteLiveRefresh();}
+function addLinea(d={}){STATE.lcnt++;const l={id:'l'+STATE.lcnt,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',sistema:d.sistema||'',tipo:d.tipo||'',tejido:d.tejido||'',recogida:d.recogida||'D',hojas:d.hojas||'1',color:d.color||'',soportes:d.soportes||'',soporte:d.soporte||'T',correderas:d.correderas||'CONVENCIONAL',manual:d.manual||'MANUAL',unidades:d.unidades||'1',obs:d.obs||''};STATE.lineas.push(l);renderLinea(l,STATE.lineas.length-1);scheduleCorteLiveRefresh();}
 /* Calcular la longitud de la diagonal (inclinada) de una llucana por Pitágoras:
    cateto horizontal = ancho_abajo - ancho_arriba (si no hay arriba → ancho completo = triángulo)
    cateto vertical   = altura
@@ -1547,16 +1547,16 @@ function reconstruirLineas(){
     STATE.lcnt++;
     const corrIni=(t||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
     const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
-    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':'')),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
+    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':'')),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
     if(c.formaL&&c.anchoL){
       STATE.lcnt++;
-      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
     }
     // Llucana con 2º tramo → segunda guía independiente
     if(c.llucana&&c.llu2&&c.llu2Ancho){
       STATE.lcnt++;
       const incT=c.llu2Inclinada||calcLluc2Inclinada(c);
-      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo llucana)',ancho:c.llu2Ancho,alto:c.llu2Alto||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.llu2Recogida||'D',hojas:c.llu2Hojas||'1',color:colIni,soportes:'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Llucana · inclinación '+(c.llu2==='izq'?'izq':'dcha')+(incT?' · inclinada '+incT+' cm':'')});
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo llucana)',ancho:c.llu2Ancho,alto:c.llu2Alto||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.llu2Recogida||'D',hojas:c.llu2Hojas||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Llucana · inclinación '+(c.llu2==='izq'?'izq':'dcha')+(incT?' · inclinada '+incT+' cm':'')});
     }
   });
   rerenderAllLineas();
@@ -1775,7 +1775,8 @@ function renderLinea(l,idx){
       <div class="r2"><div class="fld"><label>Ancho cm</label><input type="text" inputmode="decimal" value="${he(l.ancho)}" onchange="updLinea('${l.id}','ancho',this.value)"></div><div class="fld"><label>Alto cm</label><input type="text" inputmode="decimal" value="${he(l.alto)}" onchange="updLinea('${l.id}','alto',this.value)"></div></div>
       <div class="fld"><label>Tipo Sistema</label><input type="text" value="${he(l.sistema)}" onchange="updLinea('${l.id}','sistema',this.value)"></div>
       <div class="r2"><div class="fld"><label>Confección</label><input type="text" value="${he(l.tipo)}" onchange="updLinea('${l.id}','tipo',this.value)"></div><div class="fld"><label>Hojas</label><input type="text" inputmode="numeric" value="${he(l.hojas)}" onchange="updLinea('${l.id}','hojas',this.value)"></div></div>
-      <div class="r2"><div class="fld"><label>Color</label><input type="text" value="${he(l.color)}" onchange="updLinea('${l.id}','color',this.value)"></div><div class="fld"><label>Soportes</label><input type="text" value="${he(l.soportes)}" onchange="updLinea('${l.id}','soportes',this.value)"></div></div>
+      <div class="r2"><div class="fld"><label>Color</label><input type="text" value="${he(l.color)}" onchange="updLinea('${l.id}','color',this.value)"></div><div class="fld"><label>Nº soportes</label><input type="text" value="${he(l.soportes)}" onchange="updLinea('${l.id}','soportes',this.value)"></div></div>
+      <div class="fld"><label>Ubicación soporte</label><select onchange="updLinea('${l.id}','soporte',this.value)"><option value="T"${!/PARED|FRONTAL|FRENTE/i.test(l.soporte||'')?' selected':''}>Techo</option><option value="FRENTE"${/PARED|FRONTAL|FRENTE/i.test(l.soporte||'')?' selected':''}>Frente</option></select></div>
       <div class="r2"><div class="fld"><label>Correderas</label><select onchange="updLinea('${l.id}','correderas',this.value)"><option value="CONVENCIONAL"${l.correderas==='CONVENCIONAL'?' selected':''}>CONVENCIONAL</option><option value="OP8"${l.correderas==='OP8'?' selected':''}>//OP8</option><option value="OP6"${l.correderas==='OP6'?' selected':''}>//OP6</option></select></div><div class="fld"><label>Manual/Cuerda</label><select onchange="updLinea('${l.id}','manual',this.value)"><option value="MANUAL"${l.manual==='MANUAL'?' selected':''}>Manual</option><option value="CUERDA"${l.manual==='CUERDA'?' selected':''}>Cuerda</option></select></div></div>
       <div class="r2"><div class="fld"><label>Mando/Recogida</label><input type="text" value="${he(l.recogida)}" onchange="updLinea('${l.id}','recogida',this.value)"></div><div class="fld"><label>Tejido</label><input type="text" value="${he(l.tejido)}" onchange="updLinea('${l.id}','tejido',this.value)"></div></div>
       <div class="r2"><div class="fld"><label>Observaciones</label><input type="text" value="${he(l.obs)}" onchange="updLinea('${l.id}','obs',this.value)"></div><div class="fld"><label>Unidades</label><input type="text" inputmode="numeric" value="${he(l.unidades)}" onchange="updLinea('${l.id}','unidades',this.value)"></div></div>
@@ -2543,6 +2544,12 @@ function cuerpoConfeccion(tipo,x,y,w,h,hojas,ondaCm,recogida,u){
     const aY=y+h*0.68,aB=y+h*0.97,d1=x+w/3,d2=x+w*2/3;
     [[x,d1],[d1,d2],[d2,x+w]].forEach(([x1,x2])=>{
       o+=`<path d="M${x1.toFixed(1)},${aY.toFixed(1)} Q${((x1+x2)/2).toFixed(1)},${aB.toFixed(1)} ${x2.toFixed(1)},${aY.toFixed(1)}" fill="none" stroke="#333" stroke-width="1.3"/>`;});
+  } else if(t.includes('vertical')||t.includes('lama')){
+    // VERTICAL DE LAMAS → mismas líneas verticales que la cortina vertical normal,
+    // sin contorno (svgVertical tampoco dibuja un recuadro, solo lamas)
+    const n=Math.max(3,Math.round(w/7)),step=w/(n-1||1);
+    for(let i=0;i<n;i++){const lx=(x+i*step).toFixed(1);
+      o+=`<line x1="${lx}" y1="${y.toFixed(1)}" x2="${lx}" y2="${(y+h).toFixed(1)}" stroke="#222" stroke-width="2.2"/>`;}
   } else {
     // PLANA y resto → tela lisa con divisiones de hoja
     o+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="none" stroke="#111" stroke-width="1.4"/>`;
@@ -2684,6 +2691,15 @@ function cuerpoInclinado(tipo,x1,y1,x2,y2,h,hojas,ondaCm,recogida,u){
     for(let i=0;i<nH;i++){
       const f0=i*(pF+gapF), f1=f0+pF;
       o+=`<path d="M${px(f0).toFixed(1)},${py(f0).toFixed(1)} L${px(f1).toFixed(1)},${py(f1).toFixed(1)} L${px(f1).toFixed(1)},${(py(f1)+h).toFixed(1)} L${px(f0).toFixed(1)},${(py(f0)+h).toFixed(1)} Z" fill="none" stroke="#111" stroke-width="1.3"/>`;
+    }
+  } else if(t.includes('vertical')||t.includes('lama')){
+    // VERTICAL DE LAMAS → líneas verticales (las lamas cuelgan rectas, aunque el
+    // riel siga la inclinación de la esquina) repartidas a lo largo del tramo,
+    // igual que en la cortina vertical normal, sin contorno.
+    const dLen=Math.hypot(dx,dy)||1,n=Math.max(3,Math.round(dLen/7));
+    for(let i=0;i<n;i++){
+      const f=i/(n-1||1);
+      o+=`<line x1="${px(f).toFixed(1)}" y1="${py(f).toFixed(1)}" x2="${px(f).toFixed(1)}" y2="${(py(f)+h).toFixed(1)}" stroke="#222" stroke-width="2.2"/>`;
     }
   } else {
     // Contorno del paralelogramo (tela)
@@ -3298,12 +3314,12 @@ async function buildCortePDFBytes(){
       {lbl:'MEDIDA',              r:11},
       {lbl:'ENVÍO\nPARTIDO',      r:8 },
       {lbl:'COLOR',               r:7 },
-      {lbl:'SOPORTES',            r:8 },
+      {lbl:'SOPORTES\nTECHO/FRENTE', r:12},
       {lbl:'TIPO\nCONFECCIÓN',    r:13},
       {lbl:'CORREDERAS\nCONV //OP8 //OP6', r:12},
       {lbl:'MANUAL\nCUERDA',      r:8 },
       {lbl:'MANDO Y\nRECOGIDO',   r:10},
-      {lbl:'OBSERVACIONES',       r:14},
+      {lbl:'OBSERVACIONES',       r:11},
       {lbl:'UUDS\nENVÍO',         r:6 },
     ];
     const totR=COLS.reduce((a,c)=>a+c.r,0);
@@ -3415,13 +3431,19 @@ async function buildCortePDFBytes(){
           const _txtV=_nvE+' varillas';
           obsFinal=obsFinal?obsFinal+' · '+_txtV:_txtV;}
       }
+      // Nº de soportes + dónde van (techo o frente/pared). PARED/FRONTAL/FRENTE → Frente;
+      // cualquier otro valor (vacío, TECHO, TECHO CLIC, RAP, CLIC…) → Techo, que es el caso
+      // por defecto también al leer el presupuesto (ver estrategiaCanotex, soporte||'T').
+      const numSoportes=isPaq?String(paqData.soportes):(calcularSoportes(l.sistema,l.ancho)||(l.soportes||''));
+      const esFrente=/PARED|FRONTAL|FRENTE/i.test(l.soporte||'');
+      const soportesTxt=numSoportes?(numSoportes+' '+(esFrente?'Frente':'Techo')):'';
       const vals=[
         // Col 0: TIPO DE SISTEMA → "Estor" si es estor, si no el sistema
         esEstorC?'Estor':sistemaLimpio,
         (l.ancho&&l.alto)?l.ancho+'x'+l.alto+'H':(l.ancho||l.alto||''), // Medida
         partida,                                                           // Envío Partido (2 si >270)
         colorFinal,                                                        // Color (campo color + color sistema)
-        isPaq?String(paqData.soportes):calcularSoportes(l.sistema,l.ancho)||(l.soportes||''), // Soportes
+        soportesTxt,                                                       // Soportes (nº + techo/frente)
         // Col 5: TIPO CONFECCIÓN → tipo de cortina
         (()=>{
           const t=(l.tipo||'').toLowerCase();

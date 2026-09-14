@@ -156,6 +156,23 @@ test('Cojín y Cabecero no generan línea de corte; Visillo sí', () => {
   assert.deepStrictEqual(JSON.parse(JSON.stringify(STATE.lineas.map(l => l.estancia))), ['Test visillo']);
 });
 
+console.log('\nVertical en L y ubicación del soporte en el corte');
+test('Vertical en L dibuja lamas (como la vertical recta), no el panel liso genérico', () => {
+  const svg = app.getSVG({ tipo: 'Vertical', ancho: '150', alto: '220', anchoL: '100', altoL: '220',
+    formaL: 'dcha', recogida: 'D', recogidaL: 'IZQ', soporte: 'T' });
+  // Las lamas usan líneas gruesas #222/2.2, sin el guión de las divisiones de hoja del panel liso.
+  const numLamas = (svg.match(/stroke="#222" stroke-width="2\.2"/g) || []).length;
+  assert.ok(numLamas > 10, `esperaba muchas lamas, encontradas ${numLamas}`);
+  assert.ok(!svg.includes('stroke-dasharray="3,3"'), 'no debería dibujar las divisiones de hoja del panel liso genérico');
+});
+test('La ubicación del soporte (techo/pared) de la cortina pasa a su línea de corte', () => {
+  app.resetCortinas();
+  app.addCortina({ tipo: 'Onda Perfecta', ancho: '150', alto: '250', estancia: 'Test soporte', soporte: 'PARED' });
+  const STATE = app.__internals.STATE;
+  assert.strictEqual(STATE.lineas.length, 1);
+  assert.strictEqual(STATE.lineas[0].soporte, 'PARED');
+});
+
 console.log('\nFunciones puras del parser');
 
 test('fmtCm — número simple añade "cm"', () => {
