@@ -172,6 +172,17 @@ test('La ubicación del soporte (techo/pared) de la cortina pasa a su línea de 
   assert.strictEqual(STATE.lineas.length, 1);
   assert.strictEqual(STATE.lineas[0].soporte, 'PARED');
 });
+test('"Limpiar todo" no deja bloqueada la previsualización en vivo', () => {
+  // scheduleLiveRefresh() solo actúa si STATE.liveActive es true, y generarInst()
+  // es el único sitio que lo vuelve a poner a true — así que si limpiarTodo() lo
+  // pone a false, ningún cambio posterior (añadir/editar una cortina) vuelve a
+  // generar la vista previa nunca más, hasta cambiar de pestaña a mano.
+  app.resetCortinas();
+  app.addCortina({ ancho: '150', alto: '200', estancia: 'Antes de limpiar' });
+  app.limpiarTodo();
+  const STATE = app.__internals.STATE;
+  assert.strictEqual(STATE.liveActive, true);
+});
 
 console.log('\nFunciones puras del parser');
 

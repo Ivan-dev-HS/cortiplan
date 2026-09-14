@@ -1389,6 +1389,7 @@ function addCortina(d={}){
   rerenderAllCards();
   if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'&&tipo!=='Cojín'&&tipo!=='Cabecero')rerenderAllLineas();
   updateBadge();
+  scheduleLiveRefresh();
 }
 function addLinea(d={}){STATE.lcnt++;const l={id:'l'+STATE.lcnt,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',sistema:d.sistema||'',tipo:d.tipo||'',tejido:d.tejido||'',recogida:d.recogida||'D',hojas:d.hojas||'1',color:d.color||'',soportes:d.soportes||'',soporte:d.soporte||'T',correderas:d.correderas||'CONVENCIONAL',manual:d.manual||'MANUAL',unidades:d.unidades||'1',obs:d.obs||''};STATE.lineas.push(l);renderLinea(l,STATE.lineas.length-1);scheduleCorteLiveRefresh();}
 /* Calcular la longitud de la diagonal (inclinada) de una llucana por Pitágoras:
@@ -1789,7 +1790,7 @@ function rerenderAllCards(){
   updateBadge();
 }
 function rerenderAllLineas(){$('lineas').innerHTML='';STATE.lineas.forEach((l,i)=>renderLinea(l,i));}
-function limpiarTodo(){['cnom','ctel','cdir','cpob','cpre','cfec','notas','kref','kfec'].forEach(id=>{const el=$(id);if(el)el.value='';});resetCortinas();resetInstalacion();STATE.liveActive=false;addCortina();$('main').innerHTML='<div class="empty-state" id="emptyState"><div class="ei">📂</div><p>Arrastra un PDF o imagen<br>y elige el tipo de documento</p></div>';setSt('','Esperando archivo…');clearDbg();revokeObjUrl();revokeCorteObjUrl();fileInput.value='';}
+function limpiarTodo(){['cnom','ctel','cdir','cpob','cpre','cfec','notas','kref','kfec'].forEach(id=>{const el=$(id);if(el)el.value='';});resetCortinas();resetInstalacion();addCortina();$('main').innerHTML='<div class="empty-state" id="emptyState"><div class="ei">📂</div><p>Arrastra un PDF o imagen<br>y elige el tipo de documento</p></div>';setSt('','Esperando archivo…');clearDbg();revokeObjUrl();revokeCorteObjUrl();fileInput.value='';}
 function revokeObjUrl(){if(STATE.objectUrl){URL.revokeObjectURL(STATE.objectUrl);STATE.objectUrl=null;}}
 function revokeCorteObjUrl(){if(STATE.corteObjectUrl){URL.revokeObjectURL(STATE.corteObjectUrl);STATE.corteObjectUrl=null;}}
 
