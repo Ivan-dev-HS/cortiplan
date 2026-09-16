@@ -165,19 +165,21 @@ test('Vertical en L dibuja lamas (como la vertical recta), no el panel liso gen�
   assert.ok(numLamas > 10, `esperaba muchas lamas, encontradas ${numLamas}`);
   assert.ok(!svg.includes('stroke-dasharray="3,3"'), 'no debería dibujar las divisiones de hoja del panel liso genérico');
 });
-test('Vertical en L dibuja el mando (cadena) en el lado contrario a las lamas, como svgVertical', () => {
-  // Igual que en svgVertical (mandoLado según apertura 1/3): con recogida IZQ las
-  // lamas se recogen a la derecha y el mando queda a la izquierda, y al revés con D.
+test('Vertical en L dibuja el mando (cadena), evitando siempre el lado de la esquina', () => {
+  const dashedXs = svg => [...svg.matchAll(/<line x1="(-?[\d.]+)"[^>]*stroke-dasharray="2\.5,2"/g)].map(m => parseFloat(m[1]));
+  // Esquina a la derecha: el lado libre del tramo recto es el IZQUIERDO. Con
+  // recogida D el mando "normal" caería justo en la esquina (donde empieza el
+  // tramo en L) y no se vería, así que debe pasarse también al izquierdo, igual
+  // que con IZQ: ambos deben acabar muy cerca uno del otro (mismo lado).
   const svgIzq = app.getSVG({ tipo: 'Vertical', ancho: '150', alto: '220', anchoL: '100', altoL: '220',
-    formaL: 'dcha', recogida: 'IZQ', recogidaL: 'IZQ', soporte: 'T' });
+    formaL: 'dcha', recogida: 'IZQ', recogidaL: 'D', soporte: 'T' });
   const svgD = app.getSVG({ tipo: 'Vertical', ancho: '150', alto: '220', anchoL: '100', altoL: '220',
     formaL: 'dcha', recogida: 'D', recogidaL: 'D', soporte: 'T' });
-  const dashed = svg => [...svg.matchAll(/<line x1="(-?[\d.]+)"[^>]*stroke-dasharray="2\.5,2"/g)].map(m => parseFloat(m[1]));
-  const xsIzq = dashed(svgIzq), xsD = dashed(svgD);
+  const xsIzq = dashedXs(svgIzq), xsD = dashedXs(svgD);
   assert.ok(xsIzq.length >= 1, 'debería dibujar al menos una cadena de mando (recogida IZQ)');
   assert.ok(xsD.length >= 1, 'debería dibujar al menos una cadena de mando (recogida D)');
-  // Con recogida IZQ el mando del tramo recto va más a la izquierda que con D.
-  assert.ok(Math.min(...xsIzq) < Math.min(...xsD), 'el mando debería estar más a la izquierda con recogida IZQ que con D');
+  assert.ok(Math.abs(Math.min(...xsIzq) - Math.min(...xsD)) < 2,
+    `con la esquina a la derecha, el mando del tramo recto debería quedar en el mismo lado (libre) para D e IZQ; xsIzq=${xsIzq} xsD=${xsD}`);
 });
 test('La ubicación del soporte (techo/pared) de la cortina pasa a su línea de corte', () => {
   app.resetCortinas();
