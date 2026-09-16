@@ -157,6 +157,15 @@ test('Cojín y Cabecero no generan línea de corte; Visillo sí', () => {
 });
 
 console.log('\nVertical en L y ubicación del soporte en el corte');
+test('El nº de apertura (recta) no se cuela como "Recogida" en la ficha de una Vertical en L', () => {
+  // El dibujo en L usa la Recogida (D/IZQ/CEN) de cada tramo, no el nº de apertura
+  // (que solo aplica a la cortina recta) — si la ficha mostrase "Nº 7" aquí, el
+  // dato no coincidiría con lo que realmente dibuja el tramo recto (Derecha).
+  const p = { tipo: 'Vertical', ancho: '150', alto: '220', apertura: '7', recogida: 'D', formaL: 'dcha', anchoL: '100' };
+  const html = app.fichaFilas(p);
+  assert.ok(!html.includes('Nº 7'), 'no debería mostrar el nº de apertura en una cortina en L');
+  assert.ok(html.includes('Derecha'), 'debería mostrar la Recogida (D/IZQ/CEN) del tramo recto en su lugar');
+});
 test('Vertical en L dibuja lamas (como la vertical recta), no el panel liso genérico', () => {
   const svg = app.getSVG({ tipo: 'Vertical', ancho: '150', alto: '220', anchoL: '100', altoL: '220',
     formaL: 'dcha', recogida: 'D', recogidaL: 'IZQ', soporte: 'T' });

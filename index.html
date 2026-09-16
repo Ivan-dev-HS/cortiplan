@@ -1661,15 +1661,21 @@ function renderPcard(c,idx){
   // Campos condicionales según tipo
   let extras='';
   if(esVertBri){
-    const APERTURAS=[
-      ['1','1 · Izda · Mando izda'],['2','2 · Izda · Mando dcha'],
-      ['3','3 · Dcha · Mando dcha'],['4','4 · Dcha · Mando izda'],
-      ['5','5 · Doble centro · Mando dcha'],['6','6 · Doble centro · Mando izda'],
-      ['7','7 · Doble centro · Mando doble'],['8','8 · Doble extremos · Mando dcha'],
-      ['9','9 · Doble extremos · Mando izda'],['10','10 · Doble extremos · Mando doble'],
-    ];
-    const optsAp=APERTURAS.map(([v,t])=>`<option value="${v}"${String(c.apertura)===v?' selected':''}>${t}</option>`).join('');
-    extras+=`<div class="fld"><label>Nº de recogida (apertura)</label><select onchange="updCortina('${c.id}','apertura',this.value)"><option value="">-- Seleccionar --</option>${optsAp}</select></div>`;
+    // El nº de apertura (1-10) solo pinta algo en la cortina recta: svgFormaL()
+    // dibuja cada tramo de la L con su propia Recogida (D/IZQ/CEN, el campo de
+    // abajo), no con este número — mostrarlo en una cortina en L confundía,
+    // porque parecía controlar el dibujo y en realidad no hacía nada.
+    if(!c.formaL){
+      const APERTURAS=[
+        ['1','1 · Izda · Mando izda'],['2','2 · Izda · Mando dcha'],
+        ['3','3 · Dcha · Mando dcha'],['4','4 · Dcha · Mando izda'],
+        ['5','5 · Doble centro · Mando dcha'],['6','6 · Doble centro · Mando izda'],
+        ['7','7 · Doble centro · Mando doble'],['8','8 · Doble extremos · Mando dcha'],
+        ['9','9 · Doble extremos · Mando izda'],['10','10 · Doble extremos · Mando doble'],
+      ];
+      const optsAp=APERTURAS.map(([v,t])=>`<option value="${v}"${String(c.apertura)===v?' selected':''}>${t}</option>`).join('');
+      extras+=`<div class="fld"><label>Nº de recogida (apertura)</label><select onchange="updCortina('${c.id}','apertura',this.value)"><option value="">-- Seleccionar --</option>${optsAp}</select></div>`;
+    }
     if(esBrisa){
       extras+=`<div class="fld"><label>Accionamiento</label><select onchange="updCortina('${c.id}','mandoBrisa',this.value)"><option value="cadena"${(c.mandoBrisa||'cadena')==='cadena'?' selected':''}>Cadena</option><option value="tirador"${c.mandoBrisa==='tirador'?' selected':''}>Tiradores</option></select></div>`;
     }
@@ -2883,7 +2889,10 @@ function fichaFilas(p){
     return rowsSimple;
   }
   const esVert=['vertical','lama','brisa'].some(k=>(p.tipo||'').toLowerCase().includes(k));
-  const recLabel=esVert&&p.apertura?('Nº '+p.apertura):({'D':'>> Derecha','IZQ':'<< Izquierda','CEN':'<< Central >>'}[p.recogida]||p.recogida||'D');
+  // En forma L el dibujo usa la Recogida (D/IZQ/CEN) de cada tramo, no el nº de
+  // apertura (que solo aplica a la cortina recta) — mostrar aquí "Nº X" sería un
+  // dato que no coincide con lo que realmente dibuja el tramo recto.
+  const recLabel=esVert&&p.apertura&&!p.formaL?('Nº '+p.apertura):({'D':'>> Derecha','IZQ':'<< Izquierda','CEN':'<< Central >>'}[p.recogida]||p.recogida||'D');
   let rows='';
   const _tf=(p.tipo||'').toLowerCase();
   const esEstorF=_tf.includes('estor')&&!_tf.includes('enroll');
