@@ -165,6 +165,20 @@ test('Vertical en L dibuja lamas (como la vertical recta), no el panel liso gen�
   assert.ok(numLamas > 10, `esperaba muchas lamas, encontradas ${numLamas}`);
   assert.ok(!svg.includes('stroke-dasharray="3,3"'), 'no debería dibujar las divisiones de hoja del panel liso genérico');
 });
+test('Vertical en L dibuja el mando (cadena) en el lado contrario a las lamas, como svgVertical', () => {
+  // Igual que en svgVertical (mandoLado según apertura 1/3): con recogida IZQ las
+  // lamas se recogen a la derecha y el mando queda a la izquierda, y al revés con D.
+  const svgIzq = app.getSVG({ tipo: 'Vertical', ancho: '150', alto: '220', anchoL: '100', altoL: '220',
+    formaL: 'dcha', recogida: 'IZQ', recogidaL: 'IZQ', soporte: 'T' });
+  const svgD = app.getSVG({ tipo: 'Vertical', ancho: '150', alto: '220', anchoL: '100', altoL: '220',
+    formaL: 'dcha', recogida: 'D', recogidaL: 'D', soporte: 'T' });
+  const dashed = svg => [...svg.matchAll(/<line x1="(-?[\d.]+)"[^>]*stroke-dasharray="2\.5,2"/g)].map(m => parseFloat(m[1]));
+  const xsIzq = dashed(svgIzq), xsD = dashed(svgD);
+  assert.ok(xsIzq.length >= 1, 'debería dibujar al menos una cadena de mando (recogida IZQ)');
+  assert.ok(xsD.length >= 1, 'debería dibujar al menos una cadena de mando (recogida D)');
+  // Con recogida IZQ el mando del tramo recto va más a la izquierda que con D.
+  assert.ok(Math.min(...xsIzq) < Math.min(...xsD), 'el mando debería estar más a la izquierda con recogida IZQ que con D');
+});
 test('La ubicación del soporte (techo/pared) de la cortina pasa a su línea de corte', () => {
   app.resetCortinas();
   app.addCortina({ tipo: 'Onda Perfecta', ancho: '150', alto: '250', estancia: 'Test soporte', soporte: 'PARED' });

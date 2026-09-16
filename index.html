@@ -2575,6 +2575,14 @@ function cuerpoConfeccion(tipo,x,y,w,h,hojas,ondaCm,recogida,u){
     o+=`<line x1="${mandoX.toFixed(1)}" y1="${(y-4).toFixed(1)}" x2="${mandoX.toFixed(1)}" y2="${cadEndP.toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/>
     <rect x="${(mandoX-2.5).toFixed(1)}" y="${cadEndP.toFixed(1)}" width="5" height="11" rx="2.5" fill="none" stroke="#111" stroke-width="1.3"/>`;
   } else {
+    if(t.includes('vertical')||t.includes('lama')){
+      // VERTICAL DE LAMAS → cadena de mando (línea discontinua, como en svgVertical),
+      // en el lado CONTRARIO al que se recogen las lamas (igual que en svgVertical:
+      // p.ej. con recogida izquierda las lamas se juntan a la derecha y el mando
+      // queda a la izquierda).
+      const mandoV=(atX)=>{o+=`<line x1="${atX.toFixed(1)}" y1="${(y-1).toFixed(1)}" x2="${atX.toFixed(1)}" y2="${(y+h*0.5).toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/>`;};
+      if(recogida==='IZQ')mandoV(x-9);else mandoV(x+w+7);
+    }
     // Flecha de recogida dentro del tramo.
     // Si el tramo va partido en 2 hojas → flechas dobles, como en una cortina normal.
     const fy=(y+h*0.45).toFixed(1);
@@ -2757,6 +2765,16 @@ function cuerpoInclinado(tipo,x1,y1,x2,y2,h,hojas,ondaCm,recogida,u){
     o+=`<line x1="${mandoX.toFixed(1)}" y1="${(mandoYTop-4).toFixed(1)}" x2="${mandoX.toFixed(1)}" y2="${cadEndP.toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/>
     <rect x="${(mandoX-2.5).toFixed(1)}" y="${cadEndP.toFixed(1)}" width="5" height="11" rx="2.5" fill="none" stroke="#111" stroke-width="1.3"/>`;
   } else {
+    if(t.includes('vertical')||t.includes('lama')){
+      // VERTICAL DE LAMAS → cadena de mando (línea discontinua, como en svgVertical),
+      // mismo lado izq/dcha que usa el mando del Paquetto/Estor de arriba (misma
+      // fórmula, usando siempre el extremo físicamente izq/dcha del tramo).
+      const isIZQv=(recogida==='IZQ');
+      const izqEsX1v=x1<=x2;
+      const mandoXv=(isIZQv?(izqEsX1v?x1:x2)-9:(izqEsX1v?x2:x1)+7);
+      const mandoYTopv=(isIZQv?(izqEsX1v?y1:y2):(izqEsX1v?y2:y1));
+      o+=`<line x1="${mandoXv.toFixed(1)}" y1="${(mandoYTopv-1).toFixed(1)}" x2="${mandoXv.toFixed(1)}" y2="${(mandoYTopv+h*0.5).toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/>`;
+    }
     // Flechas de recogida, siguiendo la inclinación del tramo
     const fy=f=>(py(f)+h*0.45).toFixed(1);
     if(recogida==='CEN'||nH>=2){
