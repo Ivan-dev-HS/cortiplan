@@ -1661,11 +1661,12 @@ function renderPcard(c,idx){
   // Campos condicionales según tipo
   let extras='';
   if(esVertBri){
-    // El nº de apertura (1-10) solo pinta algo en la cortina recta: svgFormaL()
-    // dibuja cada tramo de la L con su propia Recogida (D/IZQ/CEN, el campo de
-    // abajo), no con este número — mostrarlo en una cortina en L confundía,
-    // porque parecía controlar el dibujo y en realidad no hacía nada.
-    if(!c.formaL){
+    // El nº de apertura (1-10) también controla el tramo recto de una Vertical en
+    // L (igual que en la cortina recta); Brisa en L, en cambio, todavía no lo usa
+    // en el dibujo (solo Vertical/lama), así que ahí se sigue ocultando para no
+    // mostrar un control que no hace nada.
+    const esVerticalLama=tLow.includes('vertical')||tLow.includes('lama');
+    if(!c.formaL||esVerticalLama){
       const APERTURAS=[
         ['1','1 · Izda · Mando izda'],['2','2 · Izda · Mando dcha'],
         ['3','3 · Dcha · Mando dcha'],['4','4 · Dcha · Mando izda'],
@@ -2522,7 +2523,7 @@ function svgLlucanaDoble(p,u){
    con su propia medida, hojas y flecha de recogida. */
 
 // Cuerpo de una confección dibujado en una caja arbitraria (x,y,w,h)
-function cuerpoConfeccion(tipo,x,y,w,h,hojas,ondaCm,recogida,u,ladoCorner){
+function cuerpoConfeccion(tipo,x,y,w,h,hojas,ondaCm,recogida,u,ladoCorner,apertura){
   const t=(tipo||'').toLowerCase();
   const nH=Math.max(1,parseInt(hojas)||1);
   let o='';
@@ -2552,20 +2553,28 @@ function cuerpoConfeccion(tipo,x,y,w,h,hojas,ondaCm,recogida,u,ladoCorner){
     [[x,d1],[d1,d2],[d2,x+w]].forEach(([x1,x2])=>{
       o+=`<path d="M${x1.toFixed(1)},${aY.toFixed(1)} Q${((x1+x2)/2).toFixed(1)},${aB.toFixed(1)} ${x2.toFixed(1)},${aY.toFixed(1)}" fill="none" stroke="#333" stroke-width="1.3"/>`;});
   } else if(t.includes('vertical')||t.includes('lama')){
-    // VERTICAL DE LAMAS → mismas líneas verticales que la cortina vertical normal,
-    // sin contorno (svgVertical tampoco dibuja un recuadro, solo lamas). Igual que
-    // en svgVertical, las lamas se recogen hacia un lado (o ambos extremos si es
-    // central) dejando hueco para la flecha de recogida; si no, la flecha de más
-    // abajo quedaría dibujada encima de las lamas, hecho un lío.
-    const lamas=(xS,xE)=>{
-      const ww=xE-xS;if(ww<=0)return;
+    // VERTICAL DE LAMAS → igual patrón que la cortina vertical recta (svgVertical):
+    // nº de apertura (1-10) si se indica; si no, se deduce de la Recogida D/IZQ/CEN
+    // (mismo fallback que usa svgVertical). Mismos grupos/fracciones que allí, para
+    // que el tramo recto de una Vertical en L se vea y funcione IGUAL que una
+    // Vertical suelta con esa misma apertura.
+    let ap=parseInt(apertura)||0;
+    if(!ap)ap=recogida==='IZQ'?1:recogida==='CEN'?5:3;
+    const lamasV=(f0,f1)=>{
+      const xS=x+w*f0,xE=x+w*f1,ww=xE-xS;if(ww<=0)return;
       const n=Math.max(3,Math.round(ww/7)),step=ww/(n-1||1);
       for(let i=0;i<n;i++){const lx=(xS+i*step).toFixed(1);
         o+=`<line x1="${lx}" y1="${y.toFixed(1)}" x2="${lx}" y2="${(y+h).toFixed(1)}" stroke="#222" stroke-width="2.2"/>`;}
     };
-    if(recogida==='CEN'||nH>=2){lamas(x,x+w*0.18);lamas(x+w*0.82,x+w);}
-    else if(recogida==='IZQ'){lamas(x+w*0.68,x+w);}
-    else{lamas(x,x+w*0.32);}
+    const flechaV=(f0,f1,dir)=>{
+      const fy=(y+h*0.45).toFixed(1);
+      const mk=dir==='izq'?`marker-start="url(#al${u})"`:`marker-end="url(#ar${u})"`;
+      o+=`<line x1="${(x+w*f0).toFixed(1)}" y1="${fy}" x2="${(x+w*f1).toFixed(1)}" y2="${fy}" stroke="#111" stroke-width="2" ${mk}/>`;
+    };
+    if(ap>=1&&ap<=2){lamasV(0.55,1);flechaV(0.10,0.42,'izq');}
+    else if(ap>=3&&ap<=4){lamasV(0,0.45);flechaV(0.58,0.90,'dcha');}
+    else if(ap>=5&&ap<=7){lamasV(0,0.28);lamasV(0.72,1);flechaV(0.34,0.47,'dcha');flechaV(0.53,0.66,'izq');}
+    else{lamasV(0.36,0.64);flechaV(0.08,0.30,'izq');flechaV(0.70,0.92,'dcha');}
   } else {
     // PLANA y resto → tela lisa con divisiones de hoja
     o+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="none" stroke="#111" stroke-width="1.4"/>`;
@@ -2580,20 +2589,30 @@ function cuerpoConfeccion(tipo,x,y,w,h,hojas,ondaCm,recogida,u,ladoCorner){
     const cadEndP=y+h*0.32;
     o+=`<line x1="${mandoX.toFixed(1)}" y1="${(y-4).toFixed(1)}" x2="${mandoX.toFixed(1)}" y2="${cadEndP.toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/>
     <rect x="${(mandoX-2.5).toFixed(1)}" y="${cadEndP.toFixed(1)}" width="5" height="11" rx="2.5" fill="none" stroke="#111" stroke-width="1.3"/>`;
-  } else {
-    if(t.includes('vertical')||t.includes('lama')){
-      // VERTICAL DE LAMAS → cadena de mando (línea discontinua, como en svgVertical),
-      // en el lado CONTRARIO al que se recogen las lamas (igual que en svgVertical:
-      // p.ej. con recogida izquierda las lamas se juntan a la derecha y el mando
-      // queda a la izquierda).
-      const mandoV=(atX)=>{o+=`<line x1="${atX.toFixed(1)}" y1="${(y-1).toFixed(1)}" x2="${atX.toFixed(1)}" y2="${(y+h*0.5).toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/>`;};
-      // Si el lado que tocaría (según la recogida) es el mismo que toca la esquina
-      // de la L, se dibujaría encima del riel/tela del otro tramo y no se vería:
-      // en ese caso se pasa al lado libre.
-      let ladoMando=recogida==='IZQ'?'izq':'dcha';
-      if(ladoCorner&&ladoMando===ladoCorner)ladoMando=(ladoCorner==='izq'?'dcha':'izq');
-      if(ladoMando==='izq')mandoV(x-9);else mandoV(x+w+7);
+  } else if(t.includes('vertical')||t.includes('lama')){
+    // VERTICAL DE LAMAS → cadena de mando (línea discontinua, como en svgVertical),
+    // en el lado que marca la tabla de aperturas de Canotex (mismo ap/fallback que
+    // arriba). Las flechas ya se han dibujado arriba junto con las lamas, así que
+    // aquí NO se repite la flecha genérica de más abajo.
+    let apM=parseInt(apertura)||0;
+    if(!apM)apM=recogida==='IZQ'?1:recogida==='CEN'?5:3;
+    const mandoLadoTabla={1:'izq',2:'dcha',3:'dcha',4:'izq',5:'dcha',6:'izq',7:'doble',8:'dcha',9:'izq',10:'doble'};
+    const ladoMandoV=mandoLadoTabla[apM]||'dcha';
+    const mandoV=(atX)=>{o+=`<line x1="${atX.toFixed(1)}" y1="${(y-1).toFixed(1)}" x2="${atX.toFixed(1)}" y2="${(y+h*0.5).toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/>`;};
+    if(ladoMandoV==='doble'){
+      // El lado que toca la esquina se omite (ahí quedaría oculto bajo el otro
+      // tramo); el lado libre se dibuja siempre.
+      if(ladoCorner!=='izq')mandoV(x-9);
+      if(ladoCorner!=='dcha')mandoV(x+w+7);
+    } else {
+      // Si el lado que tocaría (según la tabla) es el mismo que toca la esquina de
+      // la L, se dibujaría encima del riel/tela del otro tramo y no se vería: en
+      // ese caso se pasa al lado libre.
+      let lado=ladoMandoV;
+      if(ladoCorner&&lado===ladoCorner)lado=(ladoCorner==='izq'?'dcha':'izq');
+      if(lado==='izq')mandoV(x-9);else mandoV(x+w+7);
     }
+  } else {
     // Flecha de recogida dentro del tramo.
     // Si el tramo va partido en 2 hojas → flechas dobles, como en una cortina normal.
     const fy=(y+h*0.45).toFixed(1);
@@ -2640,7 +2659,7 @@ function svgFormaL(p,u){
   const xExt=esIzq?xLat:(xLat+wLat);
   const rielY=y=>y-7;
 
-  const cuerpoR=cuerpoConfeccion(p.tipo,xRecto,yR,wRecto,hTelaR,p.hojas,p.ondaCm,p.recogida||'D',u,esIzq?'izq':'dcha');
+  const cuerpoR=cuerpoConfeccion(p.tipo,xRecto,yR,wRecto,hTelaR,p.hojas,p.ondaCm,p.recogida||'D',u,esIzq?'izq':'dcha',p.apertura);
   const cuerpoL=cuerpoInclinado(p.tipo,xEsq,yEsq,xExt,yExt,hTelaL,p.hojasL,p.ondaCm,p.recogidaL||'D',u);
 
   // Riel del tramo inclinado como un tubo fino (igual altura que el riel-caja del
@@ -2889,10 +2908,11 @@ function fichaFilas(p){
     return rowsSimple;
   }
   const esVert=['vertical','lama','brisa'].some(k=>(p.tipo||'').toLowerCase().includes(k));
-  // En forma L el dibujo usa la Recogida (D/IZQ/CEN) de cada tramo, no el nº de
-  // apertura (que solo aplica a la cortina recta) — mostrar aquí "Nº X" sería un
-  // dato que no coincide con lo que realmente dibuja el tramo recto.
-  const recLabel=esVert&&p.apertura&&!p.formaL?('Nº '+p.apertura):({'D':'>> Derecha','IZQ':'<< Izquierda','CEN':'<< Central >>'}[p.recogida]||p.recogida||'D');
+  // En forma L el nº de apertura controla el tramo recto de Vertical/lama (igual
+  // que la cortina recta); Brisa en L todavía no lo usa en el dibujo, así que ahí
+  // se sigue mostrando la Recogida D/IZQ/CEN para no dar un dato que no coincida.
+  const _tVL=(p.tipo||'').toLowerCase(),esVerticalLamaF=_tVL.includes('vertical')||_tVL.includes('lama');
+  const recLabel=esVert&&p.apertura&&(!p.formaL||esVerticalLamaF)?('Nº '+p.apertura):({'D':'>> Derecha','IZQ':'<< Izquierda','CEN':'<< Central >>'}[p.recogida]||p.recogida||'D');
   let rows='';
   const _tf=(p.tipo||'').toLowerCase();
   const esEstorF=_tf.includes('estor')&&!_tf.includes('enroll');

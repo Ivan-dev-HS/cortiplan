@@ -157,14 +157,29 @@ test('Cojín y Cabecero no generan línea de corte; Visillo sí', () => {
 });
 
 console.log('\nVertical en L y ubicación del soporte en el corte');
-test('El nº de apertura (recta) no se cuela como "Recogida" en la ficha de una Vertical en L', () => {
-  // El dibujo en L usa la Recogida (D/IZQ/CEN) de cada tramo, no el nº de apertura
-  // (que solo aplica a la cortina recta) — si la ficha mostrase "Nº 7" aquí, el
-  // dato no coincidiría con lo que realmente dibuja el tramo recto (Derecha).
-  const p = { tipo: 'Vertical', ancho: '150', alto: '220', apertura: '7', recogida: 'D', formaL: 'dcha', anchoL: '100' };
+test('El nº de apertura también controla el tramo recto de una Vertical en L (ficha y dibujo)', () => {
+  // El tramo recto de una Vertical en L es, mecánicamente, igual que una vertical
+  // recta: el nº de apertura debe seguir controlando su ficha ("Nº X") Y su dibujo
+  // (mismo patrón de lamas/flecha/mando que svgVertical), no solo la Recogida D/IZQ/CEN.
+  const p = { tipo: 'Vertical', ancho: '150', alto: '220', apertura: '7', recogida: 'D', formaL: 'dcha', anchoL: '100', altoL: '220' };
   const html = app.fichaFilas(p);
-  assert.ok(!html.includes('Nº 7'), 'no debería mostrar el nº de apertura en una cortina en L');
-  assert.ok(html.includes('Derecha'), 'debería mostrar la Recogida (D/IZQ/CEN) del tramo recto en su lugar');
+  assert.ok(html.includes('Nº 7'), 'la ficha debería mostrar el nº de apertura también en una cortina en L');
+
+  const svgAp7 = app.getSVG(p);
+  const svgApNone = app.getSVG({ ...p, apertura: '' }); // sin apertura: cae al fallback por Recogida (D → ap 3)
+  assert.notStrictEqual(svgAp7, svgApNone, 'apertura=7 (doble centro) debería dibujarse distinto que el fallback de Recogida D');
+  // apertura 7 = "doble centro · mando doble": el lado que toca la esquina de la L
+  // se omite (ahí quedaría oculto bajo el tramo L), así que en este caso concreto
+  // (esquina a la derecha) el tramo recto dibuja un único mando (izquierdo), más
+  // el propio mando del tramo L = 2 líneas discontinuas en total.
+  const dashedCount = (svgAp7.match(/stroke-dasharray="2\.5,2"/g) || []).length;
+  assert.strictEqual(dashedCount, 2, `esperaba 1 mando del tramo recto (el lado de la esquina se omite) + 1 del tramo L, encontradas ${dashedCount}`);
+});
+test('Brisa en L sigue mostrando la Recogida D/IZQ/CEN (el nº de apertura aún no se dibuja ahí)', () => {
+  const p = { tipo: 'Brisa', ancho: '150', alto: '220', apertura: '7', recogida: 'D', formaL: 'dcha', anchoL: '100' };
+  const html = app.fichaFilas(p);
+  assert.ok(!html.includes('Nº 7'), 'Brisa en L no debería mostrar el nº de apertura (su dibujo en L aún no lo usa)');
+  assert.ok(html.includes('Derecha'), 'debería mostrar la Recogida D/IZQ/CEN en su lugar');
 });
 test('Vertical en L dibuja lamas (como la vertical recta), no el panel liso genérico', () => {
   const svg = app.getSVG({ tipo: 'Vertical', ancho: '150', alto: '220', anchoL: '100', altoL: '220',
