@@ -331,6 +331,103 @@ test('Una línea de cabecera/pie de página que arrastra datos reales (SISTEMA/T
   assert.strictEqual(out[0].sistema, 'GUIA MANUAL 1 VIA - COLOR BLANCO',
     'el SISTEMA no debería perderse solo porque la línea empiece con texto de pie de página');
 });
+test('SISTEMA se sigue uniendo aunque el corte de línea no encaje con ningún patrón conocido de antemano', () => {
+  // Probado con varios presupuestos reales: cada uno corta la frase de
+  // SISTEMA DE INSTALACION en un punto distinto ("...BLANCA" + "CON CODO A LA
+  // IZQUIERDA.", "...DEL CLIENTE" + "ADAPTANDO A LA MEDIDA."). Mantener una
+  // lista cerrada de frases de continuación se queda corta cada vez que
+  // aparece un presupuesto nuevo, así que ahora se une todo lo que venga a
+  // continuación mientras no sea otra etiqueta de campo.
+  const txt = [
+    'PRESUPUESTO DE VENTA',
+    'REF. H800 CLIENTE OCHO',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'SALON 1,00',
+    'CORTPLA MEDIDA:300x250H -CONFE:1 HOJA - RECOG:D',
+    'UD. CORTINA CONFECCIONADA PLANA.',
+    'TEJIDO: EJEMPLO LISO',
+    'SISTEMA DE INSTALACION: GUIA MANUAL 1 VIA COLOR BLANCA',
+    'CON CODO A LA IZQUIERDA.',
+    'SOPORTE TECHO',
+  ].join('\n');
+  const out = app.estrategiaCanotex(txt);
+  assert.strictEqual(out.length, 1);
+  assert.strictEqual(out[0].sistema, 'GUIA MANUAL 1 VIA COLOR BLANCA CON CODO A LA IZQUIERDA');
+});
+test('SISTEMA no se une con la línea separadora decorativa ("Z - - - - -") que Canotex mete entre artículos', () => {
+  const txt = [
+    'PRESUPUESTO DE VENTA',
+    'REF. I900 CLIENTE NUEVE',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'SALON 1,00',
+    'CORTOP MEDIDA:150x250H -CONFE:1 HOJA - RECOG:D',
+    'UD. CORTINA CONFECCIONADA ONDA PERFECTA.',
+    'TEJIDO: EJEMPLO LISO',
+    'SISTEMA DE INSTALACION: GUIA MANUAL 1 VIA COLOR BLANCA.',
+    'Z - - - - - 1,00',
+    'DORMITORIO 1,00',
+  ].join('\n');
+  const out = app.estrategiaCanotex(txt);
+  assert.strictEqual(out.length, 1);
+  assert.strictEqual(out[0].sistema, 'GUIA MANUAL 1 VIA COLOR BLANCA',
+    'la línea separadora "Z - - - - -" no debería colarse dentro del sistema');
+});
+
+console.log('\nParser: tejido, zona de instalación y datos del cliente');
+test('El tejido con guion en el nombre ("LINEN 03 - PIEDRA") se extrae completo, no vacío', () => {
+  // Antes, la clase de caracteres de la extracción de tejido no incluía el
+  // guion, así que la extracción entera fallaba (ni "LINEN 03" parcial, nada)
+  // en vez de cortar limpiamente antes del guion.
+  const txt = [
+    'PRESUPUESTO DE VENTA',
+    'REF. J100 CLIENTE DIEZ',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'DORMITORIO 1,00',
+    'LIN03CA43 MEDIDA:140x160H - MANDO: D -CAIDA: DEL- SOP:T',
+    'CORTINA ENROLLABLE MANDO A CADENA SISTEMA',
+    'MEDIUM A CADENA (T43), TEJIDO LINEN 03 - PIEDRA. SOP.GRIS',
+  ].join('\n'),
+    out = app.estrategiaCanotex(txt);
+  assert.strictEqual(out.length, 1);
+  assert.strictEqual(out[0].tejido, 'LINEN 03 - PIEDRA');
+});
+test('ZONA no hace match dentro de un nombre de tejido que la contiene ("AMAZONA")', () => {
+  // "ZONA" es un patrón de instalación ("ZONA: XXX"), pero sin límite de
+  // palabra también hacía match dentro de "AMAZONA" (un tejido), inventando
+  // una zona de instalación falsa a partir del nombre del tejido.
+  app.resetInstalacion();
+  app.parsear([
+    'PRESUPUESTO DE VENTA',
+    'REF. K200 CLIENTE ONCE',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'DORMITORIO 1,00',
+    'AMA02CA32 MEDIDA:73x105H - MANDO: D -CAIDA: DEL- SOP:T',
+    'CORTINA ENROLLABLE MANDO A CADENA SISTEMA',
+    'SIMPLY (T32), TEJIDO AMAZONA AMA02 BEIG.SOP.BEIG',
+    'NOTA: INSTAL·LACIO INCLOSA.',
+  ], true);
+  const STATE = app.__internals.STATE;
+  assert.strictEqual(STATE.instZona, '',
+    `no debería detectar ninguna zona a partir de "AMAZONA", detectó: "${STATE.instZona}"`);
+});
+test('TEJIDO vacío en el presupuesto no arrastra el texto de la sección de pago ("PAGAMENT FORMA DE PAGAMENT")', () => {
+  // Cuando el operario deja el campo TEJIDO en blanco, esa línea puede caer a
+  // la misma altura que el inicio de la sección de pago en el PDF, y el
+  // extractor de texto los junta en una sola línea ("TEJIDO: PAGAMENT FORMA
+  // DE PAGAMENT"). Antes eso se colaba como si fuera el nombre del tejido.
+  const txt = [
+    'PRESUPUESTO DE VENTA',
+    'REF. DESPATX',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'PAQUETTO MEDIDA:124,5x160H -MANDO:D',
+    'ESTOR TIPO PAQUETTO CON MANDO A CADENA OCULTO.',
+    'TEJIDO: PAGAMENT FORMA DE PAGAMENT 1,00',
+    '50% A LA ACEPTACION DEL PRESUPUESTO',
+  ].join('\n');
+  const out = app.estrategiaCanotex(txt);
+  assert.strictEqual(out.length, 1);
+  assert.strictEqual(out[0].tejido, '', 'el tejido debería quedar vacío, no con texto de la sección de pago');
+});
 
 console.log('\nFunciones puras del parser');
 

@@ -711,7 +711,10 @@ async function processPDF(file){
       if(_ref)dbg('🏷 Ref del pedido: "'+_ref+'"','ok');
     }
     if(STATE._instRawHit){
-      const zm=_txtCompleto.match(/ZONA\s*:?\s*([A-ZÀ-ÿ][A-ZÀ-ÿ\s\-\.\/]{1,40}?)(?=\s*\d|\s*$)/i);
+      // \b delante de ZONA: sin eso, "ZONA" también hacía match dentro de
+      // palabras como "AMAZONA" (un tejido), dando una zona de instalación
+      // inventada a partir de un nombre de tejido.
+      const zm=_txtCompleto.match(/\bZONA\s*:?\s*([A-ZÀ-ÿ][A-ZÀ-ÿ\s\-\.\/]{1,40}?)(?=\s*\d|\s*$)/i);
       if(zm)STATE._instRawZona=zm[1].trim().replace(/\s{2,}/g,' ').replace(/[\.\s]+$/,'');
       dbg('📍 Instalación: zona="'+(STATE._instRawZona||'—')+'"','ok');
     }
@@ -735,19 +738,45 @@ function extraerClientePorCoordenadas(items){
   const pageW=(items.length?Math.max(...items.map(i=>i.x)):595)||595;
   const midX=pageW*0.40,topMin=pageH*0.78,topMax=pageH*0.99;
   const zoneItems=items.filter(i=>i.x>midX&&i.y>=topMin&&i.y<=topMax);
-  const SKIP=/PRESUPUESTO|VENTA|CANOTEX|TEXTIL|CIF|NIF|Berchtwald|Imagine|OTK/i;
+  // Se compara sin puntos (además de con ellos) para que abreviaturas como
+  // "N.I.F." también se descarten vía el mismo alternativa "NIF" (antes solo
+  // se reconocía "NIF" sin puntos, así que la fila de cabecera de la tabla
+  // "...N.I.F. TELÉFONO AGENTE PÁG." se colaba entera como si fuera un dato
+  // del cliente cuando el recorte por columna la dejaba sin el "PRESUPUESTO"
+  // inicial que normalmente la habría descartado).
+  const SKIP=/PRESUPUESTO|VENTA|CANOTEX|TEXTIL|CIF|NIF|TEL[ÉE]FONO|AGENTE|AGENDA|Berchtwald|Imagine|OTK|^Tel:/i;
   const byY2=new Map();
   for(const it of zoneItems){const yk=Math.round(it.y/4)*4;if(!byY2.has(yk))byY2.set(yk,[]);byY2.get(yk).push(it);}
   const cLines=[];
   for(const yk of [...byY2.keys()].sort((a,b)=>b-a)){
     const row=byY2.get(yk).sort((a,b)=>a.x-b.x).map(i=>i.str).join(' ').trim();
-    if(row&&!SKIP.test(row)&&row.length>1)cLines.push(row);
+    const rowSinPuntos=row.replace(/\./g,'');
+    if(row&&!SKIP.test(row)&&!SKIP.test(rowSinPuntos)&&row.length>1)cLines.push(row);
   }
   dbg(`📋 Cliente: ${cLines.length} línea(s)`);
   if(cLines[0])setVal('cnom',cLines[0].trim());
-  if(cLines[1])setVal('cdir',cLines[1].trim());
-  if(cLines[2]){const r=cLines[2].trim(),m=r.match(/^(\d{5})\s+(.*)/);setVal('cpob',m?m[2].trim():r);}
-  if(cLines[3]){const prov=cLines[3].trim();if(prov&&!/^\d/.test(prov)){const el=$('cpob');if(el&&el.value&&!el.value.includes(prov))el.value+=' ('+prov+')';}}
+  // La dirección (opcional: algunos clientes no la tienen en ficha) y la fila
+  // "CP POBLACIÓN" pueden caer en cualquier posición después del nombre — si
+  // al cliente le falta la dirección, esa línea no existe en el PDF (no hay
+  // ningún hueco en blanco que la sustituya) y todo lo siguiente se
+  // desplazaba una posición. En vez de asumir índices fijos, se busca la fila
+  // "CP POBLACIÓN" por su propio patrón (siempre 5 dígitos al principio).
+  const idxPob=cLines.findIndex((l,idx)=>idx>0&&/^\d{5}\s+\S/.test(l.trim()));
+  if(idxPob>0){
+    const dir=cLines.slice(1,idxPob).join(', ').trim();
+    if(dir)setVal('cdir',dir);
+    const r=cLines[idxPob].trim(),m=r.match(/^(\d{5})\s+(.*)/);
+    setVal('cpob',m?m[2].trim():r);
+    const prov=cLines[idxPob+1]?cLines[idxPob+1].trim():'';
+    if(prov&&!/^\d/.test(prov)){const el=$('cpob');if(el&&el.value&&!el.value.includes(prov))el.value+=' ('+prov+')';}
+  }else{
+    // No se encontró una fila "CP POBLACIÓN" reconocible (caso raro): se
+    // mantiene el comportamiento anterior por índice fijo como respaldo,
+    // mejor que no rellenar nada.
+    if(cLines[1])setVal('cdir',cLines[1].trim());
+    if(cLines[2]){const r=cLines[2].trim(),m=r.match(/^(\d{5})\s+(.*)/);setVal('cpob',m?m[2].trim():r);}
+    if(cLines[3]){const prov=cLines[3].trim();if(prov&&!/^\d/.test(prov)){const el=$('cpob');if(el&&el.value&&!el.value.includes(prov))el.value+=' ('+prov+')';}}
+  }
 }
 
 async function pdfToOCR(file){
@@ -787,9 +816,10 @@ function parsear(rawLines,skipClientExtract=false){
   // Trabajar sobre líneas limpias y también sobre el texto completo unido
   const _instLines=(rawLines||[]).map(l=>limpiarLinea(fixOCR(String(l||'')))).filter(Boolean);
   const _instFull=_instLines.join(' \n ');
-  // ZONA de instalación (puede venir en "INSTALACION UD. ... ZONA:XXX")
+  // ZONA de instalación (puede venir en "INSTALACION UD. ... ZONA:XXX"). \b
+  // delante de ZONA para no hacer match dentro de palabras como "AMAZONA".
   {
-    const zm=_instFull.match(/ZONA\s*:?\s*([A-ZÀ-ÿ][A-ZÀ-ÿ\s\-\.\/]{1,40}?)(?=\s*\d|\s*$)/i);
+    const zm=_instFull.match(/\bZONA\s*:?\s*([A-ZÀ-ÿ][A-ZÀ-ÿ\s\-\.\/]{1,40}?)(?=\s*\d|\s*$)/i);
     if(zm)STATE.instZona=zm[1].trim().replace(/\s{2,}/g,' ').replace(/[\.\s]+$/,'');
   }
   // REF: "REF.A691 Mª PAZ", "REF: BELIANES", "REF A691"
@@ -907,10 +937,10 @@ function estrategiaCanotex(txt){
       let m=nl.match(/TEJIDO:\s*([A-Z0-9][^\n.,]+?)(?:\s*\.|$)/i);
       if(m&&m[1])return m[1].trim();
       // Patrón 2: ", TEJIDO XXX" (inline en descripción enrollable)
-      m=nl.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.|SOP|$)/i);
+      m=nl.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%\-]+?)(?:\.|SOP|$)/i);
       if(m&&m[1])return m[1].trim();
       // Patrón 3: "TEJIDO XXX." al final de línea
-      m=nl.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.|SOP|BLANCO|GRIS|NEGRO|BLANCA|$)/i);
+      m=nl.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/%\-]+?)(?:\.|SOP|BLANCO|GRIS|NEGRO|BLANCA|$)/i);
       if(m&&m[1]&&m[1].length>2)return m[1].trim();
     }
     return '';
@@ -1014,6 +1044,12 @@ function estrategiaCanotex(txt){
         // TEJIDO — sin break para que el loop siga buscando SISTEMA
         if(!tejido&&/^TEJIDO:\s*/i.test(nlC))tejido=nlC.replace(/^(?:TEJIDO:\s*)+/i,'').trim();
         else if(!tejido&&/^TEJIDO:\s*/i.test(nl))tejido=nl.replace(/^(?:TEJIDO:\s*)+/i,'').trim();
+        // Cuando el campo TEJIDO viene vacío en el propio presupuesto, esta
+        // línea puede coincidir en altura con el inicio de la sección
+        // siguiente ("TEJIDO: PAGAMENT FORMA DE PAGAMENT…") y el extractor la
+        // toma por el nombre del tejido. Si lo capturado es en realidad texto
+        // de cierre del presupuesto, se descarta (mejor vacío que erróneo).
+        if(tejido&&/^(PAGAMENT|FORMA\s+DE\s+PAG|ACEPTACI[OÓ]N|TRANSFERENCIA|BRUTO|TOTAL|N\/C\.)/i.test(tejido))tejido='';
         // SISTEMA — se busca la frase en cualquier punto de la línea (no solo al
         // principio): a veces el texto de pie de página del presupuesto (CIF,
         // registro mercantil…) cae por casualidad a la misma altura que esta
@@ -1021,12 +1057,19 @@ function estrategiaCanotex(txt){
         // INSTALACION:" en vez de al principio de la línea.
         if(!sistema&&/SISTEMA\s+DE\s+INSTALACI[OÓ]N?:/i.test(nl)){
           sistema=nl.replace(/^[\s\S]*?SISTEMA\s+DE\s+INSTALACI[OÓ]N?:\s*/i,'').trim();
-          // El sistema puede continuar en las líneas siguientes (p.ej. termina en coma
-          // "GUIA MANUAL 1 VIA, REFORZADA," y sigue "EN COLOR BLANCO (...)").
-          // Unir continuaciones que NO empiezan por otra etiqueta ni son otra cortina/estancia.
-          let jj=descLineas.indexOf(nl);
+          // El sistema puede continuar en las líneas siguientes: el PDF corta la
+          // frase donde le cuadra en la maquetación, no donde termina una idea
+          // ("GUIA MANUAL 1 VIA, REFORZADA," + "EN COLOR BLANCO", "...- COLOR" +
+          // "BLANCO - CORR.OP...", "...BLANCA" + "CON CODO A LA IZQUIERDA.",
+          // "...DEL CLIENTE" + "ADAPTANDO A LA MEDIDA."). Intentar adivinar el
+          // punto de corte con una lista cerrada de frases se queda corto cada
+          // vez que aparece un presupuesto nuevo, así que se une TODO lo que
+          // venga a continuación mientras no sea, a su vez, otra etiqueta de
+          // campo, ni texto de cierre del presupuesto — eso ya lo filtran los
+          // "break" de abajo; hay un límite de líneas como red de seguridad.
+          let jj=descLineas.indexOf(nl),unidas=0;
           if(jj>=0){
-            while(jj+1<descLineas.length){
+            while(jj+1<descLineas.length&&unidas<6){
               let sig=descLineas[jj+1];
               if(!sig){jj++;continue;}
               // Saltar líneas de basura lateral pura ("omoT", "oilof", códigos…)
@@ -1035,13 +1078,13 @@ function estrategiaCanotex(txt){
               if(/^(TEJIDO|SISTEMA|MEDIDA|UD\.|CONFE|RECOG|MANDO|SOP|COLOR\s+GU|CAIDA)/i.test(sig))break;
               if(/^[A-Z0-9]{4,}\s+MEDIDA/i.test(sig))break;
               if(NO_EST.test(sig))break;
-              // Unir solo si el sistema venía "abierto" (acaba en coma/guion, o en
-              // "COLOR" con el nombre del color cortado a la línea siguiente:
-              // "...- COLOR" / "BLANCO - CORR.OP...") o la línea sigue el sistema
-              if(/[,\-]$/.test(sistema)||/\bCOLOR$/i.test(sistema)||/^(EN\s+COLOR|COLOR|REFORZAD|CON\s+EMPALME|EN\s+DOS|D\.\d)/i.test(sig)){
-                sistema=(sistema+' '+sig).replace(/\s{2,}/g,' ').trim();
-                jj++;
-              } else break;
+              // Parar ante una línea separadora decorativa ("Z - - - - -",
+              // "-------------------------------------------------- "): no es
+              // continuación de la frase, es el adorno que Canotex mete entre
+              // artículos.
+              if(/^[A-Z]?\s*[-\s]{4,}/.test(sig))break;
+              sistema=(sistema+' '+sig).replace(/\s{2,}/g,' ').trim();
+              jj++;unidas++;
             }
           }
           // Quitar el fragmento de soporte del sistema (va en su propio campo)
@@ -1053,13 +1096,13 @@ function estrategiaCanotex(txt){
         // UD. descripción
         if(!tipoDesc&&/^UD\.\s*/i.test(nl)){
           tipoDesc=nl.replace(/^UD\.\s*/i,'').replace(/\(ONDA[^)]*\)/,'').trim();
-          const t=nl.match(/TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.|$)/i);
+          const t=nl.match(/TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%\-]+?)(?:\.|$)/i);
           if(t&&t[1]&&!tejido)tejido=t[1].trim();
         }
         // Línea sin "UD." pero con descripción de tipo
         if(!tipoDesc&&/ENROLLABLE|ESTOR|ROMAN|ROLLER|DIA\s*Y\s*NOCHE|VERTICAL|BRISA|PLEG[OÓ]N|PRESILLA|FRUNCID|ONDA\s*PERFECTA|PALAS|TABLAS|PLISAD/i.test(nl))tipoDesc=nl;
         // Tejido con "REF." → "TEJIDO REF. GRECIA 05"
-        if(!tejido){const tRef=nl.match(/TEJIDO\s+REF\.?\s*([A-Z0-9][A-Z0-9\s\/%]*)/i);if(tRef&&tRef[1])tejido=('REF. '+tRef[1]).trim();}
+        if(!tejido){const tRef=nl.match(/TEJIDO\s+REF\.?\s*([A-Z0-9][A-Z0-9\s\/%\-]*)/i);if(tRef&&tRef[1])tejido=('REF. '+tRef[1]).trim();}
         // Soporte en descripción: "SOPORTE TECHO CLIC", "SOP. FRONTAL", "SOP. SOSTRE",
         // "CON SOP. FRENTE", "SOPORTE RAPIDO NEGRO", "SOPORTE PARED"…
         if(!sopDesc){
@@ -1077,8 +1120,8 @@ function estrategiaCanotex(txt){
         }
         // Tejido embebido inline: "CADENA (T43), TEJIDO XXX" o "TEJIDO THECNIC..."
         if(!tejido){
-          const tInline=nl.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.|SOP|$)/i)||
-                        nl.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.\s*$|SOP|\s*$)/i);
+          const tInline=nl.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%\-]+?)(?:\.|SOP|$)/i)||
+                        nl.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/%\-]+?)(?:\.\s*$|SOP|\s*$)/i);
           if(tInline&&tInline[1]&&tInline[1].trim().length>2){
             tejido=tInline[1].trim();
             // El nombre del tejido (con su referencia/color) a veces sigue en la línea
@@ -1104,6 +1147,11 @@ function estrategiaCanotex(txt){
       }
       // Fallback genérico
       if(!tejido)tejido=buscarTejidoFallback(lines,i+1,i+15);
+      // Ningún camino de extracción de tejido (incluido el fallback genérico
+      // de arriba) debería devolver texto de cierre del presupuesto: pasa
+      // cuando el campo TEJIDO viene vacío en el propio documento y esta
+      // línea coincide en altura con el inicio de la sección de pago.
+      if(tejido&&/^(PAGAMENT|FORMA\s+DE\s+PAG|ACEPTACI[OÓ]N|TRANSFERENCIA|BRUTO|TOTAL|N\/C\.)/i.test(tejido))tejido='';
 
       // Sistema: para enrollables, buscar nombre de mecanismo
       if(!sistema&&esEnrollCodigo){
@@ -1286,9 +1334,9 @@ function buscarTejidoFallback(lines,desde,hasta){
     let m=l.match(/^TEJIDO[S]?:?\s*(.+)$/i);
     if(m)return m[1].replace(/\s*\d+[,\.]\d{2}\s*$/,'').trim();
     // Patrón inline enrollable: ", TEJIDO THECNIC BASIC..."
-    m=l.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.|SOP|$)/i);
+    m=l.match(/,\s*TEJIDO\s+([A-Z0-9][A-Z0-9\s\/%\-]+?)(?:\.|SOP|$)/i);
     if(m&&m[1])return m[1].trim();
-    m=l.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/%]+?)(?:\.\s*$|SOP)/i);
+    m=l.match(/\bTEJIDO\s+([A-Z0-9][A-Z0-9\s\/%\-]+?)(?:\.\s*$|SOP)/i);
     if(m&&m[1]&&m[1].length>2)return m[1].trim();
   }
   return '';
