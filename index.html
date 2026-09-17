@@ -3591,8 +3591,11 @@ async function buildCortePDFBytes(){
       const esFrente=/PARED|FRONTAL|FRENTE/i.test(l.soporte||'');
       const soportesTxt=numSoportes?(numSoportes+' '+(esFrente?'Frente':'Techo')):'';
       const vals=[
-        // Col 0: TIPO DE SISTEMA → "Estor" si es estor, si no el sistema
-        esEstorC?'Estor':sistemaLimpio,
+        // Col 0: TIPO DE SISTEMA → "Estor"/"Paquetto" si es uno de los dos (no
+        // llevan sistema real, solo el mando, así que sin esto se quedaba en
+        // blanco para Paquetto — inconsistente con Estor, que sí lo mostraba),
+        // si no el sistema
+        esEstorC?'Estor':(isPaq?'Paquetto':sistemaLimpio),
         (l.ancho&&l.alto)?l.ancho+'x'+l.alto+'H':(l.ancho||l.alto||''), // Medida
         partida,                                                           // Envío Partido (2 si >270)
         colorFinal,                                                        // Color (campo color + color sistema)
