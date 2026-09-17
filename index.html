@@ -1384,7 +1384,7 @@ function addCortina(d={}){
   const hojasIni=d.hojas||'1';
   const recIni=(parseInt(hojasIni)||1)>=2?'CEN':(d.recogida||'D');
   const c={id,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',hojas:hojasIni,recogida:recIni,tejido:d.tejido||'',sistema:d.sistema||'',tipo,extra:d.extra||'',metros:d.metros||'',caida:d.caida||'',soporte:d.soporte||'',codigo:d.codigo||'',motorizada:d.motorizada||false,ondaCm:d.ondaCm||'',esTapiceria:d.esTapiceria||false,apertura:d.apertura||'',mandoBrisa:d.mandoBrisa||'cadena',colorGuia:d.colorGuia||'',
-  formaL:d.formaL||'',anchoL:d.anchoL||'',altoL:d.altoL||'',hojasL:d.hojasL||'1',recogidaL:d.recogidaL||'D',
+  formaL:d.formaL||'',anchoL:d.anchoL||'',altoL:d.altoL||'',hojasL:d.hojasL||'1',recogidaL:d.recogidaL||'D',aperturaL:d.aperturaL||'',
   llucana:d.llucana||'',llucAnchoArriba:d.llucAnchoArriba||'',llucAltoCorto:d.llucAltoCorto||'',llucInclinada:d.llucInclinada||'',
   enBlanco:d.enBlanco||false,
   llu2:d.llu2||'',llu2Ancho:d.llu2Ancho||'',llu2Alto:d.llu2Alto||'',llu2AnchoArriba:d.llu2AnchoArriba||'',llu2AltoCorto:d.llu2AltoCorto||'',llu2Inclinada:d.llu2Inclinada||'',llu2Hojas:d.llu2Hojas||'1',llu2Recogida:d.llu2Recogida||'D'};
@@ -1671,25 +1671,26 @@ function renderPcard(c,idx){
   const esVertBri=tLow.includes('vertical')||tLow.includes('brisa')||tLow.includes('lama');
   const esBrisa=tLow.includes('brisa');
   const esOnda=tLow.includes('onda');
+  // El nº de apertura (1-10) también controla el tramo recto Y el tramo L de una
+  // Vertical en L (cada tramo el suyo, cada uno puede llevar una apertura
+  // distinta); Brisa en L, en cambio, todavía no lo usa en el dibujo (solo
+  // Vertical/lama), así que ahí se sigue ocultando para no mostrar un control
+  // que no hace nada.
+  const esVerticalLama=tLow.includes('vertical')||tLow.includes('lama');
+  const APERTURAS=[
+    ['1','1 · Izda · Mando izda'],['2','2 · Izda · Mando dcha'],
+    ['3','3 · Dcha · Mando dcha'],['4','4 · Dcha · Mando izda'],
+    ['5','5 · Doble centro · Mando dcha'],['6','6 · Doble centro · Mando izda'],
+    ['7','7 · Doble centro · Mando doble'],['8','8 · Doble extremos · Mando dcha'],
+    ['9','9 · Doble extremos · Mando izda'],['10','10 · Doble extremos · Mando doble'],
+  ];
+  const optsApertura=sel=>APERTURAS.map(([v,t])=>`<option value="${v}"${String(sel)===v?' selected':''}>${t}</option>`).join('');
 
   // Campos condicionales según tipo
   let extras='';
   if(esVertBri){
-    // El nº de apertura (1-10) también controla el tramo recto de una Vertical en
-    // L (igual que en la cortina recta); Brisa en L, en cambio, todavía no lo usa
-    // en el dibujo (solo Vertical/lama), así que ahí se sigue ocultando para no
-    // mostrar un control que no hace nada.
-    const esVerticalLama=tLow.includes('vertical')||tLow.includes('lama');
     if(!c.formaL||esVerticalLama){
-      const APERTURAS=[
-        ['1','1 · Izda · Mando izda'],['2','2 · Izda · Mando dcha'],
-        ['3','3 · Dcha · Mando dcha'],['4','4 · Dcha · Mando izda'],
-        ['5','5 · Doble centro · Mando dcha'],['6','6 · Doble centro · Mando izda'],
-        ['7','7 · Doble centro · Mando doble'],['8','8 · Doble extremos · Mando dcha'],
-        ['9','9 · Doble extremos · Mando izda'],['10','10 · Doble extremos · Mando doble'],
-      ];
-      const optsAp=APERTURAS.map(([v,t])=>`<option value="${v}"${String(c.apertura)===v?' selected':''}>${t}</option>`).join('');
-      extras+=`<div class="fld"><label>Nº de recogida (apertura)</label><select onchange="updCortina('${c.id}','apertura',this.value)"><option value="">-- Seleccionar --</option>${optsAp}</select></div>`;
+      extras+=`<div class="fld"><label>Nº de recogida (apertura)</label><select onchange="updCortina('${c.id}','apertura',this.value)"><option value="">-- Seleccionar --</option>${optsApertura(c.apertura)}</select></div>`;
     }
     if(esBrisa){
       extras+=`<div class="fld"><label>Accionamiento</label><select onchange="updCortina('${c.id}','mandoBrisa',this.value)"><option value="cadena"${(c.mandoBrisa||'cadena')==='cadena'?' selected':''}>Cadena</option><option value="tirador"${c.mandoBrisa==='tirador'?' selected':''}>Tiradores</option></select></div>`;
@@ -1744,14 +1745,14 @@ function renderPcard(c,idx){
         <div class="fld"><label>Ancho tramo L</label><input type="text" inputmode="decimal" value="${he(c.anchoL||'')}" placeholder="280" onchange="updCortina('${c.id}','anchoL',this.value)"></div>
         <div class="fld"><label>Alto tramo L</label><input type="text" inputmode="decimal" value="${he(c.altoL||'')}" placeholder="${he(c.alto||'igual')}" onchange="updCortina('${c.id}','altoL',this.value)"></div>
       </div>
-      <div class="r2">
+      ${esVerticalLama?`<div class="fld"><label>Nº de recogida L (apertura)</label><select onchange="updCortina('${c.id}','aperturaL',this.value)"><option value="">-- Seleccionar --</option>${optsApertura(c.aperturaL)}</select></div>`:`<div class="r2">
         <div class="fld"><label>Hojas L</label><input type="text" inputmode="numeric" value="${he(c.hojasL||'1')}" onchange="updCortina('${c.id}','hojasL',this.value)"></div>
         <div class="fld"><label>Recogida L</label><select onchange="updCortina('${c.id}','recogidaL',this.value)">
           <option value="D"${(c.recogidaL||'D')==='D'?' selected':''}>Derecha</option>
           <option value="IZQ"${c.recogidaL==='IZQ'?' selected':''}>Izquierda</option>
           <option value="CEN"${c.recogidaL==='CEN'?' selected':''}>Central</option>
         </select></div>
-      </div>`:''}
+      </div>`}`:''}
       ${c.llucana?`<div class="fld"><label>Lado de la inclinación</label><select onchange="updCortina('${c.id}','llucana',this.value)">
         <option value="izq"${c.llucana==='izq'?' selected':''}>Inclinación a la izquierda</option>
         <option value="dcha"${c.llucana==='dcha'?' selected':''}>Inclinación a la derecha</option>
@@ -2677,7 +2678,7 @@ function svgFormaL(p,u){
   const rielY=y=>y-7;
 
   const cuerpoR=cuerpoConfeccion(p.tipo,xRecto,yR,wRecto,hTelaR,p.hojas,p.ondaCm,p.recogida||'D',u,esIzq?'izq':'dcha',p.apertura);
-  const cuerpoL=cuerpoInclinado(p.tipo,xEsq,yEsq,xExt,yExt,hTelaL,p.hojasL,p.ondaCm,p.recogidaL||'D',u);
+  const cuerpoL=cuerpoInclinado(p.tipo,xEsq,yEsq,xExt,yExt,hTelaL,p.hojasL,p.ondaCm,p.recogidaL||'D',u,p.aperturaL);
 
   // Riel del tramo inclinado como un tubo fino, con el MISMO alto y la MISMA
   // referencia que el riel-caja del tramo recto (de "y-7" a "y", pegado justo
@@ -2748,12 +2749,22 @@ function svgFormaL(p,u){
 
 /* Cuerpo de la confección dibujado INCLINADO (paralelogramo).
    El borde superior va de (x1,y1) a (x2,y2); la tela cuelga h hacia abajo. */
-function cuerpoInclinado(tipo,x1,y1,x2,y2,h,hojas,ondaCm,recogida,u){
+function cuerpoInclinado(tipo,x1,y1,x2,y2,h,hojas,ondaCm,recogida,u,apertura){
   const t=(tipo||'').toLowerCase();
   const nH=Math.max(1,parseInt(hojas)||1);
   const dx=x2-x1, dy=y2-y1;
-  // Punto sobre el borde superior a fracción f (0..1)
+  // Punto sobre el borde superior a fracción f (0..1), de la esquina (x1,y1) al
+  // extremo libre (x2,y2).
   const px=f=>x1+dx*f, py=f=>y1+dy*f;
+  // Extremos físicos izq/dcha del tramo (x1 es SIEMPRE el punto de la esquina,
+  // pero según qué lado tenga la esquina de la L, ese punto puede ser el de la
+  // izquierda o el de la derecha del dibujo). Con esto, el patrón de aperturas
+  // de Vertical (que tiene un significado físico real de izq/dcha, igual que en
+  // el catálogo Canotex) se puede aplicar igual que en el tramo recto.
+  const [xL,yL,xR,yR]=x1<=x2?[x1,y1,x2,y2]:[x2,y2,x1,y1];
+  const dxP=xR-xL, dyP=yR-yL;
+  const pxP=f=>xL+dxP*f, pyP=f=>yL+dyP*f;
+  const ladoCornerFisico=x1<=x2?'izq':'dcha';
   let o='';
 
   if(t.includes('pala')||t.includes('tabla')||t.includes('presilla')||t.includes('plegon')||t.includes('plegón')||t.includes('fruncid')){
@@ -2764,22 +2775,28 @@ function cuerpoInclinado(tipo,x1,y1,x2,y2,h,hojas,ondaCm,recogida,u){
       o+=`<path d="M${px(f0).toFixed(1)},${py(f0).toFixed(1)} L${px(f1).toFixed(1)},${py(f1).toFixed(1)} L${px(f1).toFixed(1)},${(py(f1)+h).toFixed(1)} L${px(f0).toFixed(1)},${(py(f0)+h).toFixed(1)} Z" fill="none" stroke="#111" stroke-width="1.3"/>`;
     }
   } else if(t.includes('vertical')||t.includes('lama')){
-    // VERTICAL DE LAMAS → líneas verticales (las lamas cuelgan rectas, aunque el
-    // riel siga la inclinación de la esquina), igual que en la cortina vertical
-    // normal, sin contorno. Igual que en cuerpoConfeccion(), se recogen hacia un
-    // lado (mismas fracciones que usan las flechas de más abajo) dejando hueco
-    // para la flecha, para no dibujarla encima de las lamas.
-    const dLen=Math.hypot(dx,dy)||1;
-    const lamas=(f0,f1)=>{
-      const n=Math.max(3,Math.round(dLen*Math.abs(f1-f0)/7));
+    // VERTICAL DE LAMAS → mismo patrón de aperturas (1-10) que el tramo recto
+    // (cuerpoConfeccion) y que una Vertical suelta, usando la parametrización
+    // física izq/dcha de arriba (pxP/pyP) en vez de x1→x2, que es esquina→libre,
+    // no necesariamente izq→dcha.
+    let ap=parseInt(apertura)||0;
+    if(!ap)ap=recogida==='IZQ'?1:recogida==='CEN'?5:3;
+    const dPLen=Math.hypot(dxP,dyP)||1;
+    const lamasV=(f0,f1)=>{
+      const n=Math.max(3,Math.round(dPLen*Math.abs(f1-f0)/7));
       for(let i=0;i<n;i++){
         const f=f0+(f1-f0)*i/(n-1||1);
-        o+=`<line x1="${px(f).toFixed(1)}" y1="${py(f).toFixed(1)}" x2="${px(f).toFixed(1)}" y2="${(py(f)+h).toFixed(1)}" stroke="#222" stroke-width="2.2"/>`;
+        o+=`<line x1="${pxP(f).toFixed(1)}" y1="${pyP(f).toFixed(1)}" x2="${pxP(f).toFixed(1)}" y2="${(pyP(f)+h).toFixed(1)}" stroke="#222" stroke-width="2.2"/>`;
       }
     };
-    if(recogida==='CEN'||nH>=2){lamas(0,0.18);lamas(0.82,1);}
-    else if(recogida==='IZQ'){lamas(0.68,1);}
-    else{lamas(0,0.32);}
+    const flechaV=(f0,f1,dir)=>{
+      const mk=dir==='izq'?`marker-start="url(#al${u})"`:`marker-end="url(#ar${u})"`;
+      o+=`<line x1="${pxP(f0).toFixed(1)}" y1="${(pyP(f0)+h*0.45).toFixed(1)}" x2="${pxP(f1).toFixed(1)}" y2="${(pyP(f1)+h*0.45).toFixed(1)}" stroke="#111" stroke-width="2" ${mk}/>`;
+    };
+    if(ap>=1&&ap<=2){lamasV(0.55,1);flechaV(0.10,0.42,'izq');}
+    else if(ap>=3&&ap<=4){lamasV(0,0.45);flechaV(0.58,0.90,'dcha');}
+    else if(ap>=5&&ap<=7){lamasV(0,0.28);lamasV(0.72,1);flechaV(0.34,0.47,'dcha');flechaV(0.53,0.66,'izq');}
+    else{lamasV(0.36,0.64);flechaV(0.08,0.30,'izq');flechaV(0.70,0.92,'dcha');}
   } else {
     // Contorno del paralelogramo (tela)
     o+=`<path d="M${x1.toFixed(1)},${y1.toFixed(1)} L${x2.toFixed(1)},${y2.toFixed(1)} L${x2.toFixed(1)},${(y2+h).toFixed(1)} L${x1.toFixed(1)},${(y1+h).toFixed(1)} Z" fill="none" stroke="#111" stroke-width="1.4"/>`;
@@ -2817,17 +2834,27 @@ function cuerpoInclinado(tipo,x1,y1,x2,y2,h,hojas,ondaCm,recogida,u){
     const cadEndP=mandoYTop+h*0.32;
     o+=`<line x1="${mandoX.toFixed(1)}" y1="${(mandoYTop-4).toFixed(1)}" x2="${mandoX.toFixed(1)}" y2="${cadEndP.toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/>
     <rect x="${(mandoX-2.5).toFixed(1)}" y="${cadEndP.toFixed(1)}" width="5" height="11" rx="2.5" fill="none" stroke="#111" stroke-width="1.3"/>`;
-  } else {
-    if(t.includes('vertical')||t.includes('lama')){
-      // VERTICAL DE LAMAS → cadena de mando (línea discontinua, como en svgVertical).
-      // x1,y1 es SIEMPRE el punto que toca la esquina de la L (así lo llama
-      // svgFormaL) y x2,y2 el extremo libre: el único sitio donde el mando no
-      // queda oculto bajo el riel/tela del otro tramo, así que va siempre ahí
-      // (un poco más allá, a modo de remate), sea cual sea la Recogida L.
-      const fM=1+9/(Math.hypot(dx,dy)||1);
-      const mxV=px(fM),myV=py(fM);
-      o+=`<line x1="${mxV.toFixed(1)}" y1="${(myV-4).toFixed(1)}" x2="${mxV.toFixed(1)}" y2="${(myV+h*0.5).toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/>`;
+  } else if(t.includes('vertical')||t.includes('lama')){
+    // VERTICAL DE LAMAS → cadena de mando según la tabla de aperturas de Canotex,
+    // con la misma lógica de evitar el lado de la esquina que en el tramo recto
+    // (ladoCornerFisico, calculado arriba): el lado que toca la esquina se omite
+    // porque ahí quedaría oculto bajo el riel/tela del otro tramo. Las flechas ya
+    // se han dibujado arriba junto con las lamas, así que aquí NO se repite la
+    // flecha genérica de más abajo.
+    let apM=parseInt(apertura)||0;
+    if(!apM)apM=recogida==='IZQ'?1:recogida==='CEN'?5:3;
+    const mandoLadoTabla={1:'izq',2:'dcha',3:'dcha',4:'izq',5:'dcha',6:'izq',7:'doble',8:'dcha',9:'izq',10:'doble'};
+    const ladoMandoV=mandoLadoTabla[apM]||'dcha';
+    const mandoV=(atX,atY)=>{o+=`<line x1="${atX.toFixed(1)}" y1="${(atY-1).toFixed(1)}" x2="${atX.toFixed(1)}" y2="${(atY+h*0.5).toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/>`;};
+    if(ladoMandoV==='doble'){
+      if(ladoCornerFisico!=='izq')mandoV(xL-9,yL);
+      if(ladoCornerFisico!=='dcha')mandoV(xR+7,yR);
+    } else {
+      let lado=ladoMandoV;
+      if(lado===ladoCornerFisico)lado=(ladoCornerFisico==='izq'?'dcha':'izq');
+      if(lado==='izq')mandoV(xL-9,yL);else mandoV(xR+7,yR);
     }
+  } else {
     // Flechas de recogida, siguiendo la inclinación del tramo
     const fy=f=>(py(f)+h*0.45).toFixed(1);
     if(recogida==='CEN'||nH>=2){
@@ -2954,10 +2981,16 @@ function fichaFilas(p){
     const _i2=p.llu2Inclinada||calcLluc2Inclinada(p);
     rows+='<div class="fdat-row"><div class="fdat-k">Tramo llucana</div><div class="fdat-v">'+fmtCm(p.llu2Ancho)+' × '+fmtCm(p.llu2Alto||p.alto)+' · '+(p.llu2Hojas||'1')+'H'+(_i2?' · inc. '+_i2:'')+'</div></div>';
   }
-  // Cortina en L: mostrar la medida del segundo tramo
+  // Cortina en L: mostrar la medida del segundo tramo (para Vertical/lama, el
+  // nº de hojas no aplica —igual que en el tramo recto—, así que se omite y en
+  // su lugar se muestra su propia Recogida/apertura en una fila aparte)
   if(p.formaL&&p.anchoL){
     const _mL=fmtCm(p.anchoL)+(p.altoL?' × '+fmtCm(p.altoL):'');
-    rows+='<div class="fdat-row"><div class="fdat-k">Tramo L</div><div class="fdat-v">'+_mL+' · '+(p.hojasL||'1')+'H</div></div>';
+    rows+='<div class="fdat-row"><div class="fdat-k">Tramo L</div><div class="fdat-v">'+_mL+(esVerticalLamaF?'':' · '+(p.hojasL||'1')+'H')+'</div></div>';
+    if(esVerticalLamaF){
+      const recLabelL=p.aperturaL?('Nº '+p.aperturaL):({'D':'>> Derecha','IZQ':'<< Izquierda','CEN':'<< Central >>'}[p.recogidaL]||p.recogidaL||'D');
+      rows+='<div class="fdat-row"><div class="fdat-k">Recogida L</div><div class="fdat-v">'+recLabelL+'</div></div>';
+    }
   }
   // Estor con varillas: fila con el nº de varillas ((alto-5)/20 - 1)
   if(esEstorF&&p.alto){

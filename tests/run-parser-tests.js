@@ -212,6 +212,37 @@ test('Vertical en L dibuja el mando (cadena), evitando siempre el lado de la esq
   assert.ok(Math.abs(Math.min(...xsIzq) - Math.min(...xsD)) < 2,
     `con la esquina a la derecha, el mando del tramo recto debería quedar en el mismo lado (libre) para D e IZQ; xsIzq=${xsIzq} xsD=${xsD}`);
 });
+test('El tramo L de una Vertical en L tiene su propio nº de apertura, independiente del tramo recto', () => {
+  const base = { tipo: 'Vertical', ancho: '170', alto: '250', formaL: 'dcha', anchoL: '170', altoL: '250', recogida: 'D', recogidaL: 'D' };
+  const svgAp1ApL1 = app.getSVG({ ...base, apertura: '1', aperturaL: '1' });
+  const svgAp1ApL8 = app.getSVG({ ...base, apertura: '1', aperturaL: '8' });
+  const svgAp8ApL1 = app.getSVG({ ...base, apertura: '8', aperturaL: '1' });
+  assert.notStrictEqual(svgAp1ApL1, svgAp1ApL8, 'cambiar solo la apertura del tramo L debería cambiar el dibujo');
+  assert.notStrictEqual(svgAp1ApL1, svgAp8ApL1, 'cambiar solo la apertura del tramo recto debería cambiar el dibujo');
+  assert.notStrictEqual(svgAp1ApL8, svgAp8ApL1, 'las combinaciones cruzadas deberían dar dibujos distintos');
+});
+test('La ficha muestra el nº de recogida del tramo L en su propia fila "Recogida L"', () => {
+  const p = { tipo: 'Vertical', ancho: '170', alto: '250', formaL: 'dcha', anchoL: '170', altoL: '250',
+    apertura: '3', aperturaL: '9', recogida: 'D', recogidaL: 'D' };
+  const html = app.fichaFilas(p);
+  assert.ok(html.includes('Nº 3'), 'la ficha debería mostrar el nº de apertura del tramo recto');
+  assert.ok(/Recogida L[\s\S]{0,120}Nº 9/.test(html), 'la ficha debería mostrar una fila "Recogida L" con el nº de apertura del tramo L');
+  // Sin apertura L → cae al fallback por Recogida L (D/IZQ/CEN), igual que el tramo recto
+  const htmlSinApL = app.fichaFilas({ ...p, aperturaL: '' });
+  assert.ok(/Recogida L[\s\S]{0,120}Derecha/.test(htmlSinApL), 'sin apertura L debería caer al fallback de Recogida L (D/IZQ/CEN)');
+});
+test('El mando del tramo L también evita siempre el lado de la esquina, para cualquier apertura L', () => {
+  const dashedCount = svg => (svg.match(/stroke-dasharray="2\.5,2"/g) || []).length;
+  const base = { tipo: 'Vertical', ancho: '170', alto: '250', formaL: 'dcha', anchoL: '170', altoL: '250', apertura: '3', recogida: 'D' };
+  // Con esquina a la derecha, el punto que toca la esquina del tramo L es
+  // siempre el mismo lado físico: cualquier apertura L (simple o "doble") debe
+  // seguir dando exactamente 1 mando del tramo recto + 1 del tramo L = 2 en
+  // total, nunca más (que indicaría que se dibujó encima de la esquina) ni menos.
+  for (const apL of ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']) {
+    const svg = app.getSVG({ ...base, aperturaL: apL });
+    assert.strictEqual(dashedCount(svg), 2, `apertura L=${apL}: esperaba 2 líneas de mando en total, encontradas ${dashedCount(svg)}`);
+  }
+});
 test('La ubicación del soporte (techo/pared) de la cortina pasa a su línea de corte', () => {
   app.resetCortinas();
   app.addCortina({ tipo: 'Onda Perfecta', ancho: '150', alto: '250', estancia: 'Test soporte', soporte: 'PARED' });
