@@ -922,9 +922,17 @@ function estrategiaCanotex(txt){
     const sopM=resto.match(/SOP:([A-Z]+)/i);
     const mandoM=resto.match(/MANDO:\s*([A-Z]+)/i);
     // De las líneas de descripción: "SISTEMA MEDIUM", "SISTEMA MAXI", etc.
-    for(const nl of lineas){
+    for(let k=0;k<lineas.length;k++){
+      const nl=lineas[k];
       const m=nl.match(/SISTEMA\s+(MEDIUM|MINI|MAXI|EXIAL|ROLLER|EASY|ROBOT|MOTOR[^\s]*)/i);
       if(m)return m[0].trim();
+      // El PDF a veces corta la línea justo tras "SISTEMA", dejando el nombre
+      // del mecanismo (MEDIUM, MINI...) como primera palabra de la línea
+      // siguiente ("...MANDO A CADENA SISTEMA" / "MEDIUM A CADENA (T43)...").
+      if(/SISTEMA\s*$/i.test(nl)&&lineas[k+1]){
+        const m2=lineas[k+1].match(/^(MEDIUM|MINI|MAXI|EXIAL|ROLLER|EASY|ROBOT|MOTOR[^\s]*)/i);
+        if(m2)return 'SISTEMA '+m2[1];
+      }
     }
     if(sopM&&sopM[1])return sopM[1];
     return '';
@@ -976,8 +984,17 @@ function estrategiaCanotex(txt){
         const nl=lines[j].trim();
         // Parar de verdad solo ante otra cortina, otra estancia o el cierre del presupuesto
         if(esProd(nl)||esEstancia(nl)||/^PAGAMENT|^BRUTO|^TOTAL(?!\s+PROTECC)|^ACEPTACI|^SEG[UÚ]N|^\*m[áa]s\s+informaci/i.test(nl))break;
-        // Saltar cabeceras/pies de página (permite cruzar el salto de página)
-        if(ES_CABECERA.test(nl)){j++;saltosCab++;if(saltosCab>16)break;continue;}
+        // Saltar cabeceras/pies de página (permite cruzar el salto de página).
+        // A veces esta misma línea, además del texto de cabecera/pie, arrastra
+        // datos reales de la cortina que han caído por casualidad a la misma
+        // altura en el PDF (p.ej. "...Hoja L-1.646 SISTEMA DE INSTALACION:
+        // GUIA MANUAL 1 VIA"): en vez de descartar la línea entera, se recupera
+        // todo lo que hay a partir de la primera etiqueta de campo reconocida.
+        if(ES_CABECERA.test(nl)){
+          const campoM=nl.match(/(SISTEMA\s+DE\s+INSTALACI[OÓ]N?:|TEJIDO:|SOPORTES?[\s.:]|SISTEMA\s+(?:MEDIUM|MINI|MAXI|EXIAL|ROLLER|EASY|ROBOT|MOTOR\w*))[\s\S]*$/i);
+          if(campoM)descLineas.push(campoM[0].trim());
+          j++;saltosCab++;if(saltosCab>16)break;continue;
+        }
         if(nl)descLineas.push(nl);
         j++;
       }
@@ -997,9 +1014,13 @@ function estrategiaCanotex(txt){
         // TEJIDO — sin break para que el loop siga buscando SISTEMA
         if(!tejido&&/^TEJIDO:\s*/i.test(nlC))tejido=nlC.replace(/^(?:TEJIDO:\s*)+/i,'').trim();
         else if(!tejido&&/^TEJIDO:\s*/i.test(nl))tejido=nl.replace(/^(?:TEJIDO:\s*)+/i,'').trim();
-        // SISTEMA
-        if(!sistema&&/^SISTEMA\s+DE\s+INSTALACI/i.test(nl)){
-          sistema=nl.replace(/^SISTEMA\s+DE\s+INSTALACI[OÓ]N?:\s*/i,'').trim();
+        // SISTEMA — se busca la frase en cualquier punto de la línea (no solo al
+        // principio): a veces el texto de pie de página del presupuesto (CIF,
+        // registro mercantil…) cae por casualidad a la misma altura que esta
+        // línea y el PDF lo antepone, dejando basura antes de "SISTEMA DE
+        // INSTALACION:" en vez de al principio de la línea.
+        if(!sistema&&/SISTEMA\s+DE\s+INSTALACI[OÓ]N?:/i.test(nl)){
+          sistema=nl.replace(/^[\s\S]*?SISTEMA\s+DE\s+INSTALACI[OÓ]N?:\s*/i,'').trim();
           // El sistema puede continuar en las líneas siguientes (p.ej. termina en coma
           // "GUIA MANUAL 1 VIA, REFORZADA," y sigue "EN COLOR BLANCO (...)").
           // Unir continuaciones que NO empiezan por otra etiqueta ni son otra cortina/estancia.
@@ -1014,8 +1035,10 @@ function estrategiaCanotex(txt){
               if(/^(TEJIDO|SISTEMA|MEDIDA|UD\.|CONFE|RECOG|MANDO|SOP|COLOR\s+GU|CAIDA)/i.test(sig))break;
               if(/^[A-Z0-9]{4,}\s+MEDIDA/i.test(sig))break;
               if(NO_EST.test(sig))break;
-              // Unir solo si el sistema venía "abierto" (acaba en coma) o la línea sigue el sistema
-              if(/[,\-]$/.test(sistema)||/^(EN\s+COLOR|COLOR|REFORZAD|CON\s+EMPALME|EN\s+DOS|D\.\d)/i.test(sig)){
+              // Unir solo si el sistema venía "abierto" (acaba en coma/guion, o en
+              // "COLOR" con el nombre del color cortado a la línea siguiente:
+              // "...- COLOR" / "BLANCO - CORR.OP...") o la línea sigue el sistema
+              if(/[,\-]$/.test(sistema)||/\bCOLOR$/i.test(sistema)||/^(EN\s+COLOR|COLOR|REFORZAD|CON\s+EMPALME|EN\s+DOS|D\.\d)/i.test(sig)){
                 sistema=(sistema+' '+sig).replace(/\s{2,}/g,' ').trim();
                 jj++;
               } else break;
@@ -1023,9 +1046,9 @@ function estrategiaCanotex(txt){
           }
           // Quitar el fragmento de soporte del sistema (va en su propio campo)
           sistema=sistema.replace(/\s*(?:CON\s+)?SOP(?:ORTES?)?[\s.:]+(?:TECHO\s*CLIC|SOSTRE|TECHO|PARED|FRONTAL|FRENTE|RAPIDO|RAP|CLIC)\.?/gi,'').replace(/\s{2,}/g,' ').replace(/\s+\./g,'.').replace(/^[\s.]+|[\s.]+$/g,'').trim();
-          // Quitar la coletilla de correderas ("CORR.OP", "CORR.CONVENCIONAL", "-CORR.OP")
-          // que no forma parte del sistema de instalación.
-          sistema=sistema.replace(/[\s-]*CORR\.?\s*(?:OP|CONVENCIONAL|CONV\.?)?\.?/gi,'').replace(/[\s-]+$/,'').replace(/\s{2,}/g,' ').trim();
+          // Quitar la coletilla de correderas ("CORR.OP", "CORR.CONVENCIONAL", "-CORR.OP",
+          // "CORR.OP DE 6 CM"…) que no forma parte del sistema de instalación.
+          sistema=sistema.replace(/[\s-]*CORR\.?\s*(?:OP|CONVENCIONAL|CONV\.?)?\.?(?:\s*DE\s*\d+\s*CM)?/gi,'').replace(/[\s-]+$/,'').replace(/\s{2,}/g,' ').trim();
         }
         // UD. descripción
         if(!tipoDesc&&/^UD\.\s*/i.test(nl)){

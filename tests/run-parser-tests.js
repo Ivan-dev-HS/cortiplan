@@ -284,6 +284,54 @@ test('calcularVarillas da el mismo resultado que antes de consolidar la fórmula
   assert.strictEqual(app.calcularVarillas('0'), 0);
 });
 
+console.log('\nParser: reconstruir SISTEMA cuando el PDF corta o contamina la línea');
+test('SISTEMA DE INSTALACION se une con la siguiente línea aunque el corte caiga a mitad de "- COLOR" / "BLANCO..."', () => {
+  // Presupuesto real: el PDF corta la frase justo después de "COLOR", dejando
+  // el nombre del color al principio de la línea siguiente en vez de después
+  // de una coma o un guion al final (los únicos casos que ya se unían antes).
+  const txt = [
+    'PRESUPUESTO DE VENTA',
+    'REF. F600 CLIENTE SEIS',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'COMEDOR 1,00',
+    'CORTOP MEDIDA:180x246,5H -CONFE:1 HOJA - RECOG:IZQ',
+    'UD. CORTINA CONFECCIONADA TIPO ONDA PERFECTA. (ONDA 6cm.)',
+    'TEJIDO: EJEMPLO COLOR 2',
+    'SISTEMA DE INSTALACION: GUIA MANUAL 1 VIA - COLOR',
+    'BLANCO - CORR.OP DE 6 CM',
+    'SOPORTES TECHO',
+  ].join('\n');
+  const out = app.estrategiaCanotex(txt);
+  assert.strictEqual(out.length, 1);
+  assert.strictEqual(out[0].sistema, 'GUIA MANUAL 1 VIA - COLOR BLANCO',
+    'debería unir "COLOR" (fin de línea) con "BLANCO" (línea siguiente) y quitar la coletilla de correderas, incluido el "DE 6 CM" que la acompaña');
+});
+test('Una línea de cabecera/pie de página que arrastra datos reales (SISTEMA/TEJIDO) no se descarta entera', () => {
+  // A veces el texto de pie de página del presupuesto (CIF, registro mercantil)
+  // cae por casualidad a la misma altura que la línea de SISTEMA en el PDF, y
+  // el extractor de texto los junta en una sola línea. Antes, como esa línea
+  // empezaba por "CIF." (un marcador de pie de página conocido), se descartaba
+  // entera — perdiendo el SISTEMA real que llevaba pegado detrás. Es el caso
+  // que más veces pasa en la última cortina de un presupuesto (que es la que
+  // suele coincidir en altura con el pie de página).
+  const txt = [
+    'PRESUPUESTO DE VENTA',
+    'REF. G700 CLIENTE SIETE',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'DORMITORIO 1,00',
+    'CORTOP MEDIDA:180x248H -CONFE:1 HOJA - RECOG:IZQ',
+    'UD. CORTINA CONFECCIONADA TIPO ONDA PERFECTA. (ONDA 6cm.)',
+    'TEJIDO: EJEMPLO COLOR 19',
+    'CIF. B00000000 Inscrita Reg. Mercantil de Lleida. Tomo 1, folio 1, Hoja L-1 SISTEMA DE INSTALACION: GUIA MANUAL 1 VIA - COLOR',
+    'BLANCO - CORR.OP DE 6 CM',
+    'SOPORTES TECHO',
+  ].join('\n');
+  const out = app.estrategiaCanotex(txt);
+  assert.strictEqual(out.length, 1);
+  assert.strictEqual(out[0].sistema, 'GUIA MANUAL 1 VIA - COLOR BLANCO',
+    'el SISTEMA no debería perderse solo porque la línea empiece con texto de pie de página');
+});
+
 console.log('\nFunciones puras del parser');
 
 test('fmtCm — número simple añade "cm"', () => {
