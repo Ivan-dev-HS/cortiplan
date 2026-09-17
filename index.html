@@ -1168,6 +1168,20 @@ function calcularCorrederas(anchoHoja,onda){
   const base=Math.floor(n);
   return Math.ceil(base+(base%2===0?2:3));
 }
+// Nº de varillas de un Estor: ((alto-5)/20)-1, mínimo 1. Única función para
+// dibujo, ficha y hoja de corte, así una corrección futura de la fórmula solo
+// hay que aplicarla aquí.
+function calcularVarillas(alto){
+  const a=parseFloat(String(alto||'0').replace(',','.'))||0;
+  return a?Math.max(1,Math.round((a-5)/20)-1):0;
+}
+// Reparte una lista de líneas de corte en bloques de como máximo n, uno por
+// hoja del PDF de corte (antes se recortaba todo a las primeras n sin avisar).
+function chunkLineas(lineas,n){
+  const out=[];
+  for(let i=0;i<lineas.length;i+=n)out.push(lineas.slice(i,i+n));
+  return out;
+}
 function calcularCorrederasTexto(ancho,hojas,ondaCm){
   const ondaSize=ondaCm?parseInt(ondaCm):8;
   // Ancho compuesto "158-142"/"158+142" → cada parte es una hoja, por separado
@@ -1375,7 +1389,7 @@ function addCortina(d={}){
   enBlanco:d.enBlanco||false,
   llu2:d.llu2||'',llu2Ancho:d.llu2Ancho||'',llu2Alto:d.llu2Alto||'',llu2AnchoArriba:d.llu2AnchoArriba||'',llu2AltoCorto:d.llu2AltoCorto||'',llu2Inclinada:d.llu2Inclinada||'',llu2Hojas:d.llu2Hojas||'1',llu2Recogida:d.llu2Recogida||'D'};
   STATE.cortinas.push(c);
-  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'&&tipo!=='Cojín'&&tipo!=='Cabecero'){
+  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'&&tipo!=='Cojín'&&tipo!=='Cabecero'&&tipo!=='Tapiceria'){
     STATE.lcnt++;
     const corrIni=(c.tipo||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
     const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
@@ -1387,7 +1401,7 @@ function addCortina(d={}){
     }
   }
   rerenderAllCards();
-  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'&&tipo!=='Cojín'&&tipo!=='Cabecero')rerenderAllLineas();
+  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'&&tipo!=='Cojín'&&tipo!=='Cabecero'&&tipo!=='Tapiceria')rerenderAllLineas();
   updateBadge();
   scheduleLiveRefresh();
 }
@@ -1544,7 +1558,7 @@ function reconstruirLineas(){
   STATE.lineas=[];STATE.lcnt=0;
   STATE.cortinas.forEach(c=>{
     const t=c.tipo||'';
-    if(t==='Enrollable'||t==='Vertical'||t==='Brisa'||t==='Colcha/Vánova/Nórdica'||t==='Cojín'||t==='Cabecero')return;
+    if(t==='Enrollable'||t==='Vertical'||t==='Brisa'||t==='Colcha/Vánova/Nórdica'||t==='Cojín'||t==='Cabecero'||t==='Tapiceria')return;
     STATE.lcnt++;
     const corrIni=(t||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
     const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
@@ -1905,8 +1919,7 @@ function svgPaquetto(p,u){
   const esEstorVar=(p.tipo||'').toLowerCase().includes('estor');
   let cintasTxt='',varillas='';
   if(esEstorVar){
-    const altoN=parseFloat((p.alto||'0').replace(',','.'))||0;
-    const nV=altoN?Math.max(1,Math.round((altoN-5)/20)-1):0;
+    const nV=calcularVarillas(p.alto);
     for(let vi=1;vi<=4;vi++){
       const vy=(MT+CH*vi/5).toFixed(1);
       varillas+=`<line x1="${(ML+3).toFixed(1)}" y1="${vy}" x2="${(ML+CW-3).toFixed(1)}" y2="${vy}" stroke="#333" stroke-width="1"/>`;
@@ -2948,9 +2961,8 @@ function fichaFilas(p){
   }
   // Estor con varillas: fila con el nº de varillas ((alto-5)/20 - 1)
   if(esEstorF&&p.alto){
-    const _aN=parseFloat(String(p.alto).replace(',','.'))||0;
-    if(_aN){const _nV=Math.max(1,Math.round((_aN-5)/20)-1);
-      rows+='<div class="fdat-row"><div class="fdat-k">Varillas</div><div class="fdat-v">'+_nV+'</div></div>';}
+    const _nV=calcularVarillas(p.alto);
+    if(_nV)rows+='<div class="fdat-row"><div class="fdat-k">Varillas</div><div class="fdat-v">'+_nV+'</div></div>';
   }
   return rows;
 }
@@ -3356,12 +3368,20 @@ async function buildCortePDFBytes(){
     const pdfDoc=await PDFDocument.create();
     // A4 horizontal
     const PW=841.89,PH=595.28;
-    const page=pdfDoc.addPage([PW,PH]);
     const fontB=await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const fontR=await pdfDoc.embedFont(StandardFonts.Helvetica);
     const AZUL=rgb(0.11,0.17,0.29),NEGRO=rgb(0,0,0),GRIS=rgb(0.87,0.89,0.94),GRIS2=rgb(0.94,0.95,0.98),BLANCO=rgb(1,1,1);
     const AZUL_CLARO=rgb(0.88,0.93,0.98),AZUL_MED=rgb(0.18,0.35,0.62),GRIS_OSC=rgb(0.35,0.40,0.50);
     const MG=20;
+    const nMax=CFG.MAX_LINEAS_CORTE;
+
+    // Un pedido con más de nMax líneas ya no se recortaba en silencio: se
+    // reparte en varias hojas (una tabla por hoja de hasta nMax líneas cada
+    // una), todas con la misma cabecera, numeradas "Hoja X/Y".
+    const paginas=chunkLineas(lineasValidas,nMax);
+
+    paginas.forEach((lineas,pIdx)=>{
+    const page=pdfDoc.addPage([PW,PH]);
 
     // ── CABECERA SUPERIOR (fondo claro para escribir al imprimir) ──
     const cabH=48;
@@ -3372,8 +3392,8 @@ async function buildCortePDFBytes(){
     // Logo CANOTEX
     page.drawText('CANOTEX',{x:MG+10,y:cabY+16,size:20,font:fontB,color:AZUL_MED});
     page.drawText('TEXTIL, S.L.',{x:MG+10,y:cabY+6,size:7,font:fontR,color:GRIS_OSC});
-    // Título central
-    const titTxt='FICHA DE CORTE Y ENVÍO';
+    // Título central (con "Hoja X/Y" si el pedido ocupa más de una página)
+    const titTxt='FICHA DE CORTE Y ENVÍO'+(paginas.length>1?`  ·  Hoja ${pIdx+1}/${paginas.length}`:'');
     const titW=fontB.widthOfTextAtSize(titTxt,13);
     page.drawText(titTxt,{x:(PW-titW)/2,y:cabY+18,size:13,font:fontB,color:AZUL_MED});
     // Referencia y fecha derecha
@@ -3410,7 +3430,6 @@ async function buildCortePDFBytes(){
 
     const headerH=46;
     const dataH=tablH-headerH;
-    const nMax=CFG.MAX_LINEAS_CORTE;
     const rowH=Math.min(44,Math.floor(dataH/nMax));
 
     // Fondo cabecera tabla
@@ -3443,7 +3462,6 @@ async function buildCortePDFBytes(){
     });
 
     // Datos — mapeo exacto a columnas
-    const lineas=lineasValidas.slice(0,nMax);
     lineas.forEach((l,i)=>{
       const rowBaseY=tablY+dataH-(i+1)*rowH;
       if(rowBaseY<tablY)return;
@@ -3457,23 +3475,21 @@ async function buildCortePDFBytes(){
       const anchoStr=String(l.ancho||'');
       const partesOP=anchoStr.split(/[-+]/).map(x=>parseFloat(x.replace(',','.'))||0).filter(x=>x>0);
       const nHojasOP=parseInt(l.hojas)||1;
-      function ganchosDeHoja(anchoHoja,paso){
-        const div=Math.floor(anchoHoja/paso);
-        return div+(div%2===0?2:3);
-      }
+      // Misma fórmula que calcularCorrederas (usada en la ficha): un único
+      // sitio para el cálculo de ganchos de la Onda Perfecta.
       function ganchosOP(paso){
         if(!partesOP.length)return'—';
         if(partesOP.length>=2){
           // Una medida por hoja: cada una por separado
-          return partesOP.map(a=>ganchosDeHoja(a,paso)+'gch').join('-');
+          return partesOP.map(a=>calcularCorrederas(a,paso)+'gch').join('-');
         }
         // Medida única
         if(nHojasOP>=2){
           // Repartir el ancho entre las hojas y calcular cada una
           const porHoja=partesOP[0]/nHojasOP;
-          return Array(nHojasOP).fill(0).map(()=>ganchosDeHoja(porHoja,paso)+'gch').join('-');
+          return Array(nHojasOP).fill(0).map(()=>calcularCorrederas(porHoja,paso)+'gch').join('-');
         }
-        return ganchosDeHoja(partesOP[0],paso)+'gch';
+        return calcularCorrederas(partesOP[0],paso)+'gch';
       }
       const corrLabel=isPaq
         ?(paqData.caidas+' caídas')
@@ -3506,10 +3522,11 @@ async function buildCortePDFBytes(){
       const esEstorC=_tlE.includes('estor')&&!_tlE.includes('enroll');
       let obsFinal=l.obs||'';
       if(esEstorC){
-        const _aE=parseFloat(String(l.alto||'0').replace(',','.'))||0;
-        if(_aE){const _nvE=Math.max(1,Math.round((_aE-5)/20)-1);
+        const _nvE=calcularVarillas(l.alto);
+        if(_nvE){
           const _txtV=_nvE+' varillas';
-          obsFinal=obsFinal?obsFinal+' · '+_txtV:_txtV;}
+          obsFinal=obsFinal?obsFinal+' · '+_txtV:_txtV;
+        }
       }
       // Nº de soportes + dónde van (techo o frente/pared). PARED/FRONTAL/FRENTE → Frente;
       // cualquier otro valor (vacío, TECHO, TECHO CLIC, RAP, CLIC…) → Techo, que es el caso
@@ -3554,9 +3571,10 @@ async function buildCortePDFBytes(){
         page.drawText(t,{x:colX[ci]+colW[ci]/2-tw/2,y:textY,size:fSz,font:fn,color:isBlue?AZUL:NEGRO});
       });
     });
+    });
 
     const bytes=await pdfDoc.save();
-    return{bytes,count:lineas.length,ref};
+    return{bytes,count:lineasValidas.length,ref,paginas:paginas.length};
   }
 }
 
@@ -3577,7 +3595,7 @@ async function generarCorte(){
       a.download='corte_'+(res.ref||'pedido')+'.pdf';
       a.style.display='none';document.body.appendChild(a);a.click();document.body.removeChild(a);
     }
-    setSt('ok','✓ PDF corte generado · '+res.count+' línea(s)');
+    setSt('ok','✓ PDF corte generado · '+res.count+' línea(s)'+(res.paginas>1?' · '+res.paginas+' hojas':''));
     dbg('PDF corte generado','ok');
   }catch(err){setSt('er','Error: '+err.message);dbg('❌ '+err.message,'er');console.error(err);}
 }

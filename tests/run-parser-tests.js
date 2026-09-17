@@ -127,6 +127,13 @@ test('svgConSop no muestra "SOP:" para cualquier tipo sin dibujo (regla general,
   const svg = app.svgConSop({ tipo: 'Un tipo inventado que no existe', ancho: '150', alto: '200', soporte: 'T' });
   assert.ok(!svg.includes('SOP:'));
 });
+test('Tapicería no genera línea de corte (sin riel, igual que Colcha/Cojín/Cabecero)', () => {
+  app.resetCortinas();
+  app.addCortina({ tipo: 'Tapiceria', ancho: '150', alto: '200', estancia: 'Test tapicería' });
+  const STATE = app.__internals.STATE;
+  assert.strictEqual(STATE.cortinas.length, 1);
+  assert.strictEqual(STATE.lineas.length, 0, 'una Tapicería no debería producir ninguna línea de corte');
+});
 
 console.log('\nVisillo, Cojín y Cabecero');
 
@@ -222,6 +229,28 @@ test('"Limpiar todo" no deja bloqueada la previsualización en vivo', () => {
   app.limpiarTodo();
   const STATE = app.__internals.STATE;
   assert.strictEqual(STATE.liveActive, true);
+});
+
+console.log('\nHoja de corte: reparto en varias páginas y fórmulas compartidas');
+
+test('chunkLineas reparte un pedido largo en varias hojas de como máximo n líneas, sin perder ninguna', () => {
+  const lineas = Array.from({ length: 13 }, (_, i) => ({ id: 'l' + i }));
+  const paginas = JSON.parse(JSON.stringify(app.chunkLineas(lineas, 10)));
+  assert.strictEqual(paginas.length, 2, 'un pedido de 13 líneas con máximo 10 por hoja debería dar 2 hojas');
+  assert.strictEqual(paginas[0].length, 10);
+  assert.strictEqual(paginas[1].length, 3);
+  assert.deepStrictEqual(paginas.flat(), lineas, 'ninguna línea debería perderse ni duplicarse al repartir');
+});
+test('chunkLineas con menos líneas que el máximo devuelve una única hoja', () => {
+  const lineas = Array.from({ length: 4 }, (_, i) => ({ id: 'l' + i }));
+  const paginas = app.chunkLineas(lineas, 10);
+  assert.strictEqual(paginas.length, 1);
+  assert.strictEqual(paginas[0].length, 4);
+});
+test('calcularVarillas da el mismo resultado que antes de consolidar la fórmula en las 3 llamadas (dibujo/ficha/corte)', () => {
+  assert.strictEqual(app.calcularVarillas('220'), 10);
+  assert.strictEqual(app.calcularVarillas(''), 0, 'sin alto no debería lanzar ni devolver NaN');
+  assert.strictEqual(app.calcularVarillas('0'), 0);
 });
 
 console.log('\nFunciones puras del parser');
