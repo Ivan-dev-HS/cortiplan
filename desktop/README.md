@@ -33,6 +33,20 @@ El instalador queda en `desktop/dist/`. Se distribuye ese `.exe` a los
 ordenadores de los clientes; no requiere instalar Node ni Electron por
 separado, el instalador lo lleva todo incluido.
 
+## Instalador ya compilado
+
+En `desktop/release/CortiPlan-Setup-1.0.0.exe` hay una versión ya
+compilada, lista para descargar directamente del repositorio y repartir a
+los clientes sin tener que instalar Node ni ejecutar ningún comando.
+
+Ojo: es un binario de ~76 MB commiteado tal cual en el repositorio (no como
+adjunto de una Release de GitHub), así que cada vez que se regenere con una
+versión nueva, esa copia anterior se queda igualmente en el historial de
+git para siempre — el repositorio va engordando con cada actualización.
+Si en algún momento eso se vuelve un problema (clonar el proyecto empieza a
+pesar mucho), la alternativa es subirlo como adjunto de una Release de
+GitHub en vez de commitearlo aquí.
+
 ## Cómo funciona (por si hay que tocarlo)
 
 - `main.js` levanta un pequeño servidor HTTP local (`http://127.0.0.1:<puerto>`)
