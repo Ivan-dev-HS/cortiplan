@@ -1718,7 +1718,7 @@ function renderPcard(c,idx){
       <div class="r2"><div class="fld"><label>Ancho cm</label><input type="text" inputmode="decimal" value="${he(c.ancho)}" placeholder="170" onchange="updCortina('${c.id}','ancho',this.value)"></div><div class="fld"><label>Alto cm</label><input type="text" inputmode="decimal" value="${he(c.alto)}" placeholder="257" onchange="updCortina('${c.id}','alto',this.value)"></div></div>
       <div class="fld"><label>Tipo cortina</label><select onchange="updCortina('${c.id}','tipo',this.value)"><option value="">-- Seleccionar --</option>${opts.map(t=>`<option value="${t}"${c.tipo===t?' selected':''}>${t}</option>`).join('')}</select></div>
       <div class="fld"><label>Sistema</label><input type="text" value="${he(c.sistema)}" placeholder="Guia Manual 1 Vía" onchange="updCortina('${c.id}','sistema',this.value)"></div>
-      <div class="r2"><div class="fld"><label>Nº Hojas</label><input type="text" inputmode="numeric" value="${he(c.hojas)}" placeholder="1" onchange="updCortina('${c.id}','hojas',this.value)"></div><div class="fld"><label>Recogida</label><select onchange="updCortina('${c.id}','recogida',this.value)"><option value="D"${c.recogida==='D'?' selected':''}>Derecha</option><option value="IZQ"${c.recogida==='IZQ'?' selected':''}>Izquierda</option><option value="CEN"${c.recogida==='CEN'?' selected':''}>Central</option></select></div></div>
+      ${esVertBri?'':`<div class="r2"><div class="fld"><label>Nº Hojas</label><input type="text" inputmode="numeric" value="${he(c.hojas)}" placeholder="1" onchange="updCortina('${c.id}','hojas',this.value)"></div><div class="fld"><label>Recogida</label><select onchange="updCortina('${c.id}','recogida',this.value)"><option value="D"${c.recogida==='D'?' selected':''}>Derecha</option><option value="IZQ"${c.recogida==='IZQ'?' selected':''}>Izquierda</option><option value="CEN"${c.recogida==='CEN'?' selected':''}>Central</option></select></div></div>`}
       <div class="fld"><label>Tejido / Referencia</label><input type="text" value="${he(c.tejido)}" placeholder="SAURA C/02" onchange="updCortina('${c.id}','tejido',this.value)"></div>
       ${extras}
       <div class="fld"><label>Forma</label><select onchange="updCortina('${c.id}','formaL',this.value)">
@@ -2527,8 +2527,12 @@ function cuerpoConfeccion(tipo,x,y,w,h,hojas,ondaCm,recogida,u,ladoCorner,apertu
   const t=(tipo||'').toLowerCase();
   const nH=Math.max(1,parseInt(hojas)||1);
   let o='';
-  // Riel/barra superior (común)
-  o+=`<rect x="${(x-4).toFixed(1)}" y="${(y-7).toFixed(1)}" width="${(w+8).toFixed(1)}" height="7" fill="none" stroke="#111" stroke-width="1.8"/>`;
+  // Riel/barra superior (común). El extremo que toca la esquina de la L NO
+  // sobresale (si no, se metería encima del riel del otro tramo y parecía que
+  // se cruzaban ahí); el extremo libre sí, como remate.
+  const railXIni=ladoCorner==='izq'?x:x-4;
+  const railXFin=ladoCorner==='dcha'?x+w:x+w+4;
+  o+=`<rect x="${railXIni.toFixed(1)}" y="${(y-7).toFixed(1)}" width="${(railXFin-railXIni).toFixed(1)}" height="7" fill="none" stroke="#111" stroke-width="1.8"/>`;
   // Soportes
   o+=`<line x1="${x.toFixed(1)}" y1="${(y-13).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(y-7).toFixed(1)}" stroke="#111" stroke-width="1.8"/>`;
   o+=`<line x1="${(x+w).toFixed(1)}" y1="${(y-13).toFixed(1)}" x2="${(x+w).toFixed(1)}" y2="${(y-7).toFixed(1)}" stroke="#111" stroke-width="1.8"/>`;
@@ -2662,12 +2666,14 @@ function svgFormaL(p,u){
   const cuerpoR=cuerpoConfeccion(p.tipo,xRecto,yR,wRecto,hTelaR,p.hojas,p.ondaCm,p.recogida||'D',u,esIzq?'izq':'dcha',p.apertura);
   const cuerpoL=cuerpoInclinado(p.tipo,xEsq,yEsq,xExt,yExt,hTelaL,p.hojasL,p.ondaCm,p.recogidaL||'D',u);
 
-  // Riel del tramo inclinado como un tubo fino (igual altura que el riel-caja del
-  // tramo recto), no una simple línea: si no, la parte superior del tramo en L se
-  // veía desemparejada respecto al riel con volumen del tramo recto.
+  // Riel del tramo inclinado como un tubo fino, con el MISMO alto y la MISMA
+  // referencia que el riel-caja del tramo recto (de "y-7" a "y", pegado justo
+  // encima de la tela): antes iba centrado en rielY(y), un rango distinto al
+  // del riel recto, así que en la esquina no coincidían y parecía que se
+  // cruzaban. Con la misma referencia, ambos rieles encajan en línea continua.
   const railH=7;
-  const rielL=`<path d="M${xEsq.toFixed(1)},${(rielY(yEsq)-railH/2).toFixed(1)} L${xExt.toFixed(1)},${(rielY(yExt)-railH/2).toFixed(1)} L${xExt.toFixed(1)},${(rielY(yExt)+railH/2).toFixed(1)} L${xEsq.toFixed(1)},${(rielY(yEsq)+railH/2).toFixed(1)} Z" fill="none" stroke="#111" stroke-width="1.8"/>`;
-  const sopExt=`<line x1="${xExt.toFixed(1)}" y1="${(rielY(yExt)-6).toFixed(1)}" x2="${xExt.toFixed(1)}" y2="${rielY(yExt).toFixed(1)}" stroke="#111" stroke-width="1.8"/>`;
+  const rielL=`<path d="M${xEsq.toFixed(1)},${(yEsq-railH).toFixed(1)} L${xExt.toFixed(1)},${(yExt-railH).toFixed(1)} L${xExt.toFixed(1)},${yExt.toFixed(1)} L${xEsq.toFixed(1)},${yEsq.toFixed(1)} Z" fill="none" stroke="#111" stroke-width="1.8"/>`;
+  const sopExt=`<line x1="${xExt.toFixed(1)}" y1="${(yExt-railH-6).toFixed(1)}" x2="${xExt.toFixed(1)}" y2="${(yExt-railH).toFixed(1)}" stroke="#111" stroke-width="1.8"/>`;
 
   // ── COTAS DE ANCHO: cada tramo la suya, a la misma distancia de su riel ──
   const sep=12;                                // misma separación para ambas
@@ -2802,9 +2808,9 @@ function cuerpoInclinado(tipo,x1,y1,x2,y2,h,hojas,ondaCm,recogida,u){
     if(t.includes('vertical')||t.includes('lama')){
       // VERTICAL DE LAMAS → cadena de mando (línea discontinua, como en svgVertical).
       // x1,y1 es SIEMPRE el punto que toca la esquina de la L (así lo llama
-      // svgFormaL) y x2,y2 el extremo libre: el mando va siempre un poco más
-      // allá del extremo libre, para no acabar dibujado encima del riel/tela
-      // del otro tramo (que empieza justo en la esquina, x1,y1).
+      // svgFormaL) y x2,y2 el extremo libre: el único sitio donde el mando no
+      // queda oculto bajo el riel/tela del otro tramo, así que va siempre ahí
+      // (un poco más allá, a modo de remate), sea cual sea la Recogida L.
       const fM=1+9/(Math.hypot(dx,dy)||1);
       const mxV=px(fM),myV=py(fM);
       o+=`<line x1="${mxV.toFixed(1)}" y1="${(myV-4).toFixed(1)}" x2="${mxV.toFixed(1)}" y2="${(myV+h*0.5).toFixed(1)}" stroke="#555" stroke-width="1.2" stroke-dasharray="2.5,2"/>`;
