@@ -429,6 +429,47 @@ test('TEJIDO vacío en el presupuesto no arrastra el texto de la sección de pag
   assert.strictEqual(out[0].tejido, '', 'el tejido debería quedar vacío, no con texto de la sección de pago');
 });
 
+console.log('\nParser: artículos con precio pero sin MEDIDA: reconocible (ficha en blanco)');
+test('Un artículo con precio pero sin "MEDIDA:" (p.ej. una cortina Velux de catálogo) genera una ficha en blanco, no se pierde', () => {
+  const txt = [
+    'PRESUPUESTO DE VENTA',
+    'REF. L300 CLIENTE DOCE',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'ZONA DE DALT 1,00',
+    'CORTINAS CORTINA TIPO VELUX SK06 TEJIDO BLANCO. 1,00 168,00 168,00',
+    'cortinas tipo.',
+  ].join('\n');
+  const out = app.estrategiaCanotex(txt);
+  assert.strictEqual(out.length, 1);
+  assert.strictEqual(out[0].enBlanco, true);
+  assert.strictEqual(out[0].ancho, '');
+  assert.strictEqual(out[0].alto, '');
+  assert.ok(out[0].estancia.includes('ZONA DE DALT'), 'debería incluir la estancia detectada');
+  assert.ok(out[0].estancia.includes('VELUX'), 'debería incluir una descripción del artículo para identificarlo');
+});
+test('Una ficha en blanco sin ancho ni alto no genera línea en la hoja de corte', () => {
+  app.resetCortinas();
+  app.addCortina({ estancia: 'ZONA DE DALT · CORTINA VELUX', ancho: '', alto: '', enBlanco: true });
+  const STATE = app.__internals.STATE;
+  assert.strictEqual(STATE.cortinas.length, 1);
+  assert.strictEqual(STATE.lineas.length, 0, 'sin ancho/alto todavía no hay nada que cortar');
+});
+test('Un pedido en texto libre sin ninguna etiqueta reconocible (encargo de tapicería) no genera ninguna ficha inventada', () => {
+  // Antes, "cojin de 60x60" mencionado en un párrafo de tapicería en texto
+  // libre se colaba como si fuera una cortina de 60x60. El usuario ha pedido
+  // explícitamente que estos pedidos no generen ninguna ficha automática.
+  const txt = [
+    'PRESUPUESTO DE VENTA',
+    'REF. TAPIZADO COLCHONETA Y COJINES',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'funda para colchoneta triangular, con tejido tapicero calidad',
+    '1,00 780,00 780,00',
+    'funda con el mismo tejido para cojin de 60x60 4,00 30,00 120,00',
+  ].join('\n');
+  const out = app.estrategiaCanotex(txt);
+  assert.strictEqual(out.length, 0, 'un pedido de tapicería en texto libre no debería generar ninguna cortina/ficha');
+});
+
 console.log('\nFunciones puras del parser');
 
 test('fmtCm — número simple añade "cm"', () => {

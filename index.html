@@ -1217,6 +1217,29 @@ function estrategiaCanotex(txt){
       dbg(`  ✅ #${results.length} [${currentEstancia||'?'}] ${tipo} ${ancho}×${alto}${cantidad>1?' ×'+cantidad:''}`,'ok');
       i=j;continue;
     }
+    // Artículo con precio pero SIN "MEDIDA:" reconocible (p.ej. "CORTINA TIPO
+    // VELUX SK06 TEJIDO BLANCO. 1,00 168,00 168,00"): no hay ancho/alto/tipo
+    // que auto-rellenar, pero es un artículo real y cobrado del pedido — antes
+    // se perdía sin más, sin ni siquiera avisar de que existía. Se añade como
+    // ficha en blanco (sin dibujo ni datos, solo las etiquetas) para que quede
+    // constancia y se rellene a mano, en vez de desaparecer sin dejar rastro.
+    // - Empieza en mayúscula: así es como Canotex escribe sus artículos
+    //   reales; un párrafo en minúscula (p.ej. un encargo de tapicería en
+    //   texto libre: "funda con el mismo tejido para cojin de 60x60...") no
+    //   lo es, y ahí el usuario ha pedido que no se cree ninguna ficha.
+    // - La descripción que queda tras quitar los números finales debe tener
+    //   una palabra de verdad: descarta líneas que son solo números sueltos
+    //   (p.ej. una línea de precio huérfana "1,00 780,00 780,00" partida del
+    //   párrafo de arriba).
+    if(/^[A-ZÀ-ÿ]/.test(line)&&/(?:\s+\d+[,.]\d{2}){2,}\s*$/.test(line)&&!NO_EST.test(line)&&!/^(PORTES|PROINFANTIL)\b/i.test(line)){
+      const desc=line.replace(/(?:\s+\d+[,.]\d{2}){1,4}\s*$/,'').replace(/\.\s*$/,'').trim();
+      if(desc&&/[A-Za-zÀ-ÿ]{3,}/.test(desc)){
+        const est=(currentEstancia?currentEstancia+' · ':'')+desc.substring(0,60);
+        results.push({estancia:est,ancho:'',alto:'',hojas:'1',recogida:'D',tejido:'',sistema:'',tipo:'',enBlanco:true});
+        dbg(`  ✏️ #${results.length} [${est}] ficha en blanco (sin MEDIDA: reconocible)`,'warn');
+      }
+      i++;continue;
+    }
     i++;
   }
   return results;
@@ -1343,8 +1366,15 @@ function buscarTejidoFallback(lines,desde,hasta){
 }
 
 function estrategiaMedidaDirecta(txt){const results=[],seen=new Set();const medRe=/MEDIDA[S]?:?\s*(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)\s*H?/gi;let m;while((m=medRe.exec(txt))!==null){const key=m[1]+'x'+m[2];if(seen.has(key))continue;seen.add(key);const from=Math.max(0,m.index-300),to=Math.min(txt.length,m.index+500);const ctx=txt.substring(from,to);const tejido=extractField(ctx,/TEJIDO[S]?:?\s*([^\n]+)/i);const sistema=extractField(ctx,/SISTEMA[^:]*:\s*([^\n]+)/i);const hojaM=ctx.match(/(\d+)\s*HOJA[S]?/i);const recM=ctx.match(/RECOG:?\s*([A-Z]{1,8})/i)||ctx.match(/MANDO:?\s*([A-Z]{1,6})/i);const tipo=normalizaTipoCanotex('',extractField(ctx,/(?:CORTINA|ESTOR|PAQUETTO|ENROLLABLE|ONDA|PALAS)[^\n]{0,60}/i),sistema);results.push({estancia:`Cortina ${results.length+1}`,ancho:m[1].replace(',','.'),alto:m[2].replace(',','.'),hojas:hojaM?hojaM[1]:'1',recogida:normalizeRecogida(recM?recM[1]:''),tejido,sistema,tipo});}return results;}
-function estrategiaNumerica(lines){const results=[];let currentEst='';lines.forEach(line=>{if(/^[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑA-Z\s]{3,35}$/.test(line))currentEst=line.trim();const m=line.match(/(\d{2,4}(?:[.,]\d+)?)\s*[xX×]\s*(\d{2,4}(?:[.,]\d+)?)/);if(m&&currentEst&&parseFloat(m[1])>50&&parseFloat(m[2])>50){results.push({estancia:currentEst,ancho:m[1].replace(',','.'),alto:m[2].replace(',','.'),hojas:'1',recogida:'D',tejido:'',sistema:'',tipo:''});currentEst='';}});return results;}
-function estrategiaLibre(lines){const results=[];lines.forEach(line=>{const m=line.match(/(\d{2,3}(?:[.,]\d+)?)\s*[xX×]\s*(\d{2,3}(?:[.,]\d+)?)/);if(m&&parseFloat(m[1])>50&&parseFloat(m[2])>50)results.push({estancia:`Cortina ${results.length+1}`,ancho:m[1].replace(',','.'),alto:m[2].replace(',','.'),hojas:'1',recogida:'D',tejido:'',sistema:'',tipo:''});});return results.slice(0,20);}
+// Estas dos son el último recurso cuando el documento no sigue ni de lejos el
+// formato Canotex (ni MEDIDA:, ni códigos de producto): solo buscan un "NxM"
+// en cualquier parte del texto. Para no confundir la medida de un cojín o
+// colchoneta mencionada en un párrafo de tapicería en texto libre ("funda...
+// para cojin de 60x60") con una cortina real, se ignoran las líneas que
+// empiezan en minúscula — el texto propio de Canotex (códigos, MEDIDA:,
+// nombres de estancia) siempre empieza en mayúscula.
+function estrategiaNumerica(lines){const results=[];let currentEst='';lines.forEach(line=>{if(/^[a-zà-ÿ]/.test(line))return;if(/^[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑA-Z\s]{3,35}$/.test(line))currentEst=line.trim();const m=line.match(/(\d{2,4}(?:[.,]\d+)?)\s*[xX×]\s*(\d{2,4}(?:[.,]\d+)?)/);if(m&&currentEst&&parseFloat(m[1])>50&&parseFloat(m[2])>50){results.push({estancia:currentEst,ancho:m[1].replace(',','.'),alto:m[2].replace(',','.'),hojas:'1',recogida:'D',tejido:'',sistema:'',tipo:''});currentEst='';}});return results;}
+function estrategiaLibre(lines){const results=[];lines.forEach(line=>{if(/^[a-zà-ÿ]/.test(line))return;const m=line.match(/(\d{2,3}(?:[.,]\d+)?)\s*[xX×]\s*(\d{2,3}(?:[.,]\d+)?)/);if(m&&parseFloat(m[1])>50&&parseFloat(m[2])>50)results.push({estancia:`Cortina ${results.length+1}`,ancho:m[1].replace(',','.'),alto:m[2].replace(',','.'),hojas:'1',recogida:'D',tejido:'',sistema:'',tipo:''});});return results.slice(0,20);}
 function extractField(txt,pat){const m=(txt||'').match(pat);return(m&&m[1]!=null)?String(m[1]).trim().replace(/\s+/g,' '):'';}
 function normalizeRecogida(raw){const r=(raw||'').trim().toUpperCase();if(/^I$|^IZ$|IZQ|ESQ|IZQUI/.test(r))return'IZQ';if(/CEN|CENT/.test(r))return'CEN';if(/LAT/.test(r))return'D';return'D';}
 
@@ -1460,7 +1490,12 @@ function addCortina(d={}){
   enBlanco:d.enBlanco||false,
   llu2:d.llu2||'',llu2Ancho:d.llu2Ancho||'',llu2Alto:d.llu2Alto||'',llu2AnchoArriba:d.llu2AnchoArriba||'',llu2AltoCorto:d.llu2AltoCorto||'',llu2Inclinada:d.llu2Inclinada||'',llu2Hojas:d.llu2Hojas||'1',llu2Recogida:d.llu2Recogida||'D'};
   STATE.cortinas.push(c);
-  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'&&tipo!=='Cojín'&&tipo!=='Cabecero'&&tipo!=='Tapiceria'){
+  // Ficha en blanco SIN ningún dato (ni ancho ni alto): no hay nada que
+  // cortar todavía, así que tampoco genera línea de corte hasta que se
+  // rellene a mano. Distinto del caso de una llucana pasada a blanco (esa sí
+  // tiene medidas reales, solo el dibujo se deja en blanco).
+  const esFichaEnBlancoSinDatos=c.enBlanco&&!c.ancho&&!c.alto;
+  if(!esFichaEnBlancoSinDatos&&tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'&&tipo!=='Cojín'&&tipo!=='Cabecero'&&tipo!=='Tapiceria'){
     STATE.lcnt++;
     const corrIni=(c.tipo||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
     const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
@@ -1472,7 +1507,7 @@ function addCortina(d={}){
     }
   }
   rerenderAllCards();
-  if(tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'&&tipo!=='Cojín'&&tipo!=='Cabecero'&&tipo!=='Tapiceria')rerenderAllLineas();
+  if(!esFichaEnBlancoSinDatos&&tipo!=='Enrollable'&&tipo!=='Vertical'&&tipo!=='Brisa'&&tipo!=='Colcha/Vánova/Nórdica'&&tipo!=='Cojín'&&tipo!=='Cabecero'&&tipo!=='Tapiceria')rerenderAllLineas();
   updateBadge();
   scheduleLiveRefresh();
 }
@@ -1629,6 +1664,7 @@ function reconstruirLineas(){
   STATE.lineas=[];STATE.lcnt=0;
   STATE.cortinas.forEach(c=>{
     const t=c.tipo||'';
+    if(c.enBlanco&&!c.ancho&&!c.alto)return; // ficha en blanco sin datos: nada que cortar todavía
     if(t==='Enrollable'||t==='Vertical'||t==='Brisa'||t==='Colcha/Vánova/Nórdica'||t==='Cojín'||t==='Cabecero'||t==='Tapiceria')return;
     STATE.lcnt++;
     const corrIni=(t||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
