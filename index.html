@@ -1515,6 +1515,7 @@ function addCortina(d={}){
   const recIni=(parseInt(hojasIni)||1)>=2?'CEN':(d.recogida||'D');
   const c={id,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',hojas:hojasIni,recogida:recIni,tejido:d.tejido||'',sistema:d.sistema||'',tipo,extra:d.extra||'',metros:d.metros||'',caida:d.caida||'',soporte:d.soporte||'',codigo:d.codigo||'',motorizada:d.motorizada||false,ondaCm:d.ondaCm||'',esTapiceria:d.esTapiceria||false,apertura:d.apertura||'',mandoBrisa:d.mandoBrisa||'cadena',colorGuia:d.colorGuia||'',
   formaL:d.formaL||'',anchoL:d.anchoL||'',altoL:d.altoL||'',hojasL:d.hojasL||'1',recogidaL:d.recogidaL||'D',aperturaL:d.aperturaL||'',
+  formaJunta:d.formaJunta||'',
   llucana:d.llucana||'',llucAnchoArriba:d.llucAnchoArriba||'',llucAltoCorto:d.llucAltoCorto||'',llucInclinada:d.llucInclinada||'',
   enBlanco:d.enBlanco||false,
   llu2:d.llu2||'',llu2Ancho:d.llu2Ancho||'',llu2Alto:d.llu2Alto||'',llu2AnchoArriba:d.llu2AnchoArriba||'',llu2AltoCorto:d.llu2AltoCorto||'',llu2Inclinada:d.llu2Inclinada||'',llu2Hojas:d.llu2Hojas||'1',llu2Recogida:d.llu2Recogida||'D'};
@@ -1528,11 +1529,16 @@ function addCortina(d={}){
     STATE.lcnt++;
     const corrIni=(c.tipo||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
     const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
-    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':'')),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
+    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.formaJunta&&c.anchoL?' (1ª cortina)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':''))),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
     // Cortina en L → segunda guía independiente (su propia línea de corte)
     if(c.formaL&&c.anchoL){
       STATE.lcnt++;
       STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
+    }
+    // Cortinas juntas → segunda guía independiente (su propia línea de corte)
+    if(c.formaJunta&&c.anchoL){
+      STATE.lcnt++;
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (2ª cortina)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Cortinas juntas · '+(c.formaJunta==='izq'?'2ª a la izq':'2ª a la dcha')});
     }
   }
   rerenderAllCards();
@@ -1645,6 +1651,7 @@ function unirEnL(id){
   if(i<0||i>=STATE.cortinas.length-1){setSt('er','No hay una cortina siguiente para unir');return;}
   const a=STATE.cortinas[i],b=STATE.cortinas[i+1];
   if(a.formaL){setSt('er','Esta cortina ya está en L');return;}
+  if(a.formaJunta){setSt('er','Esta cortina ya está unida con la siguiente (juntas)');return;}
   const lado=confirm('Unir "'+(a.estancia||'#'+(i+1))+'" con "'+(b.estancia||'#'+(i+2))+'" en L.\n\nAceptar = esquina a la DERECHA\nCancelar = esquina a la IZQUIERDA')?'dcha':'izq';
   // La segunda cortina pasa a ser el tramo lateral
   a.formaL=lado;
@@ -1688,6 +1695,54 @@ function separarL(id){
   setSt('ok','L separada en dos cortinas');
 }
 
+/* Unir esta cortina con la SIGUIENTE como "cortinas juntas": una al lado de
+   la otra, tocándose, pero cada una con su propio dibujo recto (a diferencia
+   de la L, que dibuja el 2º tramo inclinado formando esquina). La siguiente
+   se elimina como cortina independiente y pasa a ser el 2º tramo de esta. */
+function unirJuntas(id){
+  const i=STATE.cortinas.findIndex(c=>c.id===id);
+  if(i<0||i>=STATE.cortinas.length-1){setSt('er','No hay una cortina siguiente para unir');return;}
+  const a=STATE.cortinas[i],b=STATE.cortinas[i+1];
+  if(a.formaL){setSt('er','Esta cortina ya está en L');return;}
+  if(a.formaJunta){setSt('er','Esta cortina ya está unida con la siguiente (juntas)');return;}
+  const lado=confirm('Unir "'+(a.estancia||'#'+(i+1))+'" con "'+(b.estancia||'#'+(i+2))+'" como cortinas juntas (una al lado de la otra, cada una con su propio dibujo recto).\n\nAceptar = la 2ª a la DERECHA\nCancelar = la 2ª a la IZQUIERDA')?'dcha':'izq';
+  a.formaJunta=lado;
+  a.anchoL=b.ancho||'';
+  a.altoL=(b.alto&&b.alto!==a.alto)?b.alto:'';
+  a.hojasL=b.hojas||'1';
+  a.recogidaL=b.recogida||'D';
+  if(!a.tejido&&b.tejido)a.tejido=b.tejido;
+  if(!a.sistema&&b.sistema)a.sistema=b.sistema;
+  STATE.cortinas.splice(i+1,1);
+  reconstruirLineas();
+  rerenderAllCards();
+  updateBadge();
+  scheduleLiveRefresh();
+  setSt('ok','Cortinas unidas (juntas)');
+}
+
+/* Separar dos cortinas juntas en dos cortinas independientes */
+function separarJuntas(id){
+  const i=STATE.cortinas.findIndex(c=>c.id===id);
+  if(i<0)return;
+  const a=STATE.cortinas[i];
+  if(!a.formaJunta){setSt('er','Esta cortina no está unida (juntas)');return;}
+  const b={...a};
+  delete b.id;
+  b.ancho=a.anchoL;b.alto=a.altoL||a.alto;b.hojas=a.hojasL;b.recogida=a.recogidaL;
+  b.formaJunta='';b.anchoL='';b.altoL='';b.hojasL='1';b.recogidaL='D';
+  b.estancia=(a.estancia||'')+' (2)';
+  a.formaJunta='';a.anchoL='';a.altoL='';a.hojasL='1';a.recogidaL='D';
+  STATE.pcnt++;
+  b.id='p'+STATE.pcnt;
+  STATE.cortinas.splice(i+1,0,b);
+  reconstruirLineas();
+  rerenderAllCards();
+  updateBadge();
+  scheduleLiveRefresh();
+  setSt('ok','Cortinas separadas');
+}
+
 /* Reconstruir todas las líneas de corte a partir de las cortinas actuales */
 function reconstruirLineas(){
   STATE.lineas=[];STATE.lcnt=0;
@@ -1698,10 +1753,14 @@ function reconstruirLineas(){
     STATE.lcnt++;
     const corrIni=(t||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
     const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
-    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':'')),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
+    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.formaJunta&&c.anchoL?' (1ª cortina)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':''))),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
     if(c.formaL&&c.anchoL){
       STATE.lcnt++;
       STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
+    }
+    if(c.formaJunta&&c.anchoL){
+      STATE.lcnt++;
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (2ª cortina)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Cortinas juntas · '+(c.formaJunta==='izq'?'2ª a la izq':'2ª a la dcha')});
     }
     // Llucana con 2º tramo → segunda guía independiente
     if(c.llucana&&c.llu2&&c.llu2Ancho){
@@ -1751,6 +1810,18 @@ function remLinea(id){
   } else {
     STATE.lineas=STATE.lineas.filter(l=>l.id!==id);rerenderAllLineas();scheduleCorteLiveRefresh();
   }
+}
+/* Fija la Forma de una cortina a partir del valor codificado del desplegable
+   ("" = recta, "Lizq"/"Ldcha" = en L, "Jizq"/"Jdcha" = cortinas juntas).
+   formaL y formaJunta son mutuamente excluyentes: fijar una limpia la otra. */
+function setForma(id,val){
+  const c=STATE.cortinas.find(x=>x.id===id);if(!c)return;
+  if(val==='Lizq'){c.formaL='izq';c.formaJunta='';}
+  else if(val==='Ldcha'){c.formaL='dcha';c.formaJunta='';}
+  else if(val==='Jizq'){c.formaJunta='izq';c.formaL='';}
+  else if(val==='Jdcha'){c.formaJunta='dcha';c.formaL='';}
+  else{c.formaL='';c.formaJunta='';}
+  rerenderAllCards();reconstruirLineas();scheduleLiveRefresh();
 }
 function updCortina(id,field,val){
   const c=STATE.cortinas.find(x=>x.id===id);if(!c)return;
@@ -1844,11 +1915,15 @@ function renderPcard(c,idx){
   }
 
   const haySiguiente=idx<STATE.cortinas.length-1;
-  const btnL=(!c.formaL&&!c.llucana&&haySiguiente)
+  const btnL=(!c.formaL&&!c.formaJunta&&!c.llucana&&haySiguiente)
     ?`<button class="btn-rem" title="Unir con la siguiente cortina en forma de L" onclick="unirEnL('${c.id}')" style="font-size:12px">⌐</button>`
     :(c.formaL?`<button class="btn-rem" title="Separar la L en dos cortinas" onclick="separarL('${c.id}')" style="font-size:12px">⇄</button>`:'');
+  // Botón Cortinas juntas: una al lado de la otra, tocándose, cada una recta
+  const btnJ=(!c.formaL&&!c.formaJunta&&!c.llucana&&haySiguiente)
+    ?`<button class="btn-rem" title="Unir con la siguiente cortina, juntas (una al lado de la otra, cada una con su propio dibujo recto)" onclick="unirJuntas('${c.id}')" style="font-size:12px">▯▯</button>`
+    :(c.formaJunta?`<button class="btn-rem" title="Separar en dos cortinas independientes" onclick="separarJuntas('${c.id}')" style="font-size:12px">⇄</button>`:'');
   // Botón Llucana (riel superior inclinado en trapecio/triángulo)
-  const btnLluc=!c.formaL
+  const btnLluc=(!c.formaL&&!c.formaJunta)
     ?(c.llucana
       ?`<button class="btn-rem" title="Quitar forma de llucana" onclick="quitarLlucana('${c.id}')" style="font-size:12px">▱</button>`
       :`<button class="btn-rem" title="Convertir en llucana (riel superior inclinado)" onclick="ponerLlucana('${c.id}')" style="font-size:12px">◺</button>`)
@@ -1858,12 +1933,12 @@ function renderPcard(c,idx){
     ?`<button class="btn-rem" title="${c.enBlanco?'Volver al dibujo automático':'Dejar dibujo y datos en blanco para rellenar a mano'}" onclick="toggleBlanco('${c.id}')" style="font-size:12px${c.enBlanco?';color:var(--acc)':''}">✎</button>`
     :'';
   // Unir/separar el 2º tramo de la llucana (misma idea que la forma en L)
-  const btnLluc2=(c.llucana&&!c.formaL)
+  const btnLluc2=(c.llucana&&!c.formaL&&!c.formaJunta)
     ?(c.llu2
       ?`<button class="btn-rem" title="Separar el 2º tramo de la llucana" onclick="separarLlucana('${c.id}')" style="font-size:12px">⇄</button>`
       :(haySiguiente?`<button class="btn-rem" title="Unir la siguiente cortina como 2º tramo de la llucana" onclick="unirLlucana('${c.id}')" style="font-size:12px">⌐</button>`:''))
     :'';
-  div.innerHTML=`<div class="pch"><span class="num">#${idx+1}</span><span class="est">${he(c.estancia||'(sin nombre)')}</span>${btnL}${btnLluc}${btnBlanco}${btnLluc2}<button class="btn-rem" title="Duplicar cortina" onclick="dupCortina('${c.id}')" style="font-size:12px">⧉</button><button class="btn-rem btn-rem-danger" title="Eliminar cortina" onclick="remCortina('${c.id}')">✕</button></div>
+  div.innerHTML=`<div class="pch"><span class="num">#${idx+1}</span><span class="est">${he(c.estancia||'(sin nombre)')}</span>${btnL}${btnJ}${btnLluc}${btnBlanco}${btnLluc2}<button class="btn-rem" title="Duplicar cortina" onclick="dupCortina('${c.id}')" style="font-size:12px">⧉</button><button class="btn-rem btn-rem-danger" title="Eliminar cortina" onclick="remCortina('${c.id}')">✕</button></div>
     <div class="pcb">
       <div class="fld"><label>Estancia</label><input type="text" value="${he(c.estancia)}" placeholder="Comedor…" onchange="updCortina('${c.id}','estancia',this.value)"></div>
       <div class="r2"><div class="fld"><label>Ancho cm</label><input type="text" inputmode="decimal" value="${he(c.ancho)}" placeholder="170" onchange="updCortina('${c.id}','ancho',this.value)"></div><div class="fld"><label>Alto cm</label><input type="text" inputmode="decimal" value="${he(c.alto)}" placeholder="257" onchange="updCortina('${c.id}','alto',this.value)"></div></div>
@@ -1872,18 +1947,20 @@ function renderPcard(c,idx){
       ${esVertBri?'':`<div class="r2"><div class="fld"><label>Nº Hojas</label><input type="text" inputmode="numeric" value="${he(c.hojas)}" placeholder="1" onchange="updCortina('${c.id}','hojas',this.value)"></div><div class="fld"><label>Recogida</label><select onchange="updCortina('${c.id}','recogida',this.value)"><option value="D"${c.recogida==='D'?' selected':''}>Derecha</option><option value="IZQ"${c.recogida==='IZQ'?' selected':''}>Izquierda</option><option value="CEN"${c.recogida==='CEN'?' selected':''}>Central</option></select></div></div>`}
       <div class="fld"><label>Tejido / Referencia</label><input type="text" value="${he(c.tejido)}" placeholder="SAURA C/02" onchange="updCortina('${c.id}','tejido',this.value)"></div>
       ${extras}
-      <div class="fld"><label>Forma</label><select onchange="updCortina('${c.id}','formaL',this.value)">
-        <option value=""${!c.formaL?' selected':''}>Recta</option>
-        <option value="izq"${c.formaL==='izq'?' selected':''}>En L · esquina izquierda</option>
-        <option value="dcha"${c.formaL==='dcha'?' selected':''}>En L · esquina derecha</option>
+      <div class="fld"><label>Forma</label><select onchange="setForma('${c.id}',this.value)">
+        <option value=""${(!c.formaL&&!c.formaJunta)?' selected':''}>Recta</option>
+        <option value="Lizq"${c.formaL==='izq'?' selected':''}>En L · esquina izquierda</option>
+        <option value="Ldcha"${c.formaL==='dcha'?' selected':''}>En L · esquina derecha</option>
+        <option value="Jizq"${c.formaJunta==='izq'?' selected':''}>Juntas · 2ª a la izquierda</option>
+        <option value="Jdcha"${c.formaJunta==='dcha'?' selected':''}>Juntas · 2ª a la derecha</option>
       </select></div>
-      ${c.formaL?`<div class="r2">
-        <div class="fld"><label>Ancho tramo L</label><input type="text" inputmode="decimal" value="${he(c.anchoL||'')}" placeholder="280" onchange="updCortina('${c.id}','anchoL',this.value)"></div>
-        <div class="fld"><label>Alto tramo L</label><input type="text" inputmode="decimal" value="${he(c.altoL||'')}" placeholder="${he(c.alto||'igual')}" onchange="updCortina('${c.id}','altoL',this.value)"></div>
+      ${(c.formaL||c.formaJunta)?`<div class="r2">
+        <div class="fld"><label>Ancho 2º tramo</label><input type="text" inputmode="decimal" value="${he(c.anchoL||'')}" placeholder="280" onchange="updCortina('${c.id}','anchoL',this.value)"></div>
+        <div class="fld"><label>Alto 2º tramo</label><input type="text" inputmode="decimal" value="${he(c.altoL||'')}" placeholder="${he(c.alto||'igual')}" onchange="updCortina('${c.id}','altoL',this.value)"></div>
       </div>
-      ${esVerticalLama?`<div class="fld"><label>Nº de recogida L (apertura)</label><select onchange="updCortina('${c.id}','aperturaL',this.value)"><option value="">-- Seleccionar --</option>${optsApertura(c.aperturaL)}</select></div>`:`<div class="r2">
-        <div class="fld"><label>Hojas L</label><input type="text" inputmode="numeric" value="${he(c.hojasL||'1')}" onchange="updCortina('${c.id}','hojasL',this.value)"></div>
-        <div class="fld"><label>Recogida L</label><select onchange="updCortina('${c.id}','recogidaL',this.value)">
+      ${esVerticalLama?`<div class="fld"><label>Nº de recogida 2º tramo (apertura)</label><select onchange="updCortina('${c.id}','aperturaL',this.value)"><option value="">-- Seleccionar --</option>${optsApertura(c.aperturaL)}</select></div>`:`<div class="r2">
+        <div class="fld"><label>Hojas 2º tramo</label><input type="text" inputmode="numeric" value="${he(c.hojasL||'1')}" onchange="updCortina('${c.id}','hojasL',this.value)"></div>
+        <div class="fld"><label>Recogida 2º tramo</label><select onchange="updCortina('${c.id}','recogidaL',this.value)">
           <option value="D"${(c.recogidaL||'D')==='D'?' selected':''}>Derecha</option>
           <option value="IZQ"${c.recogidaL==='IZQ'?' selected':''}>Izquierda</option>
           <option value="CEN"${c.recogidaL==='CEN'?' selected':''}>Central</option>
@@ -2888,6 +2965,87 @@ function svgFormaL(p,u){
   return svg;
 }
 
+/* Dos cortinas JUNTAS: una al lado de la otra, tocándose, pero cada una con
+   su propio dibujo RECTO (a diferencia de svgFormaL, que dibuja el 2º tramo
+   inclinado formando esquina). Reutiliza los mismos campos *L (anchoL,
+   altoL, hojasL, recogidaL, aperturaL) que la forma en L, ya que una cortina
+   nunca es a la vez L y "juntas". */
+function svgFormaJuntas(p,u){
+  const{ML,MT,CW,CH}=SV;
+  const esIzq=p.formaJunta==='izq';   // la 2ª cortina va a la izquierda de la principal
+
+  // Anchos proporcionales a las medidas reales
+  const aA=parseFloat(String(p.ancho||'0').replace(',','.'))||1;
+  const aB=parseFloat(String(p.anchoL||'0').replace(',','.'))||1;
+  const util=CW-4;
+  let wA=util*(aA/(aA+aB)), wB=util*(aB/(aA+aB));
+  const minW=util*0.25;
+  if(wA<minW){wA=minW;wB=util-minW;}
+  if(wB<minW){wB=minW;wA=util-minW;}
+
+  // Alturas: cada tramo la suya. Sin inclinación, no hay que reservar caída.
+  const hA=parseFloat(String(p.alto||'0').replace(',','.'))||0;
+  const hBnum=parseFloat(String(p.altoL||'').replace(',','.'))||hA;
+  const hTelaA=CH;
+  const hTelaB=(hA&&hBnum)?Math.max(CH*0.25,Math.min(CH,hTelaA*(hBnum/hA))):hTelaA;
+
+  const yR=MT;
+  const xA=esIzq?(ML+wB):ML;
+  const xB=esIzq?ML:(ML+wA);
+  // Lado por el que cada tramo toca al otro (para que sus rieles no se
+  // solapen en el punto de contacto, igual que en la esquina de la L).
+  const ladoA=esIzq?'izq':'dcha', ladoB=esIzq?'dcha':'izq';
+
+  const cuerpoA=cuerpoConfeccion(p.tipo,xA,yR,wA,hTelaA,p.hojas,p.ondaCm,p.recogida||'D',u,ladoA,p.apertura,p.ancho);
+  const cuerpoB=cuerpoConfeccion(p.tipo,xB,yR,wB,hTelaB,p.hojasL,p.ondaCm,p.recogidaL||'D',u,ladoB,p.aperturaL,p.anchoL);
+
+  // ── COTAS DE ANCHO: cada tramo la suya, a la misma altura sobre su riel ──
+  const sep=12;
+  const yC=yR-7-sep;
+  const cotaA=`<line x1="${xA.toFixed(1)}" y1="${yC.toFixed(1)}" x2="${(xA+wA).toFixed(1)}" y2="${yC.toFixed(1)}" stroke="#111" stroke-width="1.2" marker-start="url(#al${u})" marker-end="url(#ar${u})"/>
+    <text x="${(xA+wA/2).toFixed(1)}" y="${(yC-9).toFixed(1)}" text-anchor="middle" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(p.ancho)}</text>`;
+  const cotaB=`<line x1="${xB.toFixed(1)}" y1="${yC.toFixed(1)}" x2="${(xB+wB).toFixed(1)}" y2="${yC.toFixed(1)}" stroke="#111" stroke-width="1.2" marker-start="url(#al${u})" marker-end="url(#ar${u})"/>
+    <text x="${(xB+wB/2).toFixed(1)}" y="${(yC-9).toFixed(1)}" text-anchor="middle" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(p.anchoL)}</text>`;
+
+  // ── COTAS DE ALTO: una por tramo, en lados opuestos ──
+  const txtA=fmtCm((p.alto||'')+(p.extra?' '+p.extra:''));
+  const txtB0=fmtCm(p.altoL||'');
+  const txtB=txtB0!=='—'?txtB0:txtA;
+  function cotaVert(x,hTela,txt,haciaDcha){
+    const cx=haciaDcha?(x+12):(x-12);
+    const tx=haciaDcha?(x+15):(x-15);
+    const anchor=haciaDcha?'start':'end';
+    return `<line x1="${cx.toFixed(1)}" y1="${yR.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${(yR+hTela).toFixed(1)}" stroke="#111" stroke-width="1.2" marker-start="url(#arv${u})" marker-end="url(#ar${u})"/>
+      <text x="${tx.toFixed(1)}" y="${(yR+hTela/2+5).toFixed(1)}" text-anchor="${anchor}" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${txt}</text>`;
+  }
+  let cotasAlto='';
+  if(esIzq){
+    cotasAlto =cotaVert(xB, hTelaB, txtB, false);
+    cotasAlto+=cotaVert(xA+wA, hTelaA, txtA, true);
+  }else{
+    cotasAlto =cotaVert(xA, hTelaA, txtA, false);
+    cotasAlto+=cotaVert(xB+wB, hTelaB, txtB, true);
+  }
+
+  // Ganchos por tramo (Onda Perfecta)
+  let gch='';
+  if((p.tipo||'').toLowerCase().includes('onda')){
+    try{
+      const gA=calcularCorrederasTexto(p.ancho,p.hojas,p.ondaCm);
+      const gB=calcularCorrederasTexto(p.anchoL,p.hojasL,p.ondaCm);
+      if(gA)gch+=`<text x="${(xA+wA/2).toFixed(1)}" y="${(yR+hTelaA*0.85).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="bold" fill="#555" font-family="Arial">${gA}</text>`;
+      if(gB)gch+=`<text x="${(xB+wB/2).toFixed(1)}" y="${(yR+hTelaB*0.85).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="bold" fill="#555" font-family="Arial">${gB}</text>`;
+    }catch(e){}
+  }
+
+  let svg=svgBase(u,`${cuerpoA}${cuerpoB}${gch}${cotaA}${cotaB}${cotasAlto}`);
+  svg=svg.replace(/viewBox="(-?\d+) (-?\d+) (\d+) (\d+)"/,(m,x,y,w,h)=>
+    `viewBox="${parseInt(x)-58} ${y} ${parseInt(w)+58} ${h}"`);
+  svg=svg.replace(/viewBox="(-?\d+) (-?\d+) (\d+) (\d+)"/,(m,x,y,w,h)=>
+    `viewBox="${x} ${parseInt(y)-18} ${w} ${parseInt(h)+18}"`);
+  return svg;
+}
+
 /* Cuerpo de la confección dibujado INCLINADO (paralelogramo).
    El borde superior va de (x1,y1) a (x2,y2); la tela cuelga h hacia abajo. */
 function cuerpoInclinado(tipo,x1,y1,x2,y2,h,hojas,ondaCm,recogida,u,apertura,anchoReal){
@@ -3019,6 +3177,8 @@ function getSVG(p){
   if(p.enBlanco)return svgBlanco(p,u);
   // Cortina en L: dibujo del conjunto (dos tramos independientes formando esquina)
   if(p.formaL&&p.anchoL)return svgFormaL(p,u);
+  // Cortinas juntas: dos tramos independientes, cada uno con su dibujo recto
+  if(p.formaJunta&&p.anchoL)return svgFormaJuntas(p,u);
   // Llucana con 2º tramo unido → dibujo del conjunto
   if(p.llucana&&p.llu2&&p.llu2Ancho)return svgLlucanaDoble(p,u);
   // Llucana: riel superior inclinado (trapecio/triángulo)
@@ -3134,6 +3294,15 @@ function fichaFilas(p){
     if(esVerticalLamaF){
       const recLabelL=p.aperturaL?('Nº '+p.aperturaL):({'D':'>> Derecha','IZQ':'<< Izquierda','CEN':'<< Central >>'}[p.recogidaL]||p.recogidaL||'D');
       rows+='<div class="fdat-row"><div class="fdat-k">Recogida L</div><div class="fdat-v">'+recLabelL+'</div></div>';
+    }
+  }
+  // Cortinas juntas: mostrar la medida de la 2ª cortina (misma idea que el tramo L)
+  if(p.formaJunta&&p.anchoL){
+    const _mJ=fmtCm(p.anchoL)+(p.altoL?' × '+fmtCm(p.altoL):'');
+    rows+='<div class="fdat-row"><div class="fdat-k">2ª cortina</div><div class="fdat-v">'+_mJ+(esVerticalLamaF?'':' · '+(p.hojasL||'1')+'H')+'</div></div>';
+    if(esVerticalLamaF){
+      const recLabelJ=p.aperturaL?('Nº '+p.aperturaL):({'D':'>> Derecha','IZQ':'<< Izquierda','CEN':'<< Central >>'}[p.recogidaL]||p.recogidaL||'D');
+      rows+='<div class="fdat-row"><div class="fdat-k">Recogida 2ª</div><div class="fdat-v">'+recLabelJ+'</div></div>';
     }
   }
   // Estor con varillas: fila con el nº de varillas ((alto-5)/20 - 1)

@@ -508,6 +508,54 @@ test('Un accesorio TIRADOR no genera ficha de instalador, solo línea en la hoja
   assert.strictEqual(lineaTirador.color, 'Blanco');
 });
 
+console.log('\nCortinas juntas (dos rectas, una al lado de la otra)');
+test('unirJuntas fusiona la siguiente cortina como 2º tramo recto, sin inclinarla', () => {
+  app.resetCortinas();
+  app.addCortina({ estancia: 'Cortina A', ancho: '150', alto: '250', tipo: 'Onda Perfecta', hojas: '1', recogida: 'D' });
+  app.addCortina({ estancia: 'Cortina B', ancho: '100', alto: '220', tipo: 'Onda Perfecta', hojas: '1', recogida: 'IZQ' });
+  const STATE = app.__internals.STATE;
+  const idA = STATE.cortinas[0].id;
+  app.unirJuntas(idA);
+  assert.strictEqual(STATE.cortinas.length, 1, 'la 2ª cortina se fusiona en la 1ª, no queda como tarjeta aparte');
+  const a = STATE.cortinas[0];
+  assert.ok(a.formaJunta === 'izq' || a.formaJunta === 'dcha');
+  assert.strictEqual(a.formaL, '', 'formaJunta y formaL son excluyentes');
+  assert.strictEqual(a.anchoL, '100');
+  assert.strictEqual(a.altoL, '220');
+  // Dos líneas de corte independientes, cada una con su propia medida
+  assert.strictEqual(STATE.lineas.length, 2);
+  assert.strictEqual(STATE.lineas[0].ancho, '150');
+  assert.strictEqual(STATE.lineas[1].ancho, '100');
+});
+test('svgFormaJuntas dibuja los dos tramos rectos (sin incline) y respeta las caídas de cada Paquetto', () => {
+  const svg = app.svgFormaJuntas({
+    tipo: 'Paquetto', ancho: '90', alto: '150', hojas: '1', recogida: 'D',
+    formaJunta: 'dcha', anchoL: '260', altoL: '150', hojasL: '1', recogidaL: 'IZQ',
+  }, 'tjunit');
+  const caidas = [...svg.matchAll(/(\d+) caídas/g)].map(m => m[1]);
+  assert.deepStrictEqual(caidas, ['2', '5'], 'cada tramo debe mostrar sus propias caídas según su ancho real');
+  // Sin incline: cada tramo dibuja su propio riel recto (<rect>, de cuerpoConfeccion),
+  // no el riel-paralelogramo inclinado (<path> cerrado en "Z") que usa svgFormaL
+  // para el tramo en L.
+  assert.ok(!/<path d="M[\d.]+,[\d.]+ L[\d.]+,[\d.]+ L[\d.]+,[\d.]+ L[\d.]+,[\d.]+ Z" fill="none" stroke="#111" stroke-width="1.8"\/>/.test(svg),
+    'no debería usar el riel inclinado en forma de paralelogramo de la L');
+});
+test('setForma alterna entre Recta / En L / Juntas de forma mutuamente excluyente', () => {
+  app.resetCortinas();
+  app.addCortina({ estancia: 'C1', ancho: '150', alto: '250', tipo: 'Plana' });
+  const STATE = app.__internals.STATE;
+  const id = STATE.cortinas[0].id;
+  app.setForma(id, 'Jdcha');
+  assert.strictEqual(STATE.cortinas[0].formaJunta, 'dcha');
+  assert.strictEqual(STATE.cortinas[0].formaL, '');
+  app.setForma(id, 'Lizq');
+  assert.strictEqual(STATE.cortinas[0].formaL, 'izq');
+  assert.strictEqual(STATE.cortinas[0].formaJunta, '', 'al pasar a L debe limpiarse formaJunta');
+  app.setForma(id, '');
+  assert.strictEqual(STATE.cortinas[0].formaL, '');
+  assert.strictEqual(STATE.cortinas[0].formaJunta, '');
+});
+
 console.log('\nFunciones puras del parser');
 
 test('fmtCm — número simple añade "cm"', () => {
