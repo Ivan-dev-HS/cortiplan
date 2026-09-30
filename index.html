@@ -894,7 +894,10 @@ function parsear(rawLines,skipClientExtract=false){
   aplicarInstalacionUI();
   aplicarRefUI();
   if(cortinas.length){
-    cortinas.forEach(c=>addCortina(c));rerenderAllCards();dbg(`📦 ${cortinas.length} cortina(s)`,'ok');
+    // Un accesorio "soloCorte" (p.ej. TIRADOR) no es una cortina: no lleva
+    // ficha de instalador, solo su línea en la hoja de corte.
+    cortinas.forEach(c=>c.soloCorte?addLinea({estancia:c.estancia,sistema:c.sistema,color:c.color}):addCortina(c));
+    rerenderAllCards();dbg(`📦 ${cortinas.length} cortina(s)`,'ok');
     // Previsualizar automáticamente: no hace falta pulsar "Vista previa"
     generarInst();
   }
@@ -1012,8 +1015,10 @@ function estrategiaCanotex(txt){
       const ES_CABECERA=/^(SUMA\s+Y\s+SIGUE|PRESUPUESTO(?::|\s|$)|CANOTEX|PENEDES|Nif:|Tel:|info@|CIF\.|Inscrita|Reg\.|Tomo|folio|Hoja\s+L|LLEIDA|DUCH\s|AVDA\.|AVGDA|\d{5}\s|PRESUPUESTO\s+FECHA|ARTÍCULO\s+DESCRIPCI|\d{6,}\s+\d{2}\/\d{2}\/\d{4}|646\.\d|^\d+\s*\/\s*\d+$)/i;
       while(j<lines.length&&j<i+22){
         const nl=lines[j].trim();
-        // Parar de verdad solo ante otra cortina, otra estancia o el cierre del presupuesto
-        if(esProd(nl)||esEstancia(nl)||/^PAGAMENT|^BRUTO|^TOTAL(?!\s+PROTECC)|^ACEPTACI|^SEG[UÚ]N|^\*m[áa]s\s+informaci/i.test(nl))break;
+        // Parar de verdad solo ante otra cortina, otra estancia, un artículo de
+        // TIRADOR (accesorio propio, no continuación de esta cortina) o el
+        // cierre del presupuesto.
+        if(esProd(nl)||esEstancia(nl)||/\bTIRADOR\b/i.test(nl)||/^PAGAMENT|^BRUTO|^TOTAL(?!\s+PROTECC)|^ACEPTACI|^SEG[UÚ]N|^\*m[áa]s\s+informaci/i.test(nl))break;
         // Saltar cabeceras/pies de página (permite cruzar el salto de página).
         // A veces esta misma línea, además del texto de cabecera/pie, arrastra
         // datos reales de la cortina que han caído por casualidad a la misma
@@ -1216,6 +1221,30 @@ function estrategiaCanotex(txt){
       });
       dbg(`  ✅ #${results.length} [${currentEstancia||'?'}] ${tipo} ${ancho}×${alto}${cantidad>1?' ×'+cantidad:''}`,'ok');
       i=j;continue;
+    }
+    // Artículo de TIRADOR (accesorio de manejo, no una cortina): no lleva
+    // "MEDIDA:" propia y antes se colaba como continuación de la descripción
+    // de la última cortina real, acabando pegado a su campo SISTEMA en la
+    // ficha de instalador. No necesita ficha de instalador (ni siquiera en
+    // blanco): es solo un accesorio del pedido, así que se marca "soloCorte"
+    // para que en la hoja de corte aparezca su propia línea con "Tirador" y
+    // el color indicado, sin generar ninguna tarjeta en la ficha de instalador.
+    if(/\bTIRADOR\b/i.test(line)){
+      let bloque=line,consumed=1;
+      if(!/(?:\s+\d+[,.]\d{2}){2,}\s*$/.test(bloque)){
+        while(consumed<4){
+          const nl=lines[i+consumed];
+          if(!nl)break;
+          if(esProd(nl)||esEstancia(nl)||NO_EST.test(nl))break;
+          bloque+=' '+nl;consumed++;
+          if(/(?:\s+\d+[,.]\d{2}){2,}\s*$/.test(bloque))break;
+        }
+      }
+      const color=normalizaColorSis(bloque)||'';
+      const est=currentEstancia||'';
+      results.push({estancia:est,ancho:'',alto:'',hojas:'1',recogida:'D',tejido:'',sistema:'Tirador',color,tipo:'',soloCorte:true});
+      dbg(`  🪢 #${results.length} [${est}] Tirador${color?' '+color:''} → solo hoja de corte`,'warn');
+      i+=consumed;continue;
     }
     // Artículo con precio pero SIN "MEDIDA:" reconocible (p.ej. "CORTINA TIPO
     // VELUX SK06 TEJIDO BLANCO. 1,00 168,00 168,00"): no hay ancho/alto/tipo

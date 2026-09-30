@@ -470,6 +470,44 @@ test('Un pedido en texto libre sin ninguna etiqueta reconocible (encargo de tapi
   assert.strictEqual(out.length, 0, 'un pedido de tapicería en texto libre no debería generar ninguna cortina/ficha');
 });
 
+console.log('\nParser: artículo TIRADOR (accesorio) no contamina la cortina anterior');
+test('TIRADOR con color, tras una cortina real, no se une al SISTEMA de esa cortina y se marca "soloCorte"', () => {
+  const txt = [
+    'PRESUPUESTO DE VENTA',
+    'REF. M400 CLIENTE TRECE',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'SALON 1,00',
+    'PAQUETTO MEDIDA:120x150H -MANDO:D 1,00',
+    'TEJIDO: LISO GRIS',
+    'SISTEMA DE INSTALACION: GUIA MANUAL 1 VIA',
+    'TIRADOR COLOR NEGRO 1,00 12,00 12,00',
+  ].join('\n');
+  const out = app.estrategiaCanotex(txt);
+  assert.strictEqual(out.length, 2, 'debería haber la cortina real + el accesorio tirador');
+  assert.ok(!/TIRADOR/i.test(out[0].sistema || ''), 'el SISTEMA de la cortina no debe llevar el texto del tirador');
+  assert.strictEqual(out[1].soloCorte, true, 'el tirador se marca para que solo vaya a la hoja de corte');
+  assert.strictEqual(out[1].sistema, 'Tirador');
+  assert.strictEqual(out[1].color, 'Negro');
+});
+test('Un accesorio TIRADOR no genera ficha de instalador, solo línea en la hoja de corte', () => {
+  app.resetInstalacion();
+  app.parsear([
+    'PRESUPUESTO DE VENTA',
+    'REF. N500 CLIENTE CATORCE',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'SALON 1,00',
+    'PAQUETTO MEDIDA:120x150H -MANDO:D 1,00',
+    'TEJIDO: LISO GRIS',
+    'SISTEMA DE INSTALACION: GUIA MANUAL 1 VIA',
+    'TIRADOR COLOR BLANCO 1,00 12,00 12,00',
+  ], true);
+  const STATE = app.__internals.STATE;
+  assert.strictEqual(STATE.cortinas.length, 1, 'el tirador no debe generar una ficha/tarjeta de instalador');
+  const lineaTirador = STATE.lineas.find(l => l.sistema === 'Tirador');
+  assert.ok(lineaTirador, 'debería existir una línea de corte para el tirador');
+  assert.strictEqual(lineaTirador.color, 'Blanco');
+});
+
 console.log('\nFunciones puras del parser');
 
 test('fmtCm — número simple añade "cm"', () => {
