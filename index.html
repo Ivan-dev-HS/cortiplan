@@ -4004,62 +4004,16 @@ bindCorteLive();
   // ── Manifest: usa el manifest.json externo del repositorio ──
   // (ver manifest.json en la raíz del proyecto)
 
-  // ── Service Worker (code as string → Blob → register) ──
-  const SW_VERSION = 'cortiplan-v1';
-  const CACHE_URLS = [
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',
-  ];
-
-  const SW_CODE = `
-const CACHE = '${SW_VERSION}';
-const PRECACHE = ${JSON.stringify(CACHE_URLS)};
-
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(cache => {
-      return Promise.allSettled(
-        PRECACHE.map(url =>
-          cache.add(url).catch(() => console.warn('[SW] No se pudo cachear:', url))
-        )
-      );
-    }).then(() => self.skipWaiting())
-  );
-});
-
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
-});
-
-self.addEventListener('fetch', e => {
-  // Solo GET, ignora chrome-extension y data URIs
-  if(e.request.method !== 'GET') return;
-  const url = e.request.url;
-  if(url.startsWith('chrome-extension') || url.startsWith('data:') || url.startsWith('blob:')) return;
-
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      if(cached) return cached;
-      return fetch(e.request).then(resp => {
-        if(!resp || resp.status !== 200 || resp.type === 'opaque') return resp;
-        const clone = resp.clone();
-        caches.open(CACHE).then(cache => cache.put(e.request, clone));
-        return resp;
-      }).catch(() => cached || new Response('Offline', {status: 503}));
-    })
-  );
-});
-`;
-
+  // ── Service Worker: registra el fichero real sw.js de la raíz del
+  // repositorio. (Antes se generaba el código del SW como Blob y se
+  // registraba con una URL blob:, pero el registro de un Service Worker
+  // desde una URL blob: no está permitido por la especificación — todos los
+  // navegadores lo rechazan con TypeError — así que ese intento siempre
+  // fallaba en silencio (solo el console.warn del .catch) y nunca llegaba a
+  // haber ningún Service Worker activo: la app no cacheaba nada y por eso no
+  // cargaba sin conexión aunque estuviera "instalada" como app.)
   if ('serviceWorker' in navigator) {
-    const swBlob = new Blob([SW_CODE], {type: 'application/javascript'});
-    const swUrl  = URL.createObjectURL(swBlob);
-    navigator.serviceWorker.register(swUrl, {scope: './'})
+    navigator.serviceWorker.register('./sw.js', {scope: './'})
       .then(reg => {
         console.log('[PWA] SW registrado:', reg.scope);
         // Comprobación de actualización cada 30 min
