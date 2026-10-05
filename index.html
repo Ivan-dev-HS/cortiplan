@@ -2241,7 +2241,18 @@ function svgGusanillo(p,u){
     pliegues+=`<line x1="${px.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${px.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#111" stroke-width="1.2"/>`;
   }
 
-  return svgBase(u,`${marco}${lineasH}${pliegues}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);}
+  // Cotas propias (no el cotas() genérico, que mide todo el lienzo CW×CH):
+  // aquí tienen que medir el marco cuadrado real (fx..fx+lado), con la misma
+  // separación y estilo que usa cotas() en el resto de dibujos.
+  const cotaAY=(fy-24).toFixed(1),cotaMX=(fx+lado/2).toFixed(1);
+  const cotaRX=(fx+lado+13).toFixed(1),cotaRX2=(fx+lado+16).toFixed(1),cotaVY=(fy+lado/2).toFixed(1);
+  const cotasGus=`
+  <line x1="${fx.toFixed(1)}" y1="${cotaAY}" x2="${(fx+lado).toFixed(1)}" y2="${cotaAY}" stroke="#111" stroke-width="1.2" marker-start="url(#al${u})" marker-end="url(#ar${u})"/>
+  <text x="${cotaMX}" y="${(parseFloat(cotaAY)-4).toFixed(1)}" text-anchor="middle" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(p.ancho)}</text>
+  <line x1="${cotaRX}" y1="${fy.toFixed(1)}" x2="${cotaRX}" y2="${(fy+lado).toFixed(1)}" stroke="#111" stroke-width="1.2" marker-start="url(#arv${u})" marker-end="url(#ar${u})"/>
+  <text x="${cotaRX2}" y="${(parseFloat(cotaVY)+4).toFixed(1)}" text-anchor="start" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${fmtCm((p.alto||'')+(p.extra?' '+p.extra:''))}</text>`;
+
+  return svgBase(u,`${marco}${lineasH}${pliegues}${cotasGus}`);}
 
 function svgPaquetto(p,u){
   const{ML,MT,CW,CH}=SV,isIZQ=(p.recogida==='IZQ');
@@ -3409,7 +3420,10 @@ function fichaFilas(p){
   if((p.tipo||'').toLowerCase().includes('onda')&&p.ancho)rows+='<div class="fdat-row"><div class="fdat-k">Correderas</div><div class="fdat-v" style="font-size:10px">'+calcularCorrederasTexto(p.ancho,p.hojas,p.ondaCm)+'</div></div>';
   if(p.caida)rows+='<div class="fdat-row"><div class="fdat-k">Caída</div><div class="fdat-v sm">'+he(p.caida)+'</div></div>';
   if(p.soporte)rows+='<div class="fdat-row"><div class="fdat-k">Soporte</div><div class="fdat-v sm">'+he(p.soporte)+'</div></div>';
-  if(p.pestana)rows+='<div class="fdat-row"><div class="fdat-k">Pestaña</div><div class="fdat-v sm">'+(p.pestana==='sin'?'Sin pestaña':'Con pestaña')+'</div></div>';
+  // Gusanillo: mostrar siempre la fila de Pestaña (con/sin/sin especificar),
+  // no solo cuando el presupuesto trae el dato — si no, parece que la opción
+  // ha desaparecido en vez de estar simplemente vacía por rellenar a mano.
+  if(_tf.includes('gusanillo'))rows+='<div class="fdat-row"><div class="fdat-k">Pestaña</div><div class="fdat-v sm">'+(p.pestana==='sin'?'Sin pestaña':p.pestana==='con'?'Con pestaña':'— sin especificar —')+'</div></div>';
   // Llucana con 2º tramo: mostrar sus medidas
   if(p.llucana&&p.llu2&&p.llu2Ancho){
     const _i2=p.llu2Inclinada||calcLluc2Inclinada(p);
@@ -4032,7 +4046,7 @@ async function buildCortePDFBytes(){
           if(t.includes('paquetto')){
             return s.includes('varilla')||s.includes('estor')?'Estor varillas':'Paquetto';
           }
-          if(t.includes('gusanillo')&&l.pestana)return'Gusanillo '+(l.pestana==='sin'?'sin pestaña':'con pestaña');
+          if(t.includes('gusanillo'))return'Gusanillo '+(l.pestana==='sin'?'sin pestaña':l.pestana==='con'?'con pestaña':'¿pestaña?');
           return l.tipo?l.tipo.substring(0,16):'';
         })(),
         corrLabel,                                                        // Correderas / Caídas paquetto

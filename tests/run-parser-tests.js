@@ -650,6 +650,20 @@ test('svgGusanillo: sin texto de pestaña ni flecha de recogida superpuestos (no
   assert.ok(!svg.includes('PESTAÑA'));
   assert.ok(!svg.includes('stroke-dasharray="3,2"'));
 });
+test('fichaFilas: la fila "Pestaña" de un Gusanillo se ve siempre (con/sin/sin especificar), no solo cuando viene del presupuesto', () => {
+  const conPestana = app.fichaFilas({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1', pestana: 'con' });
+  assert.ok(conPestana.includes('<div class="fdat-k">Pestaña</div><div class="fdat-v sm">Con pestaña</div>'));
+  const sinPestana = app.fichaFilas({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1', pestana: 'sin' });
+  assert.ok(sinPestana.includes('<div class="fdat-k">Pestaña</div><div class="fdat-v sm">Sin pestaña</div>'));
+  // Sin dato del presupuesto: la fila sigue apareciendo (invita a rellenarla
+  // a mano) en vez de desaparecer como si la opción no existiera.
+  const sinDato = app.fichaFilas({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1' });
+  assert.ok(sinDato.includes('<div class="fdat-k">Pestaña</div>'), 'la fila debe mostrarse aunque no se haya detectado con/sin pestaña');
+  assert.ok(sinDato.includes('sin especificar'));
+  // Otros tipos de cortina no llevan esta fila (no tiene sentido para ellos)
+  const otroTipo = app.fichaFilas({ tipo: 'Plana', ancho: '150', alto: '200', hojas: '1' });
+  assert.ok(!otroTipo.includes('Pestaña'));
+});
 test('CORTPASG sin "MEDIDA:" propia, con el bloque "MEDIDAS :" (varias piezas) de un pedido real, no se pierde', () => {
   // Formato real de Canotex para el gusanillo: el artículo no lleva
   // "MEDIDA:" en su línea (a diferencia del resto de códigos), las medidas
