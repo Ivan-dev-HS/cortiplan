@@ -597,16 +597,58 @@ test('getSVG dibuja Gusanillo sin lanzar excepción, con y sin pestaña anotada'
   assert.doesNotThrow(() => app.getSVG({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '2', pestana: 'con' }));
   assert.doesNotThrow(() => app.getSVG({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1', pestana: 'sin' }));
 });
-test('svgGusanillo dibuja solo lo que hay en el boceto: riel, tela, las dos pestañas y las puntadas — nada más', () => {
-  // El usuario pidió explícitamente que el dibujo sea igual al boceto a
-  // mano, sin añadidos: ni flecha de recogida, ni texto de "con/sin
-  // pestaña" superpuesto (eso va en su propia fila de datos de la ficha,
-  // no en el dibujo).
+test('svgGusanillo: marco casi cuadrado (1:1), sin remates que sobresalgan por encima', () => {
   const svg = app.svgGusanillo({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1', pestana: 'con', recogida: 'D' }, 'gchk');
-  const rects = [...svg.matchAll(/<rect /g)].length;
-  assert.ok(rects >= 2, 'debe llevar al menos el riel y una tela como rect');
-  assert.ok(!svg.includes('PESTAÑA'), 'el texto "CON/SIN PESTAÑA" no debe superponerse al dibujo');
-  assert.ok(!svg.includes('stroke-dasharray="3,2"'), 'no debe llevar la flecha/pila de recogida (no está en el boceto original)');
+  // Un único <rect>: el marco. Nada de riel/soportes aparte (CW=234, CH=145
+  // en SV, así que el lado del marco cuadrado es CH=145, centrado en el ancho).
+  const rects = [...svg.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/g)];
+  assert.strictEqual(rects.length, 1, 'solo debe haber un <rect>: el marco (nada de riel ni palas por hoja)');
+  const [, x, y, w, h] = rects[0];
+  assert.strictEqual(w, h, 'el marco debe ser cuadrado (ancho = alto en el dibujo), no deformado por la medida real');
+  assert.strictEqual(w, '145.0');
+  assert.strictEqual(x, '58.5');
+  assert.strictEqual(y, '46.0');
+  assert.ok(!svg.includes('stroke-width="2"'), 'no debe quedar ningún remate/soporte suelto (usaban stroke-width 2)');
+});
+test('svgGusanillo: dos líneas horizontales arriba (9%/14%) y dos abajo (86%/91%), de lado a lado del marco', () => {
+  const svg = app.svgGusanillo({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1' }, 'glin');
+  // Excluye las líneas de cota (llevan marker-start/marker-end para la flecha).
+  const lineas = [...svg.matchAll(/<line ([^>]*?)\/>/g)].map(m => m[1]).filter(attrs => !attrs.includes('marker'));
+  const attr = (s, name) => (s.match(new RegExp(name + '="([^"]+)"')) || [])[1];
+  const lineasH = lineas.filter(a => attr(a, 'y1') === attr(a, 'y2'));
+  const ys = lineasH.map(a => attr(a, 'y1')).sort((a, b) => parseFloat(a) - parseFloat(b));
+  assert.deepStrictEqual(ys, ['59.0', '66.3', '170.7', '178.0'], 'deben estar exactamente al 9%, 14%, 86% y 91% del marco');
+  for (const a of lineasH) {
+    assert.strictEqual(attr(a, 'x1'), '58.5', 'cada línea horizontal debe tocar el lateral izquierdo del marco');
+    assert.strictEqual(attr(a, 'x2'), '203.5', 'cada línea horizontal debe tocar el lateral derecho del marco');
+  }
+});
+test('svgGusanillo: exactamente 5 pliegues verticales, en su posición y centrados en la zona central', () => {
+  const svg = app.svgGusanillo({ tipo: 'Gusanillo', ancho: '150', alto: '200' }, 'gpli');
+  // Excluye las líneas de cota (llevan marker-start/marker-end para la flecha).
+  const lineas = [...svg.matchAll(/<line ([^>]*?)\/>/g)].map(m => m[1]).filter(attrs => !attrs.includes('marker'));
+  const attr = (s, name) => (s.match(new RegExp(name + '="([^"]+)"')) || [])[1];
+  const verticales = lineas.filter(a => attr(a, 'x1') === attr(a, 'x2'));
+  assert.strictEqual(verticales.length, 5, 'deben ser exactamente 5 pliegues, no 9');
+  const esperado = [
+    ['80.3', '82.0', '155.0'],
+    ['104.9', '89.8', '147.2'],
+    ['119.4', '108.1', '128.9'],
+    ['142.6', '84.6', '152.4'],
+    ['167.3', '92.4', '144.6'],
+  ];
+  const obtenido = verticales.map(a => [attr(a, 'x1'), attr(a, 'y1'), attr(a, 'y2')]);
+  assert.deepStrictEqual(obtenido, esperado);
+  // Ningún pliegue debe tocar una línea horizontal (14% = y 66.3, 86% = y 170.7)
+  for (const a of verticales) {
+    const y1 = attr(a, 'y1'), y2 = attr(a, 'y2');
+    assert.ok(parseFloat(y1) > 66.3 && parseFloat(y2) < 170.7, 'el pliegue no debe tocar las líneas horizontales de la zona central');
+  }
+});
+test('svgGusanillo: sin texto de pestaña ni flecha de recogida superpuestos (no están en el boceto)', () => {
+  const svg = app.svgGusanillo({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1', pestana: 'con', recogida: 'D' }, 'gchk2');
+  assert.ok(!svg.includes('PESTAÑA'));
+  assert.ok(!svg.includes('stroke-dasharray="3,2"'));
 });
 test('CORTPASG sin "MEDIDA:" propia, con el bloque "MEDIDAS :" (varias piezas) de un pedido real, no se pierde', () => {
   // Formato real de Canotex para el gusanillo: el artículo no lleva
@@ -759,6 +801,13 @@ test('calcularMetrosTela — ancho negativo devuelve null, no metros negativos',
   // de tela negativa en la hoja de corte.
   assert.strictEqual(app.calcularMetrosTela('Onda Perfecta', '-150', ''), null);
   assert.strictEqual(app.calcularMetrosTela('Paquetto', '-100', ''), null);
+});
+test('calcularSoportes — ancho negativo devuelve vacío, no un nº de soportes inventado', () => {
+  // "!a" solo descarta 0/NaN: un ancho negativo (p.ej. tecleado a mano) es
+  // truthy y antes caía en el primer tramo de la tabla, devolviendo un nº de
+  // soportes con apariencia válida para una medida que no tiene sentido físico.
+  assert.strictEqual(app.calcularSoportes('Guia Manual 1 Via', '-150'), '');
+  assert.strictEqual(app.calcularSoportes('Barra Guia', '-1'), '');
 });
 
 console.log(`\n${pass} OK, ${fail} fallo(s)`);
