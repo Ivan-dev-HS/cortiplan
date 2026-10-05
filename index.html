@@ -1256,6 +1256,59 @@ function estrategiaCanotex(txt){
       dbg(`  🪢 #${results.length} [${est}] Tirador${color?' '+color:''} → solo hoja de corte`,'warn');
       i+=consumed;continue;
     }
+    // Formato alterno de medidas: un artículo con código reconocido (p.ej.
+    // CORTPASG, "paso de gusanillo") y precio, pero sin "MEDIDA:" en su
+    // propia línea — Canotex a veces pone las medidas más abajo, en un
+    // bloque "MEDIDAS :" (en plural) con una o varias líneas "N CM ANCHO x M
+    // CM ALTO - 1 UNIDAD" (varias cuando el mismo artículo son en realidad
+    // dos piezas de distinto tamaño, p.ej. un gusanillo "arriba y abajo").
+    // Se intenta ANTES que la ficha en blanco genérica de abajo: si no
+    // encuentra ninguna medida en el bloque, cae a esa ficha en blanco igual
+    // que antes (no se pierde el artículo de ningún modo).
+    if(CODIGOS.test(line)&&/^[A-ZÀ-ÿ]/.test(line)&&/(?:\s+\d+[,.]\d{2}){2,}\s*$/.test(line)&&!NO_EST.test(line)){
+      const codigoAlt=(line.match(/^([A-Z0-9]+)/)||[])[1]||'';
+      const descAlt=line.replace(/(?:\s+\d+[,.]\d{2}){1,4}\s*$/,'').replace(new RegExp('^'+codigoAlt+'\\s*'),'').trim();
+      let descLineasAlt=[],jj=i+1;
+      // Pie de página del presupuesto (CIF, registro mercantil…) que a veces
+      // cae a la misma altura que la línea de TEJIDO y se le pega detrás
+      // ("TEJIDO CONFECCION : NOGALES 3" + "CIF. B2526..."): se descarta sin
+      // cortar la recogida del bloque, por si después sigue más contenido real.
+      const esPieAlt=/^(CIF\.|Inscrita|Reg\.|Tomo|folio|Hoja\s+L|CANOTEX|PENEDES|LLEIDA|Nif:|Tel:|info@)/i;
+      while(jj<lines.length&&jj<i+20){
+        const nl=lines[jj].trim();
+        if(esProd(nl)||esEstancia(nl)||(CODIGOS.test(nl)&&/(?:\s+\d+[,.]\d{2}){2,}\s*$/.test(nl))||/^PAGAMENT|^BRUTO|^TOTAL(?!\s+PROTECC)|^ACEPTACI|^SEG[UÚ]N/i.test(nl))break;
+        if(nl&&!esPieAlt.test(nl))descLineasAlt.push(nl);
+        jj++;
+      }
+      const bloqueAlt=descLineasAlt.join(' ');
+      const medidas=[...bloqueAlt.matchAll(/(\d+(?:[.,]\d+)?)\s*CM\s*ANCHO\s*[xX×]\s*(\d+(?:[.,]\d+)?)\s*CM\s*ALTO/gi)];
+      if(medidas.length){
+        const tejAltM=bloqueAlt.match(/TEJIDO\s*(?:CONFECCI[OÓ]N)?\s*:\s*([A-Z0-9][A-Z0-9\s\/%\-]*)/i);
+        const tejidoAlt=tejAltM?tejAltM[1].trim():'';
+        const tipoAlt=normalizaTipoCanotex(codigoAlt,descAlt,'');
+        const cantM2=line.match(/\b([1-9])\s*,00\b/);
+        const cantidad2=cantM2?parseInt(cantM2[1]):1;
+        let pestanaAlt='';
+        const pm2=bloqueAlt.match(/\b(CON|SIN)\s+PESTA[ÑN]A/i);
+        if(pm2)pestanaAlt=pm2[1].toUpperCase()==='SIN'?'sin':'con';
+        for(let q=0;q<cantidad2;q++){
+          medidas.forEach((m,mi)=>{
+            results.push({
+              estancia:(currentEstancia||`Cortina ${results.length+1}`)+(medidas.length>1?` (${mi+1})`:'')+(cantidad2>1?` ×${q+1}`:''),
+              ancho:m[1].replace(',','.'), alto:m[2].replace(',','.'),
+              hojas:'1', extra:'', metros:'',
+              recogida:'D', tejido:tejidoAlt, sistema:'',
+              tipo:tipoAlt, codigo:codigoAlt,
+              caida:'', soporte:'T', esTapiceria:false,
+              ondaCm:'', apertura:'', mandoBrisa:'', colorGuia:'', motorizada:false,
+              pestana:pestanaAlt,
+            });
+            dbg(`  ✅ #${results.length} [${currentEstancia||'?'}] ${tipoAlt} ${m[1]}×${m[2]} (bloque MEDIDAS)`,'ok');
+          });
+        }
+        i=jj;continue;
+      }
+    }
     // Artículo con precio pero SIN "MEDIDA:" reconocible (p.ej. "CORTINA TIPO
     // VELUX SK06 TEJIDO BLANCO. 1,00 168,00 168,00"): no hay ancho/alto/tipo
     // que auto-rellenar, pero es un artículo real y cobrado del pedido — antes

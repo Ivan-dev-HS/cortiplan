@@ -610,6 +610,63 @@ test('svgGusanillo siempre dibuja las dos líneas de pestaña, lleve o no pesta�
   assert.ok(svgSin.includes('SIN PESTAÑA'));
   assert.ok(!svgNada.includes('PESTAÑA'), 'sin anotación, no debe mostrar ningún texto de pestaña');
 });
+test('CORTPASG sin "MEDIDA:" propia, con el bloque "MEDIDAS :" (varias piezas) de un pedido real, no se pierde', () => {
+  // Formato real de Canotex para el gusanillo: el artículo no lleva
+  // "MEDIDA:" en su línea (a diferencia del resto de códigos), las medidas
+  // vienen más abajo en un bloque "MEDIDAS :" que puede tener más de una
+  // pieza (p.ej. un gusanillo "arriba y abajo" de distinto tamaño cada uno).
+  const txt = [
+    'PRESUPUESTO DE VENTA',
+    'REF. P800 CLIENTE DIECIOCHO',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'ZONA COCINA 1,00',
+    'CORTPASG CORTINA CONFECCION PASO GUSANILLO 1,00 167,94 50,00 83,97',
+    'VISILLO CONFECCION PASO GUSANILLO',
+    'FRUNCIDO AL DOBLE',
+    'CON SISTEMA DE BARRITA PRESION NEGRA',
+    'MEDIDAS : 58,5CM ANCHO x 121 CM ALTO - 1 UNIDAD',
+    ' 58,5CM ANCHO x 52 CM ALTO - 1 UNIDAD',
+    'PASO GUSANILLO ARRIBA Y ABAJO',
+    'TEJIDO CONFECCION : NOGALES 3',
+    'ZONA BAÑO 1,00',
+    'CORTPASG CORTINA CONFECCION PASO GUSANILLO 2,00 84,51 50,00 84,51',
+    'VISILLO CONFECCION PASO GUSANILLO',
+    'SEMIPLANA',
+    'CON SISTEMA DE BARRITA PRESION NEGRA',
+    'MEDIDAS : 49 CM ANCHO x 84 CM ALTO',
+    'PASO GUSANILLO ARRIBA Y BAJO SUELTO CON BORA PEQUEÑA',
+    'TEJIDO CONFECCION : NOGALES 3',
+  ].join('\n');
+  const out = app.estrategiaCanotex(txt);
+  assert.strictEqual(out.length, 4, 'ZONA COCINA (2 piezas) + ZONA BAÑO ×2 (cantidad) = 4 cortinas');
+  assert.strictEqual(out[0].tipo, 'Gusanillo');
+  assert.strictEqual(out[0].ancho, '58.5');
+  assert.strictEqual(out[0].alto, '121');
+  assert.strictEqual(out[1].ancho, '58.5');
+  assert.strictEqual(out[1].alto, '52');
+  assert.strictEqual(out[0].tejido, 'NOGALES 3');
+  assert.strictEqual(out[2].ancho, '49');
+  assert.strictEqual(out[3].ancho, '49', 'la cantidad 2,00 duplica la única medida encontrada');
+});
+test('El pie de página (CIF, registro mercantil) pegado tras el tejido del bloque MEDIDAS no se cuela en el tejido', () => {
+  // Pasa en pedidos reales: la línea del pie cae a la misma altura que
+  // "TEJIDO CONFECCION : NOGALES 3" y el PDF las junta en una sola línea de
+  // texto reconstruido ("...NOGALES 3" + "CIF. B2526...").
+  const txt = [
+    'PRESUPUESTO DE VENTA',
+    'REF. P900 CLIENTE DIECINUEVE',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'ZONA COCINA 1,00',
+    'CORTPASG CORTINA CONFECCION PASO GUSANILLO 1,00 167,94 50,00 83,97',
+    'VISILLO CONFECCION PASO GUSANILLO',
+    'MEDIDAS : 58,5CM ANCHO x 121 CM ALTO - 1 UNIDAD',
+    'TEJIDO CONFECCION : NOGALES 3',
+    'CIF. B25264813 Inscrita Reg. Mercantin de Lleida. Tomo 92, folio 61, Hoja L-1.646',
+  ].join('\n');
+  const out = app.estrategiaCanotex(txt);
+  assert.strictEqual(out.length, 1);
+  assert.strictEqual(out[0].tejido, 'NOGALES 3', 'el tejido no debe arrastrar el texto del CIF');
+});
 
 console.log('\nFunciones puras del parser');
 
