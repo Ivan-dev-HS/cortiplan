@@ -18,16 +18,27 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const app = loadAppScript(extractMainScript(html));
 
 let pass = 0, fail = 0;
+// Cadena de promesas: cada test (sea sync o async) se encola detrás del
+// anterior, así dos tests async adyacentes que tocan el mismo STATE/DOM
+// fake nunca se solapan (si no, fn() de un test N+1 podía ejecutarse antes
+// de que terminaran los await internos del test N).
+let chain = Promise.resolve();
 function test(name, fn) {
-  try {
-    fn();
-    pass++;
-    console.log('  \x1b[32m✓\x1b[0m ' + name);
-  } catch (err) {
+  const onOk = () => { pass++; console.log('  \x1b[32m✓\x1b[0m ' + name); };
+  const onErr = err => {
     fail++;
     console.log('  \x1b[31m✗\x1b[0m ' + name);
     console.log('    ' + (err.message || err).toString().split('\n').join('\n    '));
-  }
+  };
+  chain = chain.then(() => {
+    try {
+      const result = fn();
+      if (result && typeof result.then === 'function') return result.then(onOk, onErr);
+      onOk();
+    } catch (err) {
+      onErr(err);
+    }
+  });
 }
 
 console.log('estrategiaCanotex — casos de presupuesto');
@@ -664,6 +675,60 @@ test('fichaFilas: la fila "Pestaña" de un Gusanillo se ve siempre (con/sin/sin 
   const otroTipo = app.fichaFilas({ tipo: 'Plana', ancho: '150', alto: '200', hojas: '1' });
   assert.ok(!otroTipo.includes('Pestaña'));
 });
+
+console.log('\nManejo de errores: la vista previa en vivo avisa, no falla en silencio');
+test('generarInst(): un fallo interno se muestra en el estado, no desaparece en la consola', () => {
+  app.resetCortinas();
+  app.addCortina({ estancia: 'Salón', ancho: '150', alto: '200', tipo: 'Plana' });
+  const origBuildInstHTML = app.buildInstHTML;
+  app.buildInstHTML = () => { throw new Error('fallo forzado de prueba'); };
+  try {
+    assert.doesNotThrow(() => app.generarInst(false), 'no debe propagar la excepción fuera de la función');
+    assert.strictEqual(app.document.getElementById('dot').className, 'dot er');
+    assert.strictEqual(app.document.getElementById('stTxt').textContent, 'Error: fallo forzado de prueba');
+  } finally {
+    app.buildInstHTML = origBuildInstHTML;
+  }
+});
+test('previewCorte(): un fallo interno se muestra en el estado, no solo en la consola', async () => {
+  const origBuildCortePDFBytes = app.buildCortePDFBytes;
+  app.buildCortePDFBytes = async () => { throw new Error('fallo forzado de prueba 2'); };
+  try {
+    await app.previewCorte();
+    assert.strictEqual(app.document.getElementById('dot').className, 'dot er');
+    assert.strictEqual(app.document.getElementById('stTxt').textContent, 'Error: fallo forzado de prueba 2');
+  } finally {
+    app.buildCortePDFBytes = origBuildCortePDFBytes;
+  }
+});
+test('generarCorte(): ignora un clic mientras ya hay uno en marcha, y libera el guarda al terminar', async () => {
+  // generarCorte() y generarInstPDF() comparten STATE.objectUrl: sin este
+  // guarda, un doble clic lanzaba dos generaciones en paralelo y la segunda
+  // revocaba la URL de la primera justo cuando su ventana podía estar
+  // todavía cargando el PDF/HTML.
+  // (Los dos escenarios van en un único test, con sus await en orden: el
+  // runner no serializa tests async entre sí, así que repartirlos en dos
+  // tests dejaría el guarda de uno a medio liberar cuando empieza el otro.)
+  const STATE = app.__internals.STATE;
+  const origBuildCortePDFBytes = app.buildCortePDFBytes;
+  let calls = 0, flagDuring = null;
+  app.buildCortePDFBytes = async () => { calls++; flagDuring = STATE._generandoPDF; return null; };
+  try {
+    STATE._generandoPDF = true; // simula que ya hay una generación en curso
+    await app.generarCorte();
+    assert.strictEqual(calls, 0, 'con el guarda activo no debe ni empezar a construir el PDF');
+
+    STATE._generandoPDF = false;
+    await app.generarCorte();
+    assert.strictEqual(calls, 1, 'sin guarda activo, sí debe intentar construir el PDF');
+    assert.strictEqual(flagDuring, true, 'el guarda debe estar activo mientras se genera');
+    assert.strictEqual(STATE._generandoPDF, false, 'el guarda debe liberarse al terminar (éxito o "sin datos")');
+  } finally {
+    STATE._generandoPDF = false;
+    app.buildCortePDFBytes = origBuildCortePDFBytes;
+  }
+});
+
 test('CORTPASG sin "MEDIDA:" propia, con el bloque "MEDIDAS :" (varias piezas) de un pedido real, no se pierde', () => {
   // Formato real de Canotex para el gusanillo: el artículo no lleva
   // "MEDIDA:" en su línea (a diferencia del resto de códigos), las medidas
@@ -824,5 +889,7 @@ test('calcularSoportes — ancho negativo devuelve vacío, no un nº de soportes
   assert.strictEqual(app.calcularSoportes('Barra Guia', '-1'), '');
 });
 
-console.log(`\n${pass} OK, ${fail} fallo(s)`);
-process.exit(fail ? 1 : 0);
+chain.then(() => {
+  console.log(`\n${pass} OK, ${fail} fallo(s)`);
+  process.exit(fail ? 1 : 0);
+});

@@ -3365,15 +3365,22 @@ function ajustarTextosFicha(rootDoc){
 }
 
 function generarInst(preserveScroll){
-  const html=buildInstHTML();if(!html)return;
-  hideEmptyState();
-  const scrollY=$('main').scrollTop;
-  $('main').innerHTML=`<div class="toolbar">
-    <button class="btn-tool btn-print" onclick="generarInstPDF()">🖨 Imprimir / Guardar PDF</button>
-  </div>${html}`;
-  if(preserveScroll)$('main').scrollTop=scrollY;
-  requestAnimationFrame(()=>ajustarTextosFicha(document));
-  STATE.liveActive=true;
+  // La vista previa en vivo se dispara sola (carga inicial, cada edición
+  // con scheduleLiveRefresh…): sin este try/catch, un error aquí dentro
+  // (p.ej. un dibujo SVG con datos que no esperaba) se perdía en la consola
+  // sin que el usuario viera ningún aviso — parecía que la app, sin más,
+  // había dejado de refrescar la ficha.
+  try{
+    const html=buildInstHTML();if(!html)return;
+    hideEmptyState();
+    const scrollY=$('main').scrollTop;
+    $('main').innerHTML=`<div class="toolbar">
+      <button class="btn-tool btn-print" onclick="generarInstPDF()">🖨 Imprimir / Guardar PDF</button>
+    </div>${html}`;
+    if(preserveScroll)$('main').scrollTop=scrollY;
+    requestAnimationFrame(()=>ajustarTextosFicha(document));
+    STATE.liveActive=true;
+  }catch(err){setSt('er','Error: '+err.message);dbg('❌ '+err.message,'er');console.error(err);}
 }
 
 function fichaFilas(p){
@@ -3529,6 +3536,12 @@ function cabCliente(){if(!hayCliente)return'';return`<div class="cli-box"><div c
    - Pie firma + notas en última hoja
 ═══════════════════════════════════════════════ */
 async function generarInstPDF(){
+  // Un doble clic (o clic mientras ya está generando) lanzaría dos PDF en
+  // paralelo compitiendo por el mismo STATE.objectUrl: el segundo revoca la
+  // URL del primero justo cuando su ventana podría estar aún cargándola.
+  if(STATE._generandoPDF)return;
+  STATE._generandoPDF=true;
+  try{
   const cortinas=STATE.cortinas.filter(c=>c.ancho||c.alto||c.estancia);
   if(!cortinas.length){alert('No hay cortinas con datos.');return;}
 
@@ -3806,6 +3819,7 @@ window.onload=function(){ajustarTextosFicha();setTimeout(function(){window.print
     }
     dbg('Vista generada con '+cortinas.length+' cortinas','ok');
   }catch(err){setSt('er','Error: '+err.message);dbg('ERROR: '+err.message,'er');console.error(err);}
+  }finally{STATE._generandoPDF=false;}
 }
 
 
@@ -4078,6 +4092,11 @@ async function buildCortePDFBytes(){
 
 // Botón de la barra superior: genera y abre/descarga el PDF de corte para imprimir o guardar.
 async function generarCorte(){
+  // Mismo guarda que generarInstPDF(): comparten STATE.objectUrl, así que un
+  // doble clic (en este botón o cruzado con el de instalación) podría revocar
+  // la URL de una ventana que todavía está cargando su PDF/HTML.
+  if(STATE._generandoPDF)return;
+  STATE._generandoPDF=true;
   setSt('spin','Generando PDF corte…');
   try{
     const res=await buildCortePDFBytes();
@@ -4096,6 +4115,7 @@ async function generarCorte(){
     setSt('ok','✓ PDF corte generado · '+res.count+' línea(s)'+(res.paginas>1?' · '+res.paginas+' hojas':''));
     dbg('PDF corte generado','ok');
   }catch(err){setSt('er','Error: '+err.message);dbg('❌ '+err.message,'er');console.error(err);}
+  finally{STATE._generandoPDF=false;}
 }
 
 // Vista previa en vivo (barra superior + iframe), igual que la hoja de instalación.
@@ -4110,7 +4130,7 @@ async function previewCorte(){
     $('main').innerHTML=`<div class="toolbar">
       <button class="btn-tool btn-print" onclick="generarCorte()">🖨 Imprimir / Guardar PDF</button>
     </div><iframe src="${STATE.corteObjectUrl}" class="corte-frame"></iframe>`;
-  }catch(err){console.error(err);}
+  }catch(err){setSt('er','Error: '+err.message);dbg('❌ '+err.message,'er');console.error(err);}
 }
 
 async function ensurePDFLib(){if(!window.PDFLib){try{await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js');}catch(e){await loadScript('https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js');}}}
