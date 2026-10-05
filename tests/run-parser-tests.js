@@ -597,18 +597,16 @@ test('getSVG dibuja Gusanillo sin lanzar excepción, con y sin pestaña anotada'
   assert.doesNotThrow(() => app.getSVG({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '2', pestana: 'con' }));
   assert.doesNotThrow(() => app.getSVG({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1', pestana: 'sin' }));
 });
-test('svgGusanillo siempre dibuja las dos líneas de pestaña, lleve o no pestaña el pedido', () => {
-  const svgCon = app.svgGusanillo({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1', pestana: 'con' }, 'gcon');
-  const svgSin = app.svgGusanillo({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1', pestana: 'sin' }, 'gsin');
-  const svgNada = app.svgGusanillo({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1' }, 'gnada');
-  // La tela (rect principal) + 2 líneas de pestaña + el riel (otro rect) → siempre 2 <rect> y al menos 2 <line> de pestaña, pase lo que pase con p.pestana
-  for (const svg of [svgCon, svgSin, svgNada]) {
-    const rects = [...svg.matchAll(/<rect /g)].length;
-    assert.ok(rects >= 2, 'debe llevar al menos el riel y una tela como rect');
-  }
-  assert.ok(svgCon.includes('CON PESTAÑA'));
-  assert.ok(svgSin.includes('SIN PESTAÑA'));
-  assert.ok(!svgNada.includes('PESTAÑA'), 'sin anotación, no debe mostrar ningún texto de pestaña');
+test('svgGusanillo dibuja solo lo que hay en el boceto: riel, tela, las dos pestañas y las puntadas — nada más', () => {
+  // El usuario pidió explícitamente que el dibujo sea igual al boceto a
+  // mano, sin añadidos: ni flecha de recogida, ni texto de "con/sin
+  // pestaña" superpuesto (eso va en su propia fila de datos de la ficha,
+  // no en el dibujo).
+  const svg = app.svgGusanillo({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1', pestana: 'con', recogida: 'D' }, 'gchk');
+  const rects = [...svg.matchAll(/<rect /g)].length;
+  assert.ok(rects >= 2, 'debe llevar al menos el riel y una tela como rect');
+  assert.ok(!svg.includes('PESTAÑA'), 'el texto "CON/SIN PESTAÑA" no debe superponerse al dibujo');
+  assert.ok(!svg.includes('stroke-dasharray="3,2"'), 'no debe llevar la flecha/pila de recogida (no está en el boceto original)');
 });
 test('CORTPASG sin "MEDIDA:" propia, con el bloque "MEDIDAS :" (varias piezas) de un pedido real, no se pierde', () => {
   // Formato real de Canotex para el gusanillo: el artículo no lleva
@@ -683,6 +681,15 @@ test('fmtCm — vacío devuelve guion', () => {
 test('fmtCm — unidad especial TT en vez de cm', () => {
   assert.strictEqual(app.fmtCm('162TT'), '162 TT');
 });
+test('fmtCm — XSS: texto HTML en el campo Ancho/Alto (tecleado a mano) se escapa, no se inyecta', () => {
+  // fmtCm() se inserta tal cual en innerHTML (ficha de instalador, dibujos
+  // SVG). Un valor que no sea un número puro se devolvía sin escapar, así
+  // que un usuario podía teclear HTML/JS en el campo Ancho o Alto y que se
+  // ejecutara al generar la vista previa.
+  assert.strictEqual(app.fmtCm('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
+  assert.ok(!app.fmtCm('150<img src=x onerror=alert(1)>').includes('<img'), 'el texto tras el número también debe escaparse');
+  assert.ok(app.fmtCm('150<img src=x onerror=alert(1)>').includes('&lt;img'));
+});
 
 test('normalizeRecogida — variantes de izquierda', () => {
   assert.strictEqual(app.normalizeRecogida('IZQ'), 'IZQ');
@@ -733,6 +740,25 @@ test('calcularCorrederasTexto — medida única', () => {
 });
 test('calcularCorrederasTexto — medida compuesta, una hoja por tramo', () => {
   assert.strictEqual(app.calcularCorrederasTexto('150-142', '2', '8cm'), '20G - 20G');
+});
+test('calcularCorrederasTexto — nº de hojas negativo no lanza RangeError (Array(nH) con nH<0)', () => {
+  // Bug real: Array(nH).fill(...) con nH negativo (p.ej. "Nº Hojas" tecleado
+  // a mano como "-1") lanzaba "RangeError: Invalid array length" y rompía
+  // toda la vista previa/PDF de instalación para el pedido completo.
+  assert.doesNotThrow(() => app.calcularCorrederasTexto('150', '-1', '8cm'));
+  assert.strictEqual(app.calcularCorrederasTexto('150', '-1', '8cm'), app.calcularCorrederasTexto('150', '1', '8cm'));
+});
+test('calcularCorrederasTexto — nº de hojas absurdamente grande no cuelga ni lanza excepción', () => {
+  assert.doesNotThrow(() => app.calcularCorrederasTexto('150', '999999999', '8cm'));
+  const partes = app.calcularCorrederasTexto('150', '999999999', '8cm').split(' - ');
+  assert.ok(partes.length <= 20, 'el nº de hojas debe acotarse a un máximo razonable');
+});
+
+test('calcularMetrosTela — ancho negativo devuelve null, no metros negativos', () => {
+  // Un ancho negativo (p.ej. tecleado a mano) no debe producir una cantidad
+  // de tela negativa en la hoja de corte.
+  assert.strictEqual(app.calcularMetrosTela('Onda Perfecta', '-150', ''), null);
+  assert.strictEqual(app.calcularMetrosTela('Paquetto', '-100', ''), null);
 });
 
 console.log(`\n${pass} OK, ${fail} fallo(s)`);

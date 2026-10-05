@@ -1338,7 +1338,7 @@ function estrategiaCanotex(txt){
 }
 
 function calcularMetrosTela(tipo,ancho,extra){
-  const a=parseFloat(ancho)||0;if(!a)return null;
+  const a=parseFloat(ancho)||0;if(!a||a<0)return null;
   const t=(tipo||'').toLowerCase();let metros=0;
   if(t.includes('onda'))metros=a*2.4;
   else if(t.includes('paquetto'))metros=(a+40)/100;
@@ -1376,8 +1376,11 @@ function calcularCorrederasTexto(ancho,hojas,ondaCm){
   if(partes.length>=2){
     return partes.map(a=>calcularCorrederas(a,ondaSize)+'G').join(' - ');
   }
-  // Medida única: repartir entre las hojas
-  const nH=parseInt(hojas)||1;
+  // Medida única: repartir entre las hojas. Nº de hojas inválido (negativo,
+  // cero o disparatadamente grande, p.ej. tecleado a mano) se acota a un
+  // rango razonable: si no, Array(nH) más abajo lanza RangeError con
+  // negativos y se queda colgado/revienta con números absurdamente grandes.
+  const nH=Math.min(20,Math.max(1,parseInt(hojas)||1));
   const anchoHoja=partes[0]/nH;
   const g=calcularCorrederas(anchoHoja,ondaSize);
   return Array(nH).fill(g+'G').join(' - ');
@@ -2130,7 +2133,11 @@ function fmtCm(v){
   // Medida compuesta "120+180" o "198-159" → "198-159 cm"
   if(/^\d+(?:[.,]\d+)?(?:[-+]\d+(?:[.,]\d+)?)+$/.test(s))return s+' cm';
   const m=s.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
-  if(!m)return s;
+  // Lo que no empieza por un número (p.ej. HTML tecleado a mano en el campo
+  // Ancho/Alto, o cualquier otro texto libre) se escapa igual que el resto
+  // de campos: este valor acaba insertado tal cual en el HTML de la ficha
+  // (innerHTML), así que sin escapar sería una inyección de HTML/JS.
+  if(!m)return he(s);
   const num=m[1];let resto=(m[2]||'').trim();
   // Unidades especiales que sustituyen a "cm"
   const uniM=resto.match(/^(T\.?T|TT|ACB|ACABADA)\b/i);
@@ -2138,9 +2145,9 @@ function fmtCm(v){
     const uni=uniM[1].toUpperCase().replace('.','');
     const label=uni==='ACABADA'?'ACB':uni;
     const extra=resto.slice(uniM[0].length).trim();
-    return num+' '+label+(extra?' '+extra:'');
+    return num+' '+label+(extra?' '+he(extra):'');
   }
-  return num+' cm'+(resto?' '+resto:'');
+  return num+' cm'+(resto?' '+he(resto):'');
 }
 
 function recArrow(u,rec,hojas){
@@ -2206,16 +2213,17 @@ function svgGusanillo(p,u){
   const pestH=CH*0.07;
   const pestTop=`<line x1="${ML}" y1="${(MT+pestH).toFixed(1)}" x2="${(ML+CW).toFixed(1)}" y2="${(MT+pestH).toFixed(1)}" stroke="#111" stroke-width="1.1"/>`;
   const pestBottom=`<line x1="${ML}" y1="${(MT+CH-pestH).toFixed(1)}" x2="${(ML+CW).toFixed(1)}" y2="${(MT+CH-pestH).toFixed(1)}" stroke="#111" stroke-width="1.1"/>`;
-  // Gusanillo: puntadas verticales repartidas bajo la pestaña superior
+  // Gusanillo: puntadas verticales bajo la pestaña superior, tal cual el
+  // boceto (solo el cuerpo con las pestañas y las puntadas, sin flecha de
+  // recogida ni ningún otro añadido que no esté en el dibujo original).
   const nPunt=Math.max(4,Math.min(9,Math.round(CW/22)));
-  const puntY0=MT+pestH+CH*0.05, puntY1=MT+CH*0.33;
+  const puntY0=MT+pestH+CH*0.05, puntY1=MT+CH*0.5;
   let puntadas='';
   for(let i=0;i<nPunt;i++){
     const px=ML+CW*(i+0.5)/nPunt;
     puntadas+=`<line x1="${px.toFixed(1)}" y1="${puntY0.toFixed(1)}" x2="${px.toFixed(1)}" y2="${puntY1.toFixed(1)}" stroke="#111" stroke-width="1.2"/>`;
   }
-  const pestTxt=p.pestana?`<text x="${(ML+CW/2).toFixed(1)}" y="${(MT+CH*0.42).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="bold" fill="#555" font-family="Arial">${p.pestana==='sin'?'SIN':'CON'} PESTAÑA</text>`:'';
-  return svgBase(u,`${riel}${sopL}${sopR}${tSopL}${tSopR}${palas}${pestTop}${pestBottom}${puntadas}${pestTxt}${recArrow(u,p.recogida,p.hojas)}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);}
+  return svgBase(u,`${riel}${sopL}${sopR}${tSopL}${tSopR}${palas}${pestTop}${pestBottom}${puntadas}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);}
 
 function svgPaquetto(p,u){
   const{ML,MT,CW,CH}=SV,isIZQ=(p.recogida==='IZQ');
@@ -3924,7 +3932,7 @@ async function buildCortePDFBytes(){
       // Ancho compuesto "158-142" o "158+142" → cada parte es una hoja, ganchos por separado.
       const anchoStr=String(l.ancho||'');
       const partesOP=anchoStr.split(/[-+]/).map(x=>parseFloat(x.replace(',','.'))||0).filter(x=>x>0);
-      const nHojasOP=parseInt(l.hojas)||1;
+      const nHojasOP=Math.min(20,Math.max(1,parseInt(l.hojas)||1));
       // Misma fórmula que calcularCorrederas (usada en la ficha): un único
       // sitio para el cálculo de ganchos de la Onda Perfecta.
       function ganchosOP(paso){

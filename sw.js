@@ -1,4 +1,4 @@
-const CACHE='cortiplan-v3';
+const CACHE='cortiplan-v4';
 // App shell local + las mismas librerías por CDN que index.html carga en
 // tiempo de ejecución (pdf.js y pdf-lib): sin esto, la app abre sin conexión
 // pero leer un presupuesto en PDF o generar las hojas de corte/instalación
@@ -25,6 +25,28 @@ self.addEventListener('fetch',e=>{
   if(e.request.method!=='GET')return;
   const url=e.request.url;
   if(url.startsWith('chrome-extension')||url.startsWith('data:')||url.startsWith('blob:'))return;
+
+  // El documento principal (navegación / index.html) va primero a red: con
+  // cache-first para TODO (como antes) una actualización de la app podía
+  // quedarse cacheada indefinidamente — el único disparador de actualización
+  // era que cambiasen los BYTES de este propio sw.js, no que cambiase
+  // index.html. Con red primero, en cuanto haya conexión el usuario recibe
+  // la versión nueva; si no hay conexión, cae al cache (sigue funcionando
+  // offline igual que antes).
+  const esNavegacion=e.request.mode==='navigate'||url.endsWith('/index.html')||/\/$/.test(url);
+  if(esNavegacion){
+    e.respondWith(
+      fetch(e.request).then(resp=>{
+        if(resp&&resp.status===200){
+          const copia=resp.clone();
+          caches.open(CACHE).then(c=>c.put(e.request,copia));
+        }
+        return resp;
+      }).catch(()=>caches.match(e.request).then(c=>c||caches.match('./index.html')))
+    );
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then(cached=>{
       if(cached)return cached;
