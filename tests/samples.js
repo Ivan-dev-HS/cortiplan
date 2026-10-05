@@ -22,7 +22,7 @@ module.exports = [
       sistema: 'GUIA MANUAL 1 VIA, REFORZADA', tipo: 'Onda Perfecta',
       codigo: 'CORTOP', caida: '', soporte: 'T', esTapiceria: false,
       ondaCm: '8cm', apertura: '', mandoBrisa: '', colorGuia: 'BCO',
-      motorizada: false,
+      motorizada: false, pestana: '',
     }],
   },
   {
@@ -41,7 +41,7 @@ module.exports = [
       sistema: 'Mando cadena derecha', tipo: 'Paquetto', codigo: 'PAQUETTO',
       caida: '', soporte: 'RAP', esTapiceria: false, ondaCm: '', apertura: '',
       mandoBrisa: '', colorGuia: '',
-      motorizada: false,
+      motorizada: false, pestana: '',
     }],
   },
   {
@@ -61,7 +61,7 @@ module.exports = [
       sistema: 'Ø 43mm', tipo: 'Enrollable', codigo: 'P05C12', caida: 'DEL',
       soporte: 'RAP', esTapiceria: false, ondaCm: '', apertura: '',
       mandoBrisa: '', colorGuia: '',
-      motorizada: false,
+      motorizada: false, pestana: '',
     }],
   },
   {
@@ -81,7 +81,7 @@ module.exports = [
       tipo: 'Vertical', codigo: 'VERT01', caida: '', soporte: 'T',
       esTapiceria: false, ondaCm: '', apertura: '3', mandoBrisa: '',
       colorGuia: 'BCO',
-      motorizada: false,
+      motorizada: false, pestana: '',
     }],
   },
   {
@@ -103,7 +103,7 @@ module.exports = [
       sistema: 'Mando cadena izquierda', tipo: 'Paquetto', codigo: 'PAQUETTO',
       caida: '', soporte: 'T', esTapiceria: false, ondaCm: '', apertura: '',
       mandoBrisa: '', colorGuia: '',
-      motorizada: false,
+      motorizada: false, pestana: '',
     }],
   },
   {
@@ -128,7 +128,7 @@ module.exports = [
       sistema: 'Ø 43mm', tipo: 'Enrollable', codigo: 'N04MO43', caida: 'DEL',
       soporte: 'T', esTapiceria: false, ondaCm: '', apertura: '',
       mandoBrisa: '', colorGuia: '',
-      motorizada: true,
+      motorizada: true, pestana: '',
     }],
   },
   {
@@ -153,7 +153,7 @@ module.exports = [
       sistema: 'Ø 43mm', tipo: 'Enrollable', codigo: 'N05CA43', caida: 'DEL',
       soporte: 'T', esTapiceria: false, ondaCm: '', apertura: '',
       mandoBrisa: '', colorGuia: '',
-      motorizada: false,
+      motorizada: false, pestana: '',
     }],
   },
   {
@@ -177,7 +177,7 @@ module.exports = [
       sistema: '', tipo: 'Vertical', codigo: 'VERT89PH01', caida: '',
       soporte: 'T CLIC', esTapiceria: false, ondaCm: '', apertura: '2',
       mandoBrisa: '', colorGuia: 'BCO',
-      motorizada: false,
+      motorizada: false, pestana: '',
     }],
   },
   {
@@ -198,7 +198,7 @@ module.exports = [
       sistema: 'GUIA MANUAL 1 VIA', tipo: 'Plana', codigo: 'CORTPLA',
       caida: '', soporte: 'T', esTapiceria: false, ondaCm: '', apertura: '',
       mandoBrisa: '', colorGuia: 'BCO',
-      motorizada: false,
+      motorizada: false, pestana: '',
     }],
   },
 ];

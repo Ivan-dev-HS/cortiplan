@@ -1146,6 +1146,15 @@ function estrategiaCanotex(txt){
         }
       }
 
+      // Gusanillo (CORTPASG): la confección indica si lleva pestaña o no
+      // ("CONFECCION: CON PESTAÑA" / "SIN PESTAÑA"); el dibujo siempre
+      // muestra la pestaña (así lo pide Canotex), esto solo queda anotado.
+      let pestana='';
+      {
+        const pm=descLineas.join(' ').match(/\b(CON|SIN)\s+PESTA[ÑN]A/i);
+        if(pm)pestana=pm[1].toUpperCase()==='SIN'?'sin':'con';
+      }
+
       // Si es enrollable y no encontramos tejido, usar extractor especializado
       if(esEnrollCodigo&&!tejido){
         tejido=extraerTejidoEnrollable(descLineas);
@@ -1218,6 +1227,7 @@ function estrategiaCanotex(txt){
         mandoBrisa:mandoBrisa||'',
         colorGuia:colorGuia||'',
         motorizada,
+        pestana:pestana||'',
       });
       dbg(`  ✅ #${results.length} [${currentEstancia||'?'}] ${tipo} ${ancho}×${alto}${cantidad>1?' ×'+cantidad:''}`,'ok');
       i=j;continue;
@@ -1344,6 +1354,8 @@ function normalizaTipoCanotex(codigo,udDesc,sistema){
   if(d.includes('presilla'))return'Presilla';
   if(d.includes('plegon encarado')||d.includes('plegón encarado'))return'Plegón Encarado';
   if(d.includes('plegon')||d.includes('plegón'))return'Plegón';
+  // Gusanillo (cinta fruncidora con pestaña arriba y abajo): código CORTPASG
+  if(c==='CORTPASG'||d.includes('gusanillo'))return'Gusanillo';
   // Códigos Canotex de cortinas planas/palas (el orden importa: CORTPLADO antes que CORTPLA):
   if(c==='CORTPLADO'||d.includes('doble tejido'))return'Plana Doble Tejido';
   if(c==='CORTPLA'||(d.includes('plana')&&!d.includes('doble')))return'Plana';
@@ -1432,7 +1444,7 @@ function normalizaColorSis(v){
   return'';
 }
 
-function normalizaTipo(raw){if(!raw)return'';const lo=raw.toLowerCase();const MAP=[{k:['onda'],v:'Onda Perfecta'},{k:['fruncid'],v:'Fruncida'},{k:['presilla'],v:'Presilla'},{k:['plegon encarado','plegón encarado'],v:'Plegón Encarado'},{k:['plegon','plegón'],v:'Plegón'},{k:['pala','tabla'],v:'Palas/Tablas'},{k:['paquetto'],v:'Paquetto'},{k:['brisa','dia y noche','día y noche'],v:'Brisa'},{k:['vertical','lama'],v:'Vertical'},{k:['estor'],v:'Estor'},{k:['enroll','roman'],v:'Enrollable'},{k:['ollado','ojal'],v:'Ollados'},{k:['anilla','barra'],v:'Barra con Anillas'},{k:['panel'],v:'Panel Japonés'},
+function normalizaTipo(raw){if(!raw)return'';const lo=raw.toLowerCase();const MAP=[{k:['onda'],v:'Onda Perfecta'},{k:['gusanillo'],v:'Gusanillo'},{k:['fruncid'],v:'Fruncida'},{k:['presilla'],v:'Presilla'},{k:['plegon encarado','plegón encarado'],v:'Plegón Encarado'},{k:['plegon','plegón'],v:'Plegón'},{k:['pala','tabla'],v:'Palas/Tablas'},{k:['paquetto'],v:'Paquetto'},{k:['brisa','dia y noche','día y noche'],v:'Brisa'},{k:['vertical','lama'],v:'Vertical'},{k:['estor'],v:'Estor'},{k:['enroll','roman'],v:'Enrollable'},{k:['ollado','ojal'],v:'Ollados'},{k:['anilla','barra'],v:'Barra con Anillas'},{k:['panel'],v:'Panel Japonés'},
   // Cabecero/Cojín ANTES que Tapicería: "CABECERO TAPIZADO" contiene "tapizado".
   {k:['cabecero','cabecera'],v:'Cabecero'},{k:['cojin','cojín'],v:'Cojín'},
   {k:['tapic','tapiz','tapizado'],v:'Tapiceria'},{k:['colcha','vanova','vànova','vanua','nordica','nórdica','edredon','edredón'],v:'Colcha/Vánova/Nórdica'},{k:['friso'],v:'Friso'},{k:['visillo'],v:'Visillo'}];for(const{k,v}of MAP)if(k.some(x=>lo.includes(x)))return v;return raw;}
@@ -1513,7 +1525,7 @@ function addCortina(d={}){
   const tipo=normalizaTipo(d.tipo||'');
   const hojasIni=d.hojas||'1';
   const recIni=(parseInt(hojasIni)||1)>=2?'CEN':(d.recogida||'D');
-  const c={id,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',hojas:hojasIni,recogida:recIni,tejido:d.tejido||'',sistema:d.sistema||'',tipo,extra:d.extra||'',metros:d.metros||'',caida:d.caida||'',soporte:d.soporte||'',codigo:d.codigo||'',motorizada:d.motorizada||false,ondaCm:d.ondaCm||'',esTapiceria:d.esTapiceria||false,apertura:d.apertura||'',mandoBrisa:d.mandoBrisa||'cadena',colorGuia:d.colorGuia||'',
+  const c={id,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',hojas:hojasIni,recogida:recIni,tejido:d.tejido||'',sistema:d.sistema||'',tipo,extra:d.extra||'',metros:d.metros||'',caida:d.caida||'',soporte:d.soporte||'',codigo:d.codigo||'',motorizada:d.motorizada||false,ondaCm:d.ondaCm||'',esTapiceria:d.esTapiceria||false,apertura:d.apertura||'',mandoBrisa:d.mandoBrisa||'cadena',colorGuia:d.colorGuia||'',pestana:d.pestana||'',
   formaL:d.formaL||'',anchoL:d.anchoL||'',altoL:d.altoL||'',hojasL:d.hojasL||'1',recogidaL:d.recogidaL||'D',aperturaL:d.aperturaL||'',
   formaJunta:d.formaJunta||'',
   llucana:d.llucana||'',llucAnchoArriba:d.llucAnchoArriba||'',llucAltoCorto:d.llucAltoCorto||'',llucInclinada:d.llucInclinada||'',
@@ -1529,16 +1541,16 @@ function addCortina(d={}){
     STATE.lcnt++;
     const corrIni=(c.tipo||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
     const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
-    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.formaJunta&&c.anchoL?' (1ª cortina)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':''))),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
+    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.formaJunta&&c.anchoL?' (1ª cortina)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':''))),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,pestana:c.pestana||'',manual:'MANUAL',unidades:'1',obs:''});
     // Cortina en L → segunda guía independiente (su propia línea de corte)
     if(c.formaL&&c.anchoL){
       STATE.lcnt++;
-      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,pestana:c.pestana||'',manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
     }
     // Cortinas juntas → segunda guía independiente (su propia línea de corte)
     if(c.formaJunta&&c.anchoL){
       STATE.lcnt++;
-      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (2ª cortina)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Cortinas juntas · '+(c.formaJunta==='izq'?'2ª a la izq':'2ª a la dcha')});
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (2ª cortina)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:c.tipo,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,pestana:c.pestana||'',manual:'MANUAL',unidades:'1',obs:'Cortinas juntas · '+(c.formaJunta==='izq'?'2ª a la izq':'2ª a la dcha')});
     }
   }
   rerenderAllCards();
@@ -1753,20 +1765,20 @@ function reconstruirLineas(){
     STATE.lcnt++;
     const corrIni=(t||'').toLowerCase().includes('onda')?((c.ondaCm||'8cm')==='6cm'?'OP6':'OP8'):'CONVENCIONAL';
     const colIni=normalizaColorSis(c.colorGuia)||normalizaColorSis(c.sistema)||'';
-    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.formaJunta&&c.anchoL?' (1ª cortina)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':''))),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:''});
+    STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+(c.formaL&&c.anchoL?' (tramo recto)':(c.formaJunta&&c.anchoL?' (1ª cortina)':(c.llucana&&c.llu2&&c.llu2Ancho?' (tramo 1)':''))),ancho:c.ancho,alto:c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogida,hojas:c.hojas,color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,pestana:c.pestana||'',manual:'MANUAL',unidades:'1',obs:''});
     if(c.formaL&&c.anchoL){
       STATE.lcnt++;
-      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo L)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,pestana:c.pestana||'',manual:'MANUAL',unidades:'1',obs:'Forma L · '+(c.formaL==='izq'?'esquina izq':'esquina dcha')});
     }
     if(c.formaJunta&&c.anchoL){
       STATE.lcnt++;
-      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (2ª cortina)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Cortinas juntas · '+(c.formaJunta==='izq'?'2ª a la izq':'2ª a la dcha')});
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (2ª cortina)',ancho:c.anchoL,alto:c.altoL||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.recogidaL||'D',hojas:c.hojasL||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,pestana:c.pestana||'',manual:'MANUAL',unidades:'1',obs:'Cortinas juntas · '+(c.formaJunta==='izq'?'2ª a la izq':'2ª a la dcha')});
     }
     // Llucana con 2º tramo → segunda guía independiente
     if(c.llucana&&c.llu2&&c.llu2Ancho){
       STATE.lcnt++;
       const incT=c.llu2Inclinada||calcLluc2Inclinada(c);
-      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo llucana)',ancho:c.llu2Ancho,alto:c.llu2Alto||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.llu2Recogida||'D',hojas:c.llu2Hojas||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,manual:'MANUAL',unidades:'1',obs:'Llucana · inclinación '+(c.llu2==='izq'?'izq':'dcha')+(incT?' · inclinada '+incT+' cm':'')});
+      STATE.lineas.push({id:'l'+STATE.lcnt,estancia:c.estancia+' (tramo llucana)',ancho:c.llu2Ancho,alto:c.llu2Alto||c.alto,sistema:c.sistema,tipo:t,tejido:c.tejido,recogida:c.llu2Recogida||'D',hojas:c.llu2Hojas||'1',color:colIni,soportes:'',soporte:c.soporte||'',correderas:corrIni,pestana:c.pestana||'',manual:'MANUAL',unidades:'1',obs:'Llucana · inclinación '+(c.llu2==='izq'?'izq':'dcha')+(incT?' · inclinada '+incT+' cm':'')});
     }
   });
   rerenderAllLineas();
@@ -1873,7 +1885,7 @@ function updCortina(id,field,val){
 function updLinea(id,field,val){const l=STATE.lineas.find(x=>x.id===id);if(!l)return;l[field]=val;const head=document.querySelector(`.pcard[data-lid="${id}"] .est`);if(head&&field==='estancia')head.textContent=val||'(sin nombre)';scheduleCorteLiveRefresh();}
 function renderPcard(c,idx){
   const div=document.createElement('div');div.className='pcard';div.dataset.id=c.id;
-  const opts=['Onda Perfecta','Palas/Tablas','Fruncida','Presilla','Plegón','Plegón Encarado','Plana','Plana Doble Tejido','Paquetto','Estor','Enrollable','Vertical','Brisa','Ollados','Barra con Anillas','Panel Japonés','Tapiceria','Colcha/Vánova/Nórdica','Friso','Visillo','Cojín','Cabecero'];
+  const opts=['Onda Perfecta','Gusanillo','Palas/Tablas','Fruncida','Presilla','Plegón','Plegón Encarado','Plana','Plana Doble Tejido','Paquetto','Estor','Enrollable','Vertical','Brisa','Ollados','Barra con Anillas','Panel Japonés','Tapiceria','Colcha/Vánova/Nórdica','Friso','Visillo','Cojín','Cabecero'];
   const tLow=(c.tipo||'').toLowerCase();
   const esVertBri=tLow.includes('vertical')||tLow.includes('brisa')||tLow.includes('lama');
   const esBrisa=tLow.includes('brisa');
@@ -1912,6 +1924,15 @@ function renderPcard(c,idx){
   }
   if(esOnda){
     extras+=`<div class="fld"><label>Tamaño de Onda</label><select onchange="updCortina('${c.id}','ondaCm',this.value)"><option value=""${!c.ondaCm?' selected':''}>—</option><option value="8cm"${c.ondaCm==='8cm'?' selected':''}>8 cm</option><option value="6cm"${c.ondaCm==='6cm'?' selected':''}>6 cm</option></select></div>`;
+  }
+  if(tLow.includes('gusanillo')){
+    // El dibujo siempre lleva pestaña arriba y abajo; esto solo anota en la
+    // confección si el pedido real lleva pestaña o no.
+    extras+=`<div class="fld"><label>Pestaña</label><select onchange="updCortina('${c.id}','pestana',this.value)">
+      <option value=""${!c.pestana?' selected':''}>-- Sin especificar --</option>
+      <option value="con"${c.pestana==='con'?' selected':''}>Con pestaña</option>
+      <option value="sin"${c.pestana==='sin'?' selected':''}>Sin pestaña</option>
+    </select></div>`;
   }
 
   const haySiguiente=idx<STATE.cortinas.length-1;
@@ -2114,6 +2135,34 @@ function svgPalas(p,u){
   const tSopL=`<line x1="${(ML-5).toFixed(1)}" y1="${(MT-14).toFixed(1)}" x2="${(ML+5).toFixed(1)}" y2="${(MT-14).toFixed(1)}" stroke="#111" stroke-width="2"/>`;
   const tSopR=`<line x1="${(ML+CW-5).toFixed(1)}" y1="${(MT-14).toFixed(1)}" x2="${(ML+CW+5).toFixed(1)}" y2="${(MT-14).toFixed(1)}" stroke="#111" stroke-width="2"/>`;
   return svgBase(u,`${riel}${sopL}${sopR}${tSopL}${tSopR}${palas}${recArrow(u,p.recogida,p.hojas)}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);}
+
+/* Gusanillo (CORTPASG): tela con pestaña arriba y abajo (doble línea junto a
+   cada borde) y la cinta fruncidora (puntadas verticales) cerca del borde
+   superior. El dibujo siempre lleva las dos pestañas — si el pedido real
+   lleva pestaña o no se anota aparte (p.pestana), no cambia el dibujo. */
+function svgGusanillo(p,u){
+  const{ML,MT,CW,CH}=SV,n=Math.max(1,parseInt(p.hojas)||1);
+  const riel=`<rect x="${(ML-5).toFixed(1)}" y="${(MT-7).toFixed(1)}" width="${(CW+10).toFixed(1)}" height="7" fill="none" stroke="#111" stroke-width="1.8"/>`;
+  const sopL=`<line x1="${ML}" y1="${(MT-14).toFixed(1)}" x2="${ML}" y2="${(MT-7).toFixed(1)}" stroke="#111" stroke-width="2"/>`;
+  const sopR=`<line x1="${(ML+CW).toFixed(1)}" y1="${(MT-14).toFixed(1)}" x2="${(ML+CW).toFixed(1)}" y2="${(MT-7).toFixed(1)}" stroke="#111" stroke-width="2"/>`;
+  const tSopL=`<line x1="${(ML-5).toFixed(1)}" y1="${(MT-14).toFixed(1)}" x2="${(ML+5).toFixed(1)}" y2="${(MT-14).toFixed(1)}" stroke="#111" stroke-width="2"/>`;
+  const tSopR=`<line x1="${(ML+CW-5).toFixed(1)}" y1="${(MT-14).toFixed(1)}" x2="${(ML+CW+5).toFixed(1)}" y2="${(MT-14).toFixed(1)}" stroke="#111" stroke-width="2"/>`;
+  let palas='';const gap=3,pW=(CW-(n-1)*gap)/n;
+  for(let i=0;i<n;i++){const px=ML+i*(pW+gap);palas+=`<rect x="${px.toFixed(1)}" y="${MT}" width="${pW.toFixed(1)}" height="${CH}" fill="none" stroke="#111" stroke-width="1.3"/>`;}
+  // Pestañas: segunda línea paralela a cada borde, muy cerca de él
+  const pestH=CH*0.07;
+  const pestTop=`<line x1="${ML}" y1="${(MT+pestH).toFixed(1)}" x2="${(ML+CW).toFixed(1)}" y2="${(MT+pestH).toFixed(1)}" stroke="#111" stroke-width="1.1"/>`;
+  const pestBottom=`<line x1="${ML}" y1="${(MT+CH-pestH).toFixed(1)}" x2="${(ML+CW).toFixed(1)}" y2="${(MT+CH-pestH).toFixed(1)}" stroke="#111" stroke-width="1.1"/>`;
+  // Gusanillo: puntadas verticales repartidas bajo la pestaña superior
+  const nPunt=Math.max(4,Math.min(9,Math.round(CW/22)));
+  const puntY0=MT+pestH+CH*0.05, puntY1=MT+CH*0.33;
+  let puntadas='';
+  for(let i=0;i<nPunt;i++){
+    const px=ML+CW*(i+0.5)/nPunt;
+    puntadas+=`<line x1="${px.toFixed(1)}" y1="${puntY0.toFixed(1)}" x2="${px.toFixed(1)}" y2="${puntY1.toFixed(1)}" stroke="#111" stroke-width="1.2"/>`;
+  }
+  const pestTxt=p.pestana?`<text x="${(ML+CW/2).toFixed(1)}" y="${(MT+CH*0.42).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="bold" fill="#555" font-family="Arial">${p.pestana==='sin'?'SIN':'CON'} PESTAÑA</text>`:'';
+  return svgBase(u,`${riel}${sopL}${sopR}${tSopL}${tSopR}${palas}${pestTop}${pestBottom}${puntadas}${pestTxt}${recArrow(u,p.recogida,p.hojas)}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);}
 
 function svgPaquetto(p,u){
   const{ML,MT,CW,CH}=SV,isIZQ=(p.recogida==='IZQ');
@@ -3189,6 +3238,7 @@ function getSVG(p){
   if(t.includes('friso'))return svgFriso(p,u);
   if(t.includes('cojin')||t.includes('cojín'))return svgCojin(p,u);
   if(t.includes('cabecero')||t.includes('cabecera'))return svgCabecero(p,u);
+  if(t.includes('gusanillo'))return svgGusanillo(p,u);
   if(t.includes('paquetto'))return svgPaquetto(p,u);
   if(t.includes('brisa')||t.includes('dia y noche')||t.includes('día y noche'))return svgBrisa(p,u);
   if(t.includes('vertical')||t.includes('lama'))return svgVertical(p,u);
@@ -3280,6 +3330,7 @@ function fichaFilas(p){
   if((p.tipo||'').toLowerCase().includes('onda')&&p.ancho)rows+='<div class="fdat-row"><div class="fdat-k">Correderas</div><div class="fdat-v" style="font-size:10px">'+calcularCorrederasTexto(p.ancho,p.hojas,p.ondaCm)+'</div></div>';
   if(p.caida)rows+='<div class="fdat-row"><div class="fdat-k">Caída</div><div class="fdat-v sm">'+he(p.caida)+'</div></div>';
   if(p.soporte)rows+='<div class="fdat-row"><div class="fdat-k">Soporte</div><div class="fdat-v sm">'+he(p.soporte)+'</div></div>';
+  if(p.pestana)rows+='<div class="fdat-row"><div class="fdat-k">Pestaña</div><div class="fdat-v sm">'+(p.pestana==='sin'?'Sin pestaña':'Con pestaña')+'</div></div>';
   // Llucana con 2º tramo: mostrar sus medidas
   if(p.llucana&&p.llu2&&p.llu2Ancho){
     const _i2=p.llu2Inclinada||calcLluc2Inclinada(p);
@@ -3898,6 +3949,7 @@ async function buildCortePDFBytes(){
           if(t.includes('paquetto')){
             return s.includes('varilla')||s.includes('estor')?'Estor varillas':'Paquetto';
           }
+          if(t.includes('gusanillo')&&l.pestana)return'Gusanillo '+(l.pestana==='sin'?'sin pestaña':'con pestaña');
           return l.tipo?l.tipo.substring(0,16):'';
         })(),
         corrLabel,                                                        // Correderas / Caídas paquetto

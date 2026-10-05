@@ -556,6 +556,61 @@ test('setForma alterna entre Recta / En L / Juntas de forma mutuamente excluyent
   assert.strictEqual(STATE.cortinas[0].formaJunta, '');
 });
 
+console.log('\nGusanillo (CORTPASG)');
+test('normalizaTipoCanotex reconoce CORTPASG como Gusanillo', () => {
+  assert.strictEqual(app.normalizaTipoCanotex('CORTPASG', '', ''), 'Gusanillo');
+  assert.strictEqual(app.normalizaTipoCanotex('XXX', 'cinta gusanillo', ''), 'Gusanillo');
+});
+test('normalizaTipo reconoce "gusanillo" en el selector manual', () => {
+  assert.strictEqual(app.normalizaTipo('Gusanillo'), 'Gusanillo');
+});
+test('Un presupuesto con CORTPASG se detecta como cortina Gusanillo, no se pierde', () => {
+  const txt = [
+    'PRESUPUESTO DE VENTA',
+    'REF. P600 CLIENTE QUINCE',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'COCINA 1,00',
+    'CORTPASG MEDIDA:120x150H -MANDO:D 1,00',
+    'UD. CONFECCION GUSANILLO CON PESTAÑA',
+    'TEJIDO: LISO BEIGE',
+  ].join('\n');
+  const out = app.estrategiaCanotex(txt);
+  assert.strictEqual(out.length, 1);
+  assert.strictEqual(out[0].tipo, 'Gusanillo');
+  assert.strictEqual(out[0].pestana, 'con');
+});
+test('Un CORTPASG "SIN PESTAÑA" se anota como tal, no como "con" por defecto', () => {
+  const txt = [
+    'PRESUPUESTO DE VENTA',
+    'REF. P601 CLIENTE DIECISEIS',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'COCINA 1,00',
+    'CORTPASG MEDIDA:120x150H -MANDO:D 1,00',
+    'UD. CONFECCION GUSANILLO SIN PESTAÑA',
+    'TEJIDO: LISO BEIGE',
+  ].join('\n');
+  const out = app.estrategiaCanotex(txt);
+  assert.strictEqual(out[0].pestana, 'sin');
+});
+test('getSVG dibuja Gusanillo sin lanzar excepción, con y sin pestaña anotada', () => {
+  assert.doesNotThrow(() => app.getSVG({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1' }));
+  assert.doesNotThrow(() => app.getSVG({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '2', pestana: 'con' }));
+  assert.doesNotThrow(() => app.getSVG({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1', pestana: 'sin' }));
+});
+test('svgGusanillo siempre dibuja las dos líneas de pestaña, lleve o no pestaña el pedido', () => {
+  const svgCon = app.svgGusanillo({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1', pestana: 'con' }, 'gcon');
+  const svgSin = app.svgGusanillo({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1', pestana: 'sin' }, 'gsin');
+  const svgNada = app.svgGusanillo({ tipo: 'Gusanillo', ancho: '150', alto: '200', hojas: '1' }, 'gnada');
+  // La tela (rect principal) + 2 líneas de pestaña + el riel (otro rect) → siempre 2 <rect> y al menos 2 <line> de pestaña, pase lo que pase con p.pestana
+  for (const svg of [svgCon, svgSin, svgNada]) {
+    const rects = [...svg.matchAll(/<rect /g)].length;
+    assert.ok(rects >= 2, 'debe llevar al menos el riel y una tela como rect');
+  }
+  assert.ok(svgCon.includes('CON PESTAÑA'));
+  assert.ok(svgSin.includes('SIN PESTAÑA'));
+  assert.ok(!svgNada.includes('PESTAÑA'), 'sin anotación, no debe mostrar ningún texto de pestaña');
+});
+
 console.log('\nFunciones puras del parser');
 
 test('fmtCm — número simple añade "cm"', () => {
