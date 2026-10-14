@@ -590,6 +590,11 @@ input, select, textarea { font-family: inherit; }
           <div id="pz-search-results" class="pz-search-results" style="display:none"></div>
           <div id="pz-tejido-sel" class="slbl" style="margin:0;color:var(--acc)"></div>
           <div class="fld"><label>Sistema</label><select id="pz-sistema" onchange="pzPreview()"></select></div>
+          <div class="fld"><label>Ubicación soporte</label><select id="pz-soporte"><option value="T">Techo</option><option value="FRENTE">Frente</option></select></div>
+          <label class="inst-check" for="pz-partida">
+            <input type="checkbox" id="pz-partida" onchange="pzPreview()">
+            <span class="slbl" style="margin:0">Partida (2 piezas)</span>
+          </label>
           <label class="inst-check" for="pz-instal">
             <input type="checkbox" id="pz-instal" onchange="pzPreview()">
             <span class="slbl" style="margin:0">Instalación incluida (+50€)</span>
@@ -4288,32 +4293,42 @@ function pzPrecioPorTramo(tabla, ancho){
 }
 function pzCalcularLinea(){
   const tipo = $('pz-tipo').value;
-  const ancho = parseFloat($('pz-ancho').value)||0;
+  const anchoTotal = parseFloat($('pz-ancho').value)||0;
   const sistemaNombre = $('pz-sistema').value;
   const instalacion = $('pz-instal').checked;
-  if(!tipo||!ancho||!pzTejidoElegido)return null;
+  const partida = $('pz-partida').checked;
+  if(!tipo||!anchoTotal||!pzTejidoElegido)return null;
   const def = PZ_TIPOS[tipo];
-  const metros = Math.round(def.metros(ancho)*100)/100;
-  const precioTejido = metros*pzTejidoElegido.precio;
+  // "Partida" (2 piezas), igual que en Canotex: la ventana mide anchoTotal,
+  // pero se confecciona en dos piezas iguales — tejido y confección se
+  // calculan sobre la mitad y se duplican (dos piezas, no una al doble).
+  const anchoCalculo = partida ? anchoTotal/2 : anchoTotal;
+  const metros = Math.round(def.metros(anchoCalculo)*100)/100;
+  const precioTejidoUd = metros*pzTejidoElegido.precio;
   const confeccion = PZ_CONFECCION[tipo];
-  let precioConfeccion;
-  if(ancho<=100)precioConfeccion=confeccion[100];
-  else if(ancho<=150)precioConfeccion=confeccion[150];
-  else if(ancho<=200)precioConfeccion=confeccion[200];
-  else if(ancho<=250)precioConfeccion=confeccion[250];
-  else if(ancho<=300)precioConfeccion=confeccion[300];
-  else precioConfeccion=confeccion[350]||confeccion[300];
-  const precioSistema = sistemaNombre ? pzPrecioPorTramo(PZ_SISTEMAS[sistemaNombre], ancho) : 0;
+  let precioConfeccionUd;
+  if(anchoCalculo<=100)precioConfeccionUd=confeccion[100];
+  else if(anchoCalculo<=150)precioConfeccionUd=confeccion[150];
+  else if(anchoCalculo<=200)precioConfeccionUd=confeccion[200];
+  else if(anchoCalculo<=250)precioConfeccionUd=confeccion[250];
+  else if(anchoCalculo<=300)precioConfeccionUd=confeccion[300];
+  else precioConfeccionUd=confeccion[350]||confeccion[300];
+  // El sistema se cotiza siempre sobre el ancho TOTAL de la ventana, esté
+  // partida o no (así lo hace también Canotex).
+  const precioSistema = sistemaNombre ? pzPrecioPorTramo(PZ_SISTEMAS[sistemaNombre], anchoTotal) : 0;
   const precioInstalacion = instalacion ? 50 : 0;
+  const precioTejido = partida ? precioTejidoUd*2 : precioTejidoUd;
+  const precioConfeccion = partida ? precioConfeccionUd*2 : precioConfeccionUd;
   const total = precioTejido+precioConfeccion+precioSistema+precioInstalacion;
-  return {metros,precioTejido,precioConfeccion,precioSistema,precioInstalacion,total,tipo,sistemaNombre,ancho};
+  return {metros,precioTejido,precioConfeccion,precioSistema,precioInstalacion,total,tipo,sistemaNombre,ancho:anchoTotal,partida};
 }
 function pzPreview(){
   const box = $('pz-linea-preview');
   const l = pzCalcularLinea();
   if(!l){box.innerHTML='<div style="color:var(--txt3)">Elige tipo, ancho y tejido para ver el cálculo.</div>';return;}
   box.innerHTML = `
-    <div class="rl"><span>Tejido (${l.metros} m)</span><span>${l.precioTejido.toFixed(2)}€</span></div>
+    ${l.partida?'<div class="rl"><span>Partida (2 piezas)</span><span>tejido/confección ×2</span></div>':''}
+    <div class="rl"><span>Tejido (${l.metros} m${l.partida?'/pieza':''})</span><span>${l.precioTejido.toFixed(2)}€</span></div>
     <div class="rl"><span>Confección</span><span>${l.precioConfeccion.toFixed(2)}€</span></div>
     <div class="rl"><span>Sistema</span><span>${l.precioSistema.toFixed(2)}€</span></div>
     ${l.precioInstalacion?`<div class="rl"><span>Instalación</span><span>${l.precioInstalacion.toFixed(2)}€</span></div>`:''}
@@ -4325,8 +4340,9 @@ function pzAgregarItem(){
   const alto = parseFloat($('pz-alto').value)||0;
   if(!alto){alert('Falta el alto.');return;}
   const estancia = $('pz-estancia').value || 'Pieza';
+  const soporte = $('pz-soporte').value;
   const def = PZ_TIPOS[l.tipo];
-  pzItems.push({estancia,tipoKey:l.tipo,tipoLabel:def.label,tipoCorti:def.tipoCorti,tejido:pzTejidoElegido.nombre,ancho:l.ancho,alto,sistema:l.sistemaNombre||'Sin sistema',total:l.total});
+  pzItems.push({estancia,tipoKey:l.tipo,tipoLabel:def.label,tipoCorti:def.tipoCorti,tejido:pzTejidoElegido.nombre,ancho:l.ancho,alto,sistema:l.sistemaNombre||'Sin sistema',partida:l.partida,soporte,total:l.total});
   pzRenderItems();
   $('pz-tejido-search').value=''; $('pz-tejido-sel').textContent=''; pzTejidoElegido=null;
   pzPreview();
@@ -4336,7 +4352,7 @@ function pzRenderItems(){
   $('pz-n-items').textContent = pzItems.length;
   $('pz-items-list').innerHTML = pzItems.map((it,i)=>`
     <div class="pz-item-row">
-      <div class="d"><b>${he(it.estancia)}</b><span>${he(it.tipoLabel)} · ${he(it.tejido)} · ${it.ancho}×${it.alto}cm</span></div>
+      <div class="d"><b>${he(it.estancia)}</b><span>${he(it.tipoLabel)} · ${he(it.tejido)} · ${it.ancho}×${it.alto}cm${it.partida?' · Partida':''} · ${it.soporte==='FRENTE'?'Soporte frente':'Soporte techo'}</span></div>
       <div class="p">${it.total.toFixed(2)}€</div>
       <button onclick="pzQuitarItem(${i})" title="Quitar">✕</button>
     </div>`).join('') || '<div style="color:var(--txt3);font-size:11px">Todavía no has añadido ninguna pieza.</div>';
@@ -4363,7 +4379,7 @@ function pzRenderDoc(){
     </div>
     <table class="pz-tbl">
       <thead><tr><th>Estancia</th><th>Artículo</th><th>Medidas</th><th>Sistema</th><th style="text-align:right">Importe</th></tr></thead>
-      <tbody>${pzItems.map(it=>`<tr><td>${he(it.estancia)}</td><td>${he(it.tipoLabel)}<br><span style="color:var(--txt3);font-size:11px">${he(it.tejido)}</span></td><td>${it.ancho}×${it.alto}cm</td><td>${he(it.sistema)}</td><td style="text-align:right">${it.total.toFixed(2)}€</td></tr>`).join('')}</tbody>
+      <tbody>${pzItems.map(it=>`<tr><td>${he(it.estancia)}</td><td>${he(it.tipoLabel)}<br><span style="color:var(--txt3);font-size:11px">${he(it.tejido)}${it.partida?' · Partida (2 piezas)':''} · Soporte ${it.soporte==='FRENTE'?'a frente':'a techo'}</span></td><td>${it.ancho}×${it.alto}cm</td><td>${he(it.sistema)}</td><td style="text-align:right">${it.total.toFixed(2)}€</td></tr>`).join('')}</tbody>
     </table>
     <div style="display:flex;justify-content:flex-end">
       <div class="pz-preview" style="width:230px">
@@ -4381,7 +4397,16 @@ function pzRenderDoc(){
 function pzGenerarTodo(){
   if(!pzItems.length){alert('Añade al menos una pieza al presupuesto primero.');return;}
   pzItems.forEach(it=>{
-    addCortina({estancia:it.estancia,ancho:String(it.ancho),alto:String(it.alto),tejido:it.tejido,sistema:it.sistema,tipo:it.tipoCorti,hojas:'1',recogida:'D'});
+    const base={estancia:it.estancia,tejido:it.tejido,sistema:it.sistema,tipo:it.tipoCorti,hojas:'1',recogida:'D',soporte:it.soporte};
+    if(it.partida){
+      // Partida (2 piezas): mismo mecanismo que "cortinas juntas" ya
+      // existente en CortiPlan — dos guías/cortes independientes que
+      // juntas cubren el ancho total de la ventana.
+      const mitad=Math.round(it.ancho/2);
+      addCortina(Object.assign({},base,{ancho:String(mitad),alto:String(it.alto),formaJunta:'dcha',anchoL:String(it.ancho-mitad),altoL:String(it.alto),hojasL:'1',recogidaL:'D'}));
+    }else{
+      addCortina(Object.assign({},base,{ancho:String(it.ancho),alto:String(it.alto)}));
+    }
   });
   setModo('inst');
 }
