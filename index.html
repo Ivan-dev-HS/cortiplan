@@ -589,7 +589,12 @@ input, select, textarea { font-family: inherit; }
           </div>
           <div id="pz-search-results" class="pz-search-results" style="display:none"></div>
           <div id="pz-tejido-sel" class="slbl" style="margin:0;color:var(--acc)"></div>
-          <div class="fld"><label>Sistema</label><select id="pz-sistema" onchange="pzPreview()"></select></div>
+          <div class="fld" id="pz-color-wrap" style="display:none"><label>Color del tejido</label><select id="pz-color" onchange="pzPreview()"></select></div>
+          <div class="fld"><label>Sistema</label><select id="pz-sistema" onchange="pzActualizarBarras();pzPreview()"></select></div>
+          <div id="pz-barra-wrap" class="r2" style="display:none">
+            <div class="fld"><label>Diámetro barra</label><select id="pz-diametro" onchange="pzPreview()"><option value="20">20mm</option><option value="28">28mm</option></select></div>
+            <div class="fld"><label>Medida barra</label><select id="pz-medida" onchange="pzPreview()"></select></div>
+          </div>
           <div class="fld"><label>Ubicación soporte</label><select id="pz-soporte"><option value="T">Techo</option><option value="FRENTE">Frente</option></select></div>
           <label class="inst-check" for="pz-partida">
             <input type="checkbox" id="pz-partida" onchange="pzPreview()">
@@ -4225,7 +4230,50 @@ const PZ_SISTEMAS = {
     "Barra Guía Redonda 20mm - Convencional": {100:64.51, 150:78.17, 200:91.81, 250:121.89, 300:135.54},
     "Barra Guía Redonda 20mm - Onda Perfecta": {100:66.49, 150:81.12, 200:95.75, 250:126.82, 300:141.46},
     "Barra Guía Redonda 28mm - Convencional": {100:74.18, 150:85.98, 200:100.99, 250:134.08, 300:149.09},
-    "Barra Guía Redonda 28mm - Onda Perfecta": {100:76.46, 150:93.28, 200:105.32, 250:139.51, 300:155.60}
+    "Barra Guía Redonda 28mm - Onda Perfecta": {100:76.46, 150:93.28, 200:105.32, 250:139.51, 300:155.60},
+    "Barra Forja Negra": "forja",
+    "Barra Forja Blanca": "forja",
+    "Barra Óxido": "forja",
+    "Barra Acero": "forja",
+    "Barra Oro Viejo": "forja",
+    "Barra Cuadrada con Anillas": "forja"
+};
+const PZ_PRECIOS_BARRAS = {
+    "Barra Forja Negra": { "20": {150:66.96, 200:71.27, 250:95.72}, "28": {150:132.24, 200:144.75, 250:150.07} },
+    "Barra Forja Blanca": { "20": {150:66.96, 200:71.27, 250:95.72}, "28": {150:132.24, 200:144.75, 250:150.07} },
+    "Barra Óxido": { "20": {150:66.96, 200:71.27, 250:95.72}, "28": {150:132.24, 200:144.75, 250:150.07} },
+    "Barra Acero": { "20": {150:64.66, 200:69.02, 250:93.47}, "28": {150:134.49, 200:147.00, 250:152.33} },
+    "Barra Oro Viejo": { "20": {150:76.36, 200:87.71, 250:99.68}, "28": {150:138.10, 200:150.61, 250:155.94} },
+    "Barra Cuadrada con Anillas": { "único": {150:99.18, 200:108.32, 250:151.10, 300:176.21} }
+};
+// Color por tejido (igual que Canotex) — solo los que llevan colores
+// propios; el resto cae en "default".
+const PZ_COLORES_TEJIDOS = {
+    "AALBORG 60-61-64": ["60 Beige", "61 Gris", "64 Azul"],
+    "AALBORG 90-91-94": ["90 Blanco", "91 Crema", "94 Verde"],
+    "ABI": ["01 Blanco", "02 Crudo", "03 Beige", "04 Gris", "05 Azul", "06 Verde"],
+    "ACHIRA": ["01 Natural", "02 Arena", "03 Piedra", "04 Gris"],
+    "AKINA": ["01 Blanco", "02 Beige", "03 Gris", "04 Azul"],
+    "ALIDA GRIS": ["Gris"],
+    "ALISHA": ["01 Blanco", "02 Beige", "03 Gris"],
+    "ANOUK GRIS": ["Gris"],
+    "ASPEN BCO/CRUDO": ["Blanco", "Crudo"],
+    "ASPEN LINO": ["Lino Natural"],
+    "ASTIN GRIS": ["Gris"],
+    "ELISE BCO/CRUDO": ["Blanco", "Crudo"],
+    "ELISE LINO": ["Lino Natural"],
+    "LINETTE BLACKOUT": ["01 Blanco", "02 Beige", "03 Gris", "04 Negro"],
+    "MILAN BCO/CRUDO": ["Blanco", "Crudo"],
+    "PROVENCAL AZUL": ["Azul"],
+    "PROVENCAL GRIS": ["Gris"],
+    "PROVENCAL ROJO": ["Rojo"],
+    "RALPH BCO/CRUDO": ["Blanco", "Crudo"],
+    "RALPH LINO": ["Lino Natural"],
+    "YECLA 01-02-03": ["01 Beige", "02 Gris", "03 Azul"],
+    "YECLA 11-12-13": ["11 Blanco", "12 Crema", "13 Arena"],
+    "YECLA 41-42-43": ["41 Verde", "42 Azul", "43 Gris"],
+    "YECLA 51-52-53": ["51 Rosa", "52 Lila", "53 Morado"],
+    "default": ["Color único"]
 };
 const PZ_CONFECCION = {
     estor_paquetto: {100:60.08, 150:72.10, 200:84.12, 250:96.13, 300:120.17, 350:132.18},
@@ -4264,9 +4312,23 @@ function pzActualizarSistemas(){
   const tipoSel = $('pz-tipo').value;
   const tipo = PZ_TIPOS[tipoSel] ? tipoSel : Object.keys(PZ_TIPOS)[0];
   const filtro = PZ_TIPOS[tipo].sisFiltro;
-  const permitidos = Object.keys(PZ_SISTEMAS).filter(s=>s.includes(filtro));
+  // Las barras de forja se ofrecen junto a los sistemas "Convencional"
+  // (igual que en Canotex: cortina_fruncida/palas/plegones admiten tanto
+  // guía convencional como barra de forja).
+  const permitidos = Object.keys(PZ_SISTEMAS).filter(s=>PZ_SISTEMAS[s]==='forja'?filtro==='Convencional':s.includes(filtro));
   $('pz-sistema').innerHTML = '<option value="">Sin sistema</option>' + permitidos.map(s=>`<option value="${he(s)}">${he(s)}</option>`).join('');
+  pzActualizarBarras();
   pzPreview();
+}
+function pzActualizarBarras(){
+  const sistema = $('pz-sistema').value;
+  const esForja = PZ_SISTEMAS[sistema]==='forja';
+  $('pz-barra-wrap').style.display = esForja ? 'grid' : 'none';
+  if(!esForja){$('pz-medida').innerHTML='';return;}
+  // Solo "Barra Cuadrada con Anillas" llega a 300cm; el resto de barras de
+  // forja solo tienen precio hasta 250cm (igual que en Canotex).
+  const medidas = sistema==='Barra Cuadrada con Anillas' ? [150,200,250,300] : [150,200,250];
+  $('pz-medida').innerHTML = medidas.map(m=>`<option value="${m}">${m}cm</option>`).join('');
 }
 function pzBuscarTejido(){
   const q = $('pz-tejido-search').value.toLowerCase();
@@ -4282,6 +4344,9 @@ function pzElegirTejido(nombre){
   $('pz-tejido-search').value = nombre;
   $('pz-search-results').style.display = 'none';
   $('pz-tejido-sel').textContent = pzTejidoElegido ? ('✓ '+pzTejidoElegido.nombre+' — '+pzTejidoElegido.precio.toFixed(2)+'€/ml') : '';
+  const colores = PZ_COLORES_TEJIDOS[nombre] || PZ_COLORES_TEJIDOS['default'];
+  $('pz-color').innerHTML = colores.map(c=>`<option value="${he(c)}">${he(c)}</option>`).join('');
+  $('pz-color-wrap').style.display = pzTejidoElegido ? 'block' : 'none';
   pzPreview();
 }
 function pzPrecioPorTramo(tabla, ancho){
@@ -4290,6 +4355,25 @@ function pzPrecioPorTramo(tabla, ancho){
   if(ancho>max){const mitad=ancho/2;const r=rangos.find(x=>mitad<=x)||max;return (tabla[r]||0)*2;}
   const r = rangos.find(x=>ancho<=x);
   return tabla[r||max]||0;
+}
+// Precio del sistema para un ancho dado — igual que calcularPrecioSistema()
+// en el index.html real de Canotex: las barras de forja usan su propia
+// tabla (por diámetro y medida, con el fallback 'único' para la que no
+// tiene diámetro) y doblan precio si el ancho total supera 250cm.
+function pzPrecioSistema(sistemaNombre, ancho){
+  if(!sistemaNombre)return 0;
+  if(PZ_SISTEMAS[sistemaNombre]==='forja'){
+    const diametro = $('pz-diametro').value;
+    const medida = parseInt($('pz-medida').value);
+    if(!medida)return 0;
+    const preciosBarra = PZ_PRECIOS_BARRAS[sistemaNombre];
+    if(!preciosBarra)return 0;
+    const preciosPorDiametro = preciosBarra[diametro] || preciosBarra['único'];
+    if(!preciosPorDiametro)return 0;
+    const precio = preciosPorDiametro[medida]||0;
+    return ancho>250 ? precio*2 : precio;
+  }
+  return pzPrecioPorTramo(PZ_SISTEMAS[sistemaNombre], ancho);
 }
 function pzCalcularLinea(){
   const tipo = $('pz-tipo').value;
@@ -4315,7 +4399,7 @@ function pzCalcularLinea(){
   else precioConfeccionUd=confeccion[350]||confeccion[300];
   // El sistema se cotiza siempre sobre el ancho TOTAL de la ventana, esté
   // partida o no (así lo hace también Canotex).
-  const precioSistema = sistemaNombre ? pzPrecioPorTramo(PZ_SISTEMAS[sistemaNombre], anchoTotal) : 0;
+  const precioSistema = pzPrecioSistema(sistemaNombre, anchoTotal);
   const precioInstalacion = instalacion ? 50 : 0;
   const precioTejido = partida ? precioTejidoUd*2 : precioTejidoUd;
   const precioConfeccion = partida ? precioConfeccionUd*2 : precioConfeccionUd;
@@ -4337,14 +4421,21 @@ function pzPreview(){
 function pzAgregarItem(){
   const l = pzCalcularLinea();
   if(!l){alert('Completa tipo, ancho y tejido antes de añadir.');return;}
+  // Barra de forja sin diámetro/medida: igual que Canotex, no se añade con
+  // un precio de sistema en blanco (0€) sin que el usuario se dé cuenta.
+  if(PZ_SISTEMAS[l.sistemaNombre]==='forja'&&l.sistemaNombre!=='Barra Cuadrada con Anillas'&&(!$('pz-diametro').value||!$('pz-medida').value)){
+    alert('Selecciona el diámetro y la medida de la barra.');return;
+  }
   const alto = parseFloat($('pz-alto').value)||0;
   if(!alto){alert('Falta el alto.');return;}
   const estancia = $('pz-estancia').value || 'Pieza';
   const soporte = $('pz-soporte').value;
+  const color = $('pz-color').value || '';
   const def = PZ_TIPOS[l.tipo];
-  pzItems.push({estancia,tipoKey:l.tipo,tipoLabel:def.label,tipoCorti:def.tipoCorti,tejido:pzTejidoElegido.nombre,ancho:l.ancho,alto,sistema:l.sistemaNombre||'Sin sistema',partida:l.partida,soporte,total:l.total});
+  pzItems.push({estancia,tipoKey:l.tipo,tipoLabel:def.label,tipoCorti:def.tipoCorti,tejido:pzTejidoElegido.nombre,color,ancho:l.ancho,alto,sistema:l.sistemaNombre||'Sin sistema',partida:l.partida,soporte,total:l.total});
   pzRenderItems();
   $('pz-tejido-search').value=''; $('pz-tejido-sel').textContent=''; pzTejidoElegido=null;
+  $('pz-color-wrap').style.display='none'; $('pz-color').innerHTML='';
   pzPreview();
 }
 function pzQuitarItem(i){ pzItems.splice(i,1); pzRenderItems(); }
@@ -4352,7 +4443,7 @@ function pzRenderItems(){
   $('pz-n-items').textContent = pzItems.length;
   $('pz-items-list').innerHTML = pzItems.map((it,i)=>`
     <div class="pz-item-row">
-      <div class="d"><b>${he(it.estancia)}</b><span>${he(it.tipoLabel)} · ${he(it.tejido)} · ${it.ancho}×${it.alto}cm${it.partida?' · Partida':''} · ${it.soporte==='FRENTE'?'Soporte frente':'Soporte techo'}</span></div>
+      <div class="d"><b>${he(it.estancia)}</b><span>${he(it.tipoLabel)} · ${he(it.tejido)}${it.color?' ('+he(it.color)+')':''} · ${it.ancho}×${it.alto}cm${it.partida?' · Partida':''} · ${it.soporte==='FRENTE'?'Soporte frente':'Soporte techo'}</span></div>
       <div class="p">${it.total.toFixed(2)}€</div>
       <button onclick="pzQuitarItem(${i})" title="Quitar">✕</button>
     </div>`).join('') || '<div style="color:var(--txt3);font-size:11px">Todavía no has añadido ninguna pieza.</div>';
@@ -4364,22 +4455,21 @@ function pzRenderItems(){
     <div class="rl tot"><span>TOTAL</span><span>${total.toFixed(2)}€</span></div>`;
   if($('panelPresu').classList.contains('show'))pzRenderDoc();
 }
-function pzRenderDoc(){
-  hideEmptyState();
-  if(!pzItems.length){
-    $('main').innerHTML = '<div class="empty-state"><div class="ei">🧾</div><p>Añade piezas en el panel de la izquierda<br>para ver aquí el presupuesto.</p></div>';
-    return;
-  }
+// Construye el documento del presupuesto como HTML — se usa tanto para la
+// vista en vivo (pzRenderDoc) como para la versión imprimible (pzGenerarPDF),
+// igual que buildInstHTML() se reutiliza en generarInst()/generarInstPDF().
+function pzBuildDocHTML(){
+  if(!pzItems.length)return'';
   const subtotal = pzItems.reduce((s,it)=>s+it.total,0);
   const iva = subtotal*0.21, total = subtotal+iva;
-  $('main').innerHTML = `<div class="pz-doc">
+  return `<div class="pz-doc">
     <div class="pz-doc-head">
       <div><b>CANOTEX</b><div style="font-size:11px;color:var(--txt3);margin-top:3px">Canotex Textil S.L. — C/ Penedés, 87 — 25005 Lleida · Tel: 973 23 57 76</div></div>
       <div style="text-align:right;font-size:11px;color:var(--txt3)">PRESUPUESTO<br><b style="color:var(--blu)">Generado en el momento</b></div>
     </div>
     <table class="pz-tbl">
       <thead><tr><th>Estancia</th><th>Artículo</th><th>Medidas</th><th>Sistema</th><th style="text-align:right">Importe</th></tr></thead>
-      <tbody>${pzItems.map(it=>`<tr><td>${he(it.estancia)}</td><td>${he(it.tipoLabel)}<br><span style="color:var(--txt3);font-size:11px">${he(it.tejido)}${it.partida?' · Partida (2 piezas)':''} · Soporte ${it.soporte==='FRENTE'?'a frente':'a techo'}</span></td><td>${it.ancho}×${it.alto}cm</td><td>${he(it.sistema)}</td><td style="text-align:right">${it.total.toFixed(2)}€</td></tr>`).join('')}</tbody>
+      <tbody>${pzItems.map(it=>`<tr><td>${he(it.estancia)}</td><td>${he(it.tipoLabel)}<br><span style="color:var(--txt3);font-size:11px">${he(it.tejido)}${it.color?' · '+he(it.color):''}${it.partida?' · Partida (2 piezas)':''} · Soporte ${it.soporte==='FRENTE'?'a frente':'a techo'}</span></td><td>${it.ancho}×${it.alto}cm</td><td>${he(it.sistema)}</td><td style="text-align:right">${it.total.toFixed(2)}€</td></tr>`).join('')}</tbody>
     </table>
     <div style="display:flex;justify-content:flex-end">
       <div class="pz-preview" style="width:230px">
@@ -4390,6 +4480,62 @@ function pzRenderDoc(){
     </div>
   </div>`;
 }
+function pzRenderDoc(){
+  hideEmptyState();
+  const html = pzBuildDocHTML();
+  if(!html){
+    $('main').innerHTML = '<div class="empty-state"><div class="ei">🧾</div><p>Añade piezas en el panel de la izquierda<br>para ver aquí el presupuesto.</p></div>';
+    return;
+  }
+  $('main').innerHTML = `<div class="toolbar">
+    <button class="btn-tool btn-print" onclick="pzGenerarPDF()">🖨 Imprimir / Guardar PDF</button>
+  </div>${html}`;
+}
+// Mismo patrón que generarInstPDF(): construye un HTML autocontenido con
+// los estilos actuales, lo abre en una ventana aparte y dispara la
+// impresión del navegador (Ctrl+P / Guardar como PDF) — sin depender de
+// pdf-lib ni de ninguna librería externa.
+async function pzGenerarPDF(){
+  if(STATE._generandoPDF)return;
+  STATE._generandoPDF=true;
+  try{
+    const html = pzBuildDocHTML();
+    if(!html){alert('No hay piezas en el presupuesto.');return;}
+    const styles=[...document.styleSheets].map(ss=>{
+      try{return [...ss.cssRules].map(r=>r.cssText).join('\n');}catch(e){return '';}
+    }).join('\n');
+    const fullHTML=`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Presupuesto</title>
+<style>
+${styles}
+*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
+body{background:#fff;margin:0;padding:24px;font-family:'Helvetica Neue',Arial,sans-serif}
+.pz-doc{box-shadow:none!important;margin:0!important;max-width:100%!important}
+</style>
+</head>
+<body>${html}
+<script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script>
+</body>
+</html>`;
+    const blob=new Blob([fullHTML],{type:'text/html;charset=utf-8'});
+    revokeObjUrl();
+    STATE.objectUrl=URL.createObjectURL(blob);
+    const win=window.open(STATE.objectUrl,'_blank','width=900,height=700');
+    if(!win){
+      const a=document.createElement('a');a.href=STATE.objectUrl;
+      a.download='presupuesto_'+($('cpre').value||'pedido')+'.html';
+      a.style.display='none';document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setSt('ok','HTML descargado - abre y usa Ctrl+P para imprimir');
+    }else{
+      setSt('ok','Listo - usa Imprimir en la ventana abierta (Ctrl+P)');
+    }
+  }catch(err){setSt('er','Error: '+err.message);console.error(err);}
+  finally{STATE._generandoPDF=false;}
+}
 // Convierte cada línea del presupuesto en una cortina real, con las
 // mismas funciones que ya usa CortiPlan al leer un PDF (addCortina) —
 // por eso el dibujo/ficha que sale en Instalación es el real, no una
@@ -4397,7 +4543,8 @@ function pzRenderDoc(){
 function pzGenerarTodo(){
   if(!pzItems.length){alert('Añade al menos una pieza al presupuesto primero.');return;}
   pzItems.forEach(it=>{
-    const base={estancia:it.estancia,tejido:it.tejido,sistema:it.sistema,tipo:it.tipoCorti,hojas:'1',recogida:'D',soporte:it.soporte};
+    const tejidoCompleto = it.color ? it.tejido+' '+it.color : it.tejido;
+    const base={estancia:it.estancia,tejido:tejidoCompleto,sistema:it.sistema,tipo:it.tipoCorti,hojas:'1',recogida:'D',soporte:it.soporte};
     if(it.partida){
       // Partida (2 piezas): mismo mecanismo que "cortinas juntas" ya
       // existente en CortiPlan — dos guías/cortes independientes que
