@@ -580,7 +580,14 @@ input, select, textarea { font-family: inherit; }
           <div class="fld"><label>Estancia</label><input id="pz-estancia" type="text" placeholder="Salón" value="Salón"></div>
           <div class="fld"><label>Tipo</label><select id="pz-tipo" onchange="pzActualizarSistemas()"></select></div>
           <div class="r2">
-            <div class="fld"><label>Ancho (cm)</label><input id="pz-ancho" type="number" placeholder="200" oninput="pzPreview()"></div>
+            <div class="fld" id="pz-ancho-wrap"><label>Ancho (cm)</label><input id="pz-ancho" type="number" placeholder="200" oninput="pzPreview()"></div>
+            <div class="fld" id="pz-partida-anchos" style="display:none">
+              <label>Ancho pieza 1 + 2 (cm)</label>
+              <div style="display:flex;gap:6px">
+                <input id="pz-ancho1" type="number" placeholder="120" oninput="pzPreview()" style="width:50%">
+                <input id="pz-ancho2" type="number" placeholder="80" oninput="pzPreview()" style="width:50%">
+              </div>
+            </div>
             <div class="fld"><label>Alto (cm)</label><input id="pz-alto" type="number" placeholder="250"></div>
           </div>
           <div class="fld">
@@ -589,16 +596,16 @@ input, select, textarea { font-family: inherit; }
           </div>
           <div id="pz-search-results" class="pz-search-results" style="display:none"></div>
           <div id="pz-tejido-sel" class="slbl" style="margin:0;color:var(--acc)"></div>
-          <div class="fld" id="pz-color-wrap" style="display:none"><label>Color del tejido</label><select id="pz-color" onchange="pzPreview()"></select></div>
+          <div class="fld"><label>Color del tejido</label><input id="pz-color" type="text" placeholder="Ej: Blanco, 03 Beige…"></div>
           <div class="fld"><label>Sistema</label><select id="pz-sistema" onchange="pzActualizarBarras();pzPreview()"></select></div>
           <div id="pz-barra-wrap" class="r2" style="display:none">
             <div class="fld"><label>Diámetro barra</label><select id="pz-diametro" onchange="pzPreview()"><option value="20">20mm</option><option value="28">28mm</option></select></div>
             <div class="fld"><label>Medida barra</label><select id="pz-medida" onchange="pzPreview()"></select></div>
           </div>
           <div class="fld"><label>Ubicación soporte</label><select id="pz-soporte"><option value="T">Techo</option><option value="FRENTE">Frente</option></select></div>
-          <label class="inst-check" for="pz-partida">
-            <input type="checkbox" id="pz-partida" onchange="pzPreview()">
-            <span class="slbl" style="margin:0">Partida (2 piezas)</span>
+          <label class="inst-check" for="pz-partida" id="pz-partida-wrap">
+            <input type="checkbox" id="pz-partida" onchange="pzTogglePartida();pzPreview()">
+            <span class="slbl" style="margin:0">Partida (2 piezas independientes)</span>
           </label>
           <label class="inst-check" for="pz-instal">
             <input type="checkbox" id="pz-instal" onchange="pzPreview()">
@@ -4246,35 +4253,6 @@ const PZ_PRECIOS_BARRAS = {
     "Barra Oro Viejo": { "20": {150:76.36, 200:87.71, 250:99.68}, "28": {150:138.10, 200:150.61, 250:155.94} },
     "Barra Cuadrada con Anillas": { "único": {150:99.18, 200:108.32, 250:151.10, 300:176.21} }
 };
-// Color por tejido (igual que Canotex) — solo los que llevan colores
-// propios; el resto cae en "default".
-const PZ_COLORES_TEJIDOS = {
-    "AALBORG 60-61-64": ["60 Beige", "61 Gris", "64 Azul"],
-    "AALBORG 90-91-94": ["90 Blanco", "91 Crema", "94 Verde"],
-    "ABI": ["01 Blanco", "02 Crudo", "03 Beige", "04 Gris", "05 Azul", "06 Verde"],
-    "ACHIRA": ["01 Natural", "02 Arena", "03 Piedra", "04 Gris"],
-    "AKINA": ["01 Blanco", "02 Beige", "03 Gris", "04 Azul"],
-    "ALIDA GRIS": ["Gris"],
-    "ALISHA": ["01 Blanco", "02 Beige", "03 Gris"],
-    "ANOUK GRIS": ["Gris"],
-    "ASPEN BCO/CRUDO": ["Blanco", "Crudo"],
-    "ASPEN LINO": ["Lino Natural"],
-    "ASTIN GRIS": ["Gris"],
-    "ELISE BCO/CRUDO": ["Blanco", "Crudo"],
-    "ELISE LINO": ["Lino Natural"],
-    "LINETTE BLACKOUT": ["01 Blanco", "02 Beige", "03 Gris", "04 Negro"],
-    "MILAN BCO/CRUDO": ["Blanco", "Crudo"],
-    "PROVENCAL AZUL": ["Azul"],
-    "PROVENCAL GRIS": ["Gris"],
-    "PROVENCAL ROJO": ["Rojo"],
-    "RALPH BCO/CRUDO": ["Blanco", "Crudo"],
-    "RALPH LINO": ["Lino Natural"],
-    "YECLA 01-02-03": ["01 Beige", "02 Gris", "03 Azul"],
-    "YECLA 11-12-13": ["11 Blanco", "12 Crema", "13 Arena"],
-    "YECLA 41-42-43": ["41 Verde", "42 Azul", "43 Gris"],
-    "YECLA 51-52-53": ["51 Rosa", "52 Lila", "53 Morado"],
-    "default": ["Color único"]
-};
 const PZ_CONFECCION = {
     estor_paquetto: {100:60.08, 150:72.10, 200:84.12, 250:96.13, 300:120.17, 350:132.18},
     estor_plegable: {100:72.10, 150:84.12, 200:96.13, 250:108.15, 300:126.17, 350:138.20},
@@ -4287,9 +4265,12 @@ const PZ_CONFECCION = {
 // solo se ofrecen aquí los tipos que ya tienen dibujo/ficha propios en
 // CortiPlan, para que "Generar corte e instalación" produzca una ficha
 // real reconocible, no un tipo genérico sin dibujo específico.
+// sinPartida: un estor es un panel único tensado — a diferencia de una
+// cortina, no tiene sentido "partirlo" en dos piezas independientes, así
+// que ni se ofrece la opción.
 const PZ_TIPOS = {
-  estor_paquetto: { label:'Estor Paquetto', tipoCorti:'Paquetto', metros:a=>(a+40)/100, sisFiltro:'Estor a Cadena' },
-  estor_plegable: { label:'Estor Plegable', tipoCorti:'Estor', metros:a=>(a+40)/100, sisFiltro:'Estor a Cadena' },
+  estor_paquetto: { label:'Estor Paquetto', tipoCorti:'Paquetto', metros:a=>(a+40)/100, sisFiltro:'Estor a Cadena', sinPartida:true },
+  estor_plegable: { label:'Estor Plegable', tipoCorti:'Estor', metros:a=>(a+40)/100, sisFiltro:'Estor a Cadena', sinPartida:true },
   cortina_onda_perfecta: { label:'Cortina Onda Perfecta', tipoCorti:'Onda Perfecta', metros:a=>a*2.4/100, sisFiltro:'Onda Perfecta' },
   cortina_fruncida: { label:'Cortina Fruncida', tipoCorti:'Fruncida', metros:a=>a*2.5/100, sisFiltro:'Convencional' },
   cortina_palas: { label:'Cortina Palas', tipoCorti:'Palas/Tablas', metros:a=>a*2.6/100, sisFiltro:'Convencional' },
@@ -4317,8 +4298,23 @@ function pzActualizarSistemas(){
   // guía convencional como barra de forja).
   const permitidos = Object.keys(PZ_SISTEMAS).filter(s=>PZ_SISTEMAS[s]==='forja'?filtro==='Convencional':s.includes(filtro));
   $('pz-sistema').innerHTML = '<option value="">Sin sistema</option>' + permitidos.map(s=>`<option value="${he(s)}">${he(s)}</option>`).join('');
+  // Un estor es un panel único tensado: no se parte en dos piezas, así que
+  // ni se le ofrece la opción (y si venía marcada de un tipo anterior, se
+  // desmarca para no dejar un estado invisible a medias).
+  const puedePartirse = !PZ_TIPOS[tipo].sinPartida;
+  $('pz-partida-wrap').style.display = puedePartirse ? 'flex' : 'none';
+  if(!puedePartirse && $('pz-partida').checked){ $('pz-partida').checked=false; }
+  pzTogglePartida();
   pzActualizarBarras();
   pzPreview();
+}
+// Alterna entre el campo único "Ancho" y los dos campos independientes
+// "Ancho pieza 1/2" según si la pieza va partida — cada mitad puede medir
+// lo que haga falta, no se asume un reparto 50/50.
+function pzTogglePartida(){
+  const partida = $('pz-partida').checked;
+  $('pz-ancho-wrap').style.display = partida ? 'none' : 'flex';
+  $('pz-partida-anchos').style.display = partida ? 'flex' : 'none';
 }
 function pzActualizarBarras(){
   const sistema = $('pz-sistema').value;
@@ -4344,9 +4340,6 @@ function pzElegirTejido(nombre){
   $('pz-tejido-search').value = nombre;
   $('pz-search-results').style.display = 'none';
   $('pz-tejido-sel').textContent = pzTejidoElegido ? ('✓ '+pzTejidoElegido.nombre+' — '+pzTejidoElegido.precio.toFixed(2)+'€/ml') : '';
-  const colores = PZ_COLORES_TEJIDOS[nombre] || PZ_COLORES_TEJIDOS['default'];
-  $('pz-color').innerHTML = colores.map(c=>`<option value="${he(c)}">${he(c)}</option>`).join('');
-  $('pz-color-wrap').style.display = pzTejidoElegido ? 'block' : 'none';
   pzPreview();
 }
 function pzPrecioPorTramo(tabla, ancho){
@@ -4375,52 +4368,68 @@ function pzPrecioSistema(sistemaNombre, ancho){
   }
   return pzPrecioPorTramo(PZ_SISTEMAS[sistemaNombre], ancho);
 }
+// Tejido+confección de UNA pieza a un ancho dado — se reutiliza tal cual
+// tanto si la pieza va sola como si va partida en dos (cada mitad de una
+// partida es, para efectos de tela y confección, una pieza independiente).
+function pzCalcularPieza(tipo, ancho){
+  const def = PZ_TIPOS[tipo];
+  const metros = Math.round(def.metros(ancho)*100)/100;
+  const precioTejido = metros*pzTejidoElegido.precio;
+  const confeccion = PZ_CONFECCION[tipo];
+  let precioConfeccion;
+  if(ancho<=100)precioConfeccion=confeccion[100];
+  else if(ancho<=150)precioConfeccion=confeccion[150];
+  else if(ancho<=200)precioConfeccion=confeccion[200];
+  else if(ancho<=250)precioConfeccion=confeccion[250];
+  else if(ancho<=300)precioConfeccion=confeccion[300];
+  else precioConfeccion=confeccion[350]||confeccion[300];
+  return {metros,precioTejido,precioConfeccion};
+}
 function pzCalcularLinea(){
   const tipo = $('pz-tipo').value;
-  const anchoTotal = parseFloat($('pz-ancho').value)||0;
   const sistemaNombre = $('pz-sistema').value;
   const instalacion = $('pz-instal').checked;
-  const partida = $('pz-partida').checked;
-  if(!tipo||!anchoTotal||!pzTejidoElegido)return null;
+  const partida = $('pz-partida').checked && !(PZ_TIPOS[tipo]&&PZ_TIPOS[tipo].sinPartida);
+  if(!tipo||!pzTejidoElegido||!PZ_TIPOS[tipo])return null;
   const def = PZ_TIPOS[tipo];
-  // "Partida" (2 piezas), igual que en Canotex: la ventana mide anchoTotal,
-  // pero se confecciona en dos piezas iguales — tejido y confección se
-  // calculan sobre la mitad y se duplican (dos piezas, no una al doble).
-  const anchoCalculo = partida ? anchoTotal/2 : anchoTotal;
-  const metros = Math.round(def.metros(anchoCalculo)*100)/100;
-  const precioTejidoUd = metros*pzTejidoElegido.precio;
-  const confeccion = PZ_CONFECCION[tipo];
-  let precioConfeccionUd;
-  if(anchoCalculo<=100)precioConfeccionUd=confeccion[100];
-  else if(anchoCalculo<=150)precioConfeccionUd=confeccion[150];
-  else if(anchoCalculo<=200)precioConfeccionUd=confeccion[200];
-  else if(anchoCalculo<=250)precioConfeccionUd=confeccion[250];
-  else if(anchoCalculo<=300)precioConfeccionUd=confeccion[300];
-  else precioConfeccionUd=confeccion[350]||confeccion[300];
-  // El sistema se cotiza siempre sobre el ancho TOTAL de la ventana, esté
-  // partida o no (así lo hace también Canotex).
-  const precioSistema = pzPrecioSistema(sistemaNombre, anchoTotal);
   const precioInstalacion = instalacion ? 50 : 0;
-  const precioTejido = partida ? precioTejidoUd*2 : precioTejidoUd;
-  const precioConfeccion = partida ? precioConfeccionUd*2 : precioConfeccionUd;
-  const total = precioTejido+precioConfeccion+precioSistema+precioInstalacion;
-  return {metros,precioTejido,precioConfeccion,precioSistema,precioInstalacion,total,tipo,sistemaNombre,ancho:anchoTotal,partida};
+
+  if(partida){
+    // Partida = dos cortinas independientes (dos guías/sistemas propios),
+    // cada una con su propio ancho — no se asume un reparto 50/50.
+    const ancho1 = parseFloat($('pz-ancho1').value)||0;
+    const ancho2 = parseFloat($('pz-ancho2').value)||0;
+    if(!ancho1||!ancho2)return null;
+    const p1 = pzCalcularPieza(tipo,ancho1), p2 = pzCalcularPieza(tipo,ancho2);
+    const precioSistema = pzPrecioSistema(sistemaNombre,ancho1)+pzPrecioSistema(sistemaNombre,ancho2);
+    const precioTejido = p1.precioTejido+p2.precioTejido;
+    const precioConfeccion = p1.precioConfeccion+p2.precioConfeccion;
+    const total = precioTejido+precioConfeccion+precioSistema+precioInstalacion;
+    return {metros:Math.round((p1.metros+p2.metros)*100)/100,precioTejido,precioConfeccion,precioSistema,precioInstalacion,total,tipo,sistemaNombre,ancho:ancho1+ancho2,ancho1,ancho2,partida:true};
+  }
+
+  const ancho = parseFloat($('pz-ancho').value)||0;
+  if(!ancho)return null;
+  const p = pzCalcularPieza(tipo,ancho);
+  const precioSistema = pzPrecioSistema(sistemaNombre,ancho);
+  const total = p.precioTejido+p.precioConfeccion+precioSistema+precioInstalacion;
+  return {metros:p.metros,precioTejido:p.precioTejido,precioConfeccion:p.precioConfeccion,precioSistema,precioInstalacion,total,tipo,sistemaNombre,ancho,partida:false};
 }
 function pzPreview(){
   const box = $('pz-linea-preview');
   const l = pzCalcularLinea();
   if(!l){box.innerHTML='<div style="color:var(--txt3)">Elige tipo, ancho y tejido para ver el cálculo.</div>';return;}
   box.innerHTML = `
-    ${l.partida?'<div class="rl"><span>Partida (2 piezas)</span><span>tejido/confección ×2</span></div>':''}
-    <div class="rl"><span>Tejido (${l.metros} m${l.partida?'/pieza':''})</span><span>${l.precioTejido.toFixed(2)}€</span></div>
+    ${l.partida?`<div class="rl"><span>Partida</span><span>${l.ancho1}cm + ${l.ancho2}cm</span></div>`:''}
+    <div class="rl"><span>Tejido (${l.metros} m)</span><span>${l.precioTejido.toFixed(2)}€</span></div>
     <div class="rl"><span>Confección</span><span>${l.precioConfeccion.toFixed(2)}€</span></div>
-    <div class="rl"><span>Sistema</span><span>${l.precioSistema.toFixed(2)}€</span></div>
+    <div class="rl"><span>Sistema${l.partida?' (2 guías)':''}</span><span>${l.precioSistema.toFixed(2)}€</span></div>
     ${l.precioInstalacion?`<div class="rl"><span>Instalación</span><span>${l.precioInstalacion.toFixed(2)}€</span></div>`:''}
     <div class="rl tot"><span>Total línea</span><span>${l.total.toFixed(2)}€</span></div>`;
 }
 function pzAgregarItem(){
   const l = pzCalcularLinea();
-  if(!l){alert('Completa tipo, ancho y tejido antes de añadir.');return;}
+  if(!l){alert('Completa tipo, tejido y ancho (o ancho de ambas piezas si va partida) antes de añadir.');return;}
   // Barra de forja sin diámetro/medida: igual que Canotex, no se añade con
   // un precio de sistema en blanco (0€) sin que el usuario se dé cuenta.
   if(PZ_SISTEMAS[l.sistemaNombre]==='forja'&&l.sistemaNombre!=='Barra Cuadrada con Anillas'&&(!$('pz-diametro').value||!$('pz-medida').value)){
@@ -4430,12 +4439,12 @@ function pzAgregarItem(){
   if(!alto){alert('Falta el alto.');return;}
   const estancia = $('pz-estancia').value || 'Pieza';
   const soporte = $('pz-soporte').value;
-  const color = $('pz-color').value || '';
+  const color = $('pz-color').value.trim();
   const def = PZ_TIPOS[l.tipo];
-  pzItems.push({estancia,tipoKey:l.tipo,tipoLabel:def.label,tipoCorti:def.tipoCorti,tejido:pzTejidoElegido.nombre,color,ancho:l.ancho,alto,sistema:l.sistemaNombre||'Sin sistema',partida:l.partida,soporte,total:l.total});
+  pzItems.push({estancia,tipoKey:l.tipo,tipoLabel:def.label,tipoCorti:def.tipoCorti,tejido:pzTejidoElegido.nombre,color,ancho:l.ancho,ancho1:l.ancho1,ancho2:l.ancho2,alto,sistema:l.sistemaNombre||'Sin sistema',partida:l.partida,soporte,total:l.total});
   pzRenderItems();
   $('pz-tejido-search').value=''; $('pz-tejido-sel').textContent=''; pzTejidoElegido=null;
-  $('pz-color-wrap').style.display='none'; $('pz-color').innerHTML='';
+  $('pz-color').value='';
   pzPreview();
 }
 function pzQuitarItem(i){ pzItems.splice(i,1); pzRenderItems(); }
@@ -4443,7 +4452,7 @@ function pzRenderItems(){
   $('pz-n-items').textContent = pzItems.length;
   $('pz-items-list').innerHTML = pzItems.map((it,i)=>`
     <div class="pz-item-row">
-      <div class="d"><b>${he(it.estancia)}</b><span>${he(it.tipoLabel)} · ${he(it.tejido)}${it.color?' ('+he(it.color)+')':''} · ${it.ancho}×${it.alto}cm${it.partida?' · Partida':''} · ${it.soporte==='FRENTE'?'Soporte frente':'Soporte techo'}</span></div>
+      <div class="d"><b>${he(it.estancia)}</b><span>${he(it.tipoLabel)} · ${he(it.tejido)}${it.color?' ('+he(it.color)+')':''} · ${it.partida?it.ancho1+'+'+it.ancho2:it.ancho}×${it.alto}cm${it.partida?' · Partida':''} · ${it.soporte==='FRENTE'?'Soporte frente':'Soporte techo'}</span></div>
       <div class="p">${it.total.toFixed(2)}€</div>
       <button onclick="pzQuitarItem(${i})" title="Quitar">✕</button>
     </div>`).join('') || '<div style="color:var(--txt3);font-size:11px">Todavía no has añadido ninguna pieza.</div>';
@@ -4458,27 +4467,93 @@ function pzRenderItems(){
 // Construye el documento del presupuesto como HTML — se usa tanto para la
 // vista en vivo (pzRenderDoc) como para la versión imprimible (pzGenerarPDF),
 // igual que buildInstHTML() se reutiliza en generarInst()/generarInstPDF().
+// Réplica fiel de la vista "Detalle del Presupuesto" del index.html real de
+// Canotex (función verDetalle: mismo fondo oscuro, aviso naranja, cabecera
+// con degradado, caja de cliente, tabla y resumen) — clases con prefijo
+// "pzc-" para no chocar con ninguna clase existente de CortiPlan.
 function pzBuildDocHTML(){
   if(!pzItems.length)return'';
   const subtotal = pzItems.reduce((s,it)=>s+it.total,0);
   const iva = subtotal*0.21, total = subtotal+iva;
-  return `<div class="pz-doc">
-    <div class="pz-doc-head">
-      <div><b>CANOTEX</b><div style="font-size:11px;color:var(--txt3);margin-top:3px">Canotex Textil S.L. — C/ Penedés, 87 — 25005 Lleida · Tel: 973 23 57 76</div></div>
-      <div style="text-align:right;font-size:11px;color:var(--txt3)">PRESUPUESTO<br><b style="color:var(--blu)">Generado en el momento</b></div>
+  const nombre = $('cnom').value.trim();
+  const tel = $('ctel').value.trim();
+  const dir = [$('cdir').value.trim(),$('cpob').value.trim()].filter(Boolean).join(', ');
+  const numero = $('cpre').value.trim() || '—';
+  const fecha = new Date().toLocaleDateString('es-ES');
+  return `<div class="pzc-page">
+  <style>
+    .pzc-page{background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#312e81 100%);border-radius:20px;padding:1.5rem;position:relative;overflow:hidden}
+    .pzc-page::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 20%,rgba(120,119,198,0.25) 0%,transparent 50%),radial-gradient(circle at 80% 80%,rgba(99,102,241,0.25) 0%,transparent 50%);pointer-events:none}
+    .pzc-card{position:relative;background:rgba(255,255,255,0.06);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border:1px solid rgba(255,255,255,0.12);border-radius:20px;box-shadow:0 10px 40px 0 rgba(0,0,0,0.4);padding:1.5rem;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+    .pzc-aviso{background:linear-gradient(135deg,rgba(251,191,36,0.25) 0%,rgba(245,158,11,0.25) 100%);border:2px solid rgba(251,191,36,0.4);padding:1rem;border-radius:12px;margin-bottom:1.5rem;text-align:center}
+    .pzc-aviso strong{color:#fbbf24;font-size:0.95rem;display:block}
+    .pzc-aviso p{color:#fcd34d;font-size:0.8rem;margin-top:0.5rem;line-height:1.4}
+    .pzc-head{display:flex;flex-direction:column;gap:1rem;margin-bottom:2rem;padding:1.5rem;border-bottom:3px solid rgba(99,102,241,0.3);background:linear-gradient(135deg,rgba(99,102,241,0.15) 0%,rgba(139,92,246,0.15) 100%);border-radius:12px}
+    .pzc-head-row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+    .pzc-head h2{color:#60a5fa;font-size:1.5rem;margin-bottom:0.5rem;background:linear-gradient(135deg,#60a5fa 0%,#a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .pzc-head p{color:#cbd5e1;font-size:0.75rem;margin:0}
+    .pzc-cliente{background:linear-gradient(135deg,rgba(99,102,241,0.12) 0%,rgba(139,92,246,0.12) 100%);padding:1.25rem;border-radius:12px;margin-bottom:1.5rem;border:1px solid rgba(99,102,241,0.25)}
+    .pzc-cliente h3{font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em}
+    .pzc-cliente p{margin:0;font-size:0.875rem;color:#cbd5e1}
+    .pzc-cliente .nom{font-weight:700;font-size:1.1rem;color:#e2e8f0;margin-bottom:0.5rem}
+    .pzc-detalle-tit{margin-bottom:1rem;font-size:1.25rem;color:#e2e8f0}
+    .pzc-tabla-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px}
+    .pzc-tabla{width:100%;border-collapse:collapse;margin-top:1rem;font-size:0.85rem}
+    .pzc-tabla thead{background:rgba(255,255,255,0.05)}
+    .pzc-tabla th{padding:0.75rem 0.5rem;text-align:left;color:#cbd5e1;font-weight:600;border-bottom:2px solid rgba(255,255,255,0.15)}
+    .pzc-tabla td{padding:0.75rem 0.5rem;border-bottom:1px solid rgba(255,255,255,0.06);color:#e2e8f0}
+    .pzc-resumen-wrap{display:flex;justify-content:flex-end;margin-top:2rem}
+    .pzc-resumen{width:100%;max-width:20rem}
+    .pzc-resumen-linea{display:flex;justify-content:space-between;padding:0.75rem 0;border-bottom:1px solid rgba(255,255,255,0.1);color:#cbd5e1}
+    .pzc-resumen-linea strong{color:#e2e8f0;font-size:1.05rem}
+    .pzc-resumen-total{display:flex;justify-content:space-between;padding:1.25rem;background:linear-gradient(135deg,rgba(96,165,250,0.2) 0%,rgba(167,139,250,0.2) 100%);margin-top:0.75rem;border-radius:12px;border:1px solid rgba(99,102,241,0.3)}
+    .pzc-resumen-total span:first-child{font-weight:bold;font-size:1.1rem;color:#e2e8f0}
+    .pzc-resumen-total span:last-child{font-size:1.75rem;font-weight:bold;background:linear-gradient(135deg,#60a5fa 0%,#a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .pzc-foot{margin-top:2rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,0.1);text-align:center;font-size:0.75rem;color:#94a3b8;line-height:1.6}
+  </style>
+  <div class="pzc-card">
+    <div class="pzc-aviso">
+      <strong>⚠️ PRESUPUESTO ORIENTATIVO</strong>
+      <p>Los precios están sujetos a confirmación tras toma de medidas definitiva.</p>
     </div>
-    <table class="pz-tbl">
-      <thead><tr><th>Estancia</th><th>Artículo</th><th>Medidas</th><th>Sistema</th><th style="text-align:right">Importe</th></tr></thead>
-      <tbody>${pzItems.map(it=>`<tr><td>${he(it.estancia)}</td><td>${he(it.tipoLabel)}<br><span style="color:var(--txt3);font-size:11px">${he(it.tejido)}${it.color?' · '+he(it.color):''}${it.partida?' · Partida (2 piezas)':''} · Soporte ${it.soporte==='FRENTE'?'a frente':'a techo'}</span></td><td>${it.ancho}×${it.alto}cm</td><td>${he(it.sistema)}</td><td style="text-align:right">${it.total.toFixed(2)}€</td></tr>`).join('')}</tbody>
-    </table>
-    <div style="display:flex;justify-content:flex-end">
-      <div class="pz-preview" style="width:230px">
-        <div class="rl"><span>Subtotal</span><span>${subtotal.toFixed(2)}€</span></div>
-        <div class="rl"><span>IVA (21%)</span><span>${iva.toFixed(2)}€</span></div>
-        <div class="rl tot"><span>TOTAL</span><span>${total.toFixed(2)}€</span></div>
+    <div class="pzc-head">
+      <div class="pzc-head-row">
+        <div><h2>CANOTEX</h2><p>Tel: 973 23 57 76 | info@canotex.es</p></div>
+        <div style="text-align:right"><h2>PRESUPUESTO</h2><p>Nº: ${he(numero)}</p><p>Fecha: ${fecha}</p></div>
       </div>
     </div>
-  </div>`;
+    ${nombre?`<div class="pzc-cliente">
+      <h3>CLIENTE</h3>
+      <p class="nom">${he(nombre)}</p>
+      ${tel?`<p>📞 ${he(tel)}</p>`:''}
+      ${dir?`<p>📍 ${he(dir)}</p>`:''}
+    </div>`:''}
+    <h3 class="pzc-detalle-tit">📋 Detalle del Presupuesto</h3>
+    <div class="pzc-tabla-wrap">
+      <table class="pzc-tabla">
+        <thead><tr><th>#</th><th>Descripción</th><th>Medidas</th><th>Sistema</th><th style="text-align:right">Precio</th></tr></thead>
+        <tbody>${pzItems.map((it,i)=>`<tr>
+          <td style="font-weight:600">${i+1}</td>
+          <td style="font-weight:500">${he(it.tipoLabel)} - ${he(it.tejido)}${it.color?' ('+he(it.color)+')':''}${it.partida?' - 2 piezas':''}<br><span style="color:#94a3b8;font-size:0.72rem">${he(it.estancia)} · Soporte ${it.soporte==='FRENTE'?'a frente':'a techo'}</span></td>
+          <td>${it.partida?it.ancho1+'+'+it.ancho2:it.ancho} × ${it.alto} cm</td>
+          <td>${he(it.sistema)}</td>
+          <td style="text-align:right;font-weight:700;color:#60a5fa;font-size:1.05rem">${it.total.toFixed(2)}€</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div class="pzc-resumen-wrap">
+      <div class="pzc-resumen">
+        <div class="pzc-resumen-linea"><span>Subtotal:</span><strong>${subtotal.toFixed(2)}€</strong></div>
+        <div class="pzc-resumen-linea"><span>IVA (21%):</span><strong>${iva.toFixed(2)}€</strong></div>
+        <div class="pzc-resumen-total"><span>TOTAL:</span><span>${total.toFixed(2)}€</span></div>
+      </div>
+    </div>
+    <div class="pzc-foot">
+      <p>✅ Presupuesto válido por 30 días</p>
+      <p style="margin-top:0.5rem">Canotex Textil S.L. - C/ Penedés, 87 - 25005 Lleida</p>
+    </div>
+  </div>
+</div>`;
 }
 function pzRenderDoc(){
   hideEmptyState();
@@ -4546,11 +4621,10 @@ function pzGenerarTodo(){
     const tejidoCompleto = it.color ? it.tejido+' '+it.color : it.tejido;
     const base={estancia:it.estancia,tejido:tejidoCompleto,sistema:it.sistema,tipo:it.tipoCorti,hojas:'1',recogida:'D',soporte:it.soporte};
     if(it.partida){
-      // Partida (2 piezas): mismo mecanismo que "cortinas juntas" ya
-      // existente en CortiPlan — dos guías/cortes independientes que
-      // juntas cubren el ancho total de la ventana.
-      const mitad=Math.round(it.ancho/2);
-      addCortina(Object.assign({},base,{ancho:String(mitad),alto:String(it.alto),formaJunta:'dcha',anchoL:String(it.ancho-mitad),altoL:String(it.alto),hojasL:'1',recogidaL:'D'}));
+      // Partida: mismo mecanismo que "cortinas juntas" ya existente en
+      // CortiPlan — dos guías/cortes independientes, cada una con el ancho
+      // que se le haya dado (no un reparto 50/50 automático).
+      addCortina(Object.assign({},base,{ancho:String(it.ancho1),alto:String(it.alto),formaJunta:'dcha',anchoL:String(it.ancho2),altoL:String(it.alto),hojasL:'1',recogidaL:'D'}));
     }else{
       addCortina(Object.assign({},base,{ancho:String(it.ancho),alto:String(it.alto)}));
     }
