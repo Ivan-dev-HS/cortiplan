@@ -15,8 +15,13 @@
      atributos onclick/onchange en línea (reescribirlo todo a addEventListener
      sería una reestructuración mayor, fuera de alcance); sí limita los
      orígenes desde los que puede cargarse o conectarse cualquier script,
-     bloquea <object>/plugins y el secuestro de rutas relativas vía <base>. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://cdnjs.cloudflare.com https://unpkg.com blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+     bloquea <object>/plugins y el secuestro de rutas relativas vía <base>.
+     frame-src con blob: es imprescindible: la vista previa de la hoja de
+     corte (previewCorte) muestra el PDF generado con pdf-lib en un
+     <iframe src="blob:...">; sin esto, default-src 'self' actúa de
+     fallback para frame-src y el navegador bloquea el iframe en
+     silencio (no hay error visible en la app, solo en la consola). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://cdnjs.cloudflare.com https://unpkg.com blob:; frame-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="manifest" href="./manifest.json">
 <title>CortiPlan · Instalación &amp; Corte</title>
