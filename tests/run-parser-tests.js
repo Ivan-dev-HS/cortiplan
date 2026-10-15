@@ -690,15 +690,15 @@ test('generarInst(): un fallo interno se muestra en el estado, no desaparece en 
     app.buildInstHTML = origBuildInstHTML;
   }
 });
-test('previewCorte(): un fallo interno se muestra en el estado, no solo en la consola', async () => {
-  const origBuildCortePDFBytes = app.buildCortePDFBytes;
-  app.buildCortePDFBytes = async () => { throw new Error('fallo forzado de prueba 2'); };
+test('previewCorte(): un fallo interno se muestra en el estado, no solo en la consola', () => {
+  const origBuildCorteHTML = app.buildCorteHTML;
+  app.buildCorteHTML = () => { throw new Error('fallo forzado de prueba 2'); };
   try {
-    await app.previewCorte();
+    assert.doesNotThrow(() => app.previewCorte(), 'no debe propagar la excepción fuera de la función');
     assert.strictEqual(app.document.getElementById('dot').className, 'dot er');
     assert.strictEqual(app.document.getElementById('stTxt').textContent, 'Error: fallo forzado de prueba 2');
   } finally {
-    app.buildCortePDFBytes = origBuildCortePDFBytes;
+    app.buildCorteHTML = origBuildCorteHTML;
   }
 });
 test('generarCorte(): ignora un clic mientras ya hay uno en marcha, y libera el guarda al terminar', async () => {

@@ -293,7 +293,6 @@ input, select, textarea { font-family: inherit; }
 .toolbar .btn-dl:hover { background: #166534; }
 .toolbar .btn-dl2 { background: #1e3a8a; color: #fff; border-color: #1e3a8a; }
 .toolbar .btn-dl2:hover { background: #1d4ed8; }
-.corte-frame { width: 100%; max-width: 900px; height: calc(100vh - 160px); min-height: 420px; border: var(--border); border-radius: var(--r); background: #fff; }
 
 /* Empty state */
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 12px; opacity: .3; pointer-events: none; }
@@ -353,6 +352,16 @@ input, select, textarea { font-family: inherit; }
 .resumen-item strong { color: #1c3a6e; font-size: 12px; display: block; }
 .corte-info { width: 860px; background: rgba(21,128,61,.08); border: 1px solid rgba(21,128,61,.25); border-radius: var(--r); padding: 12px 18px; display: flex; align-items: center; gap: 14px; font-size: 12px; color: #15803d; }
 [data-theme="dark"] .corte-info { background: rgba(74,222,128,.08); border-color: rgba(74,222,128,.2); color: #4ade80; }
+
+/* ═══ HOJA CORTE (vista previa en vivo — misma "hoja" de papel que Instalación, siempre clara) ═══ */
+.hoja-corte-tit { padding: 10px 18px 9px; border-bottom: 3px solid #1c3a6e; background: linear-gradient(135deg,#f0f4fb 0%,#e8edf8 100%); display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+.hoja-corte-tit b { font-size: 15px; font-weight: 900; color: #1c3a6e; letter-spacing: -.2px; }
+.corte-tbl-wrap { padding: 10px 14px 14px; overflow-x: auto; }
+.corte-tbl { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+.corte-tbl th { background: #e8edf8; color: #1c3a6e; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; padding: 6px 5px; border: 1px solid #c7d5e8; line-height: 1.3; }
+.corte-tbl td { padding: 6px 5px; border: 1px solid #dde4f0; color: #1c2b4a; text-align: center; }
+.corte-tbl td.corte-medida { font-weight: 800; font-size: 12px; }
+.corte-tbl tbody tr:nth-child(even) { background: #f7f9fc; }
 
 /* ═══ RESPONSIVE ═══ */
 @media(max-width:1023px) { :root { --sidebar-w: 300px; } .hoja, .corte-info { width: 100%; max-width: 860px; } }
@@ -574,7 +583,7 @@ const RE_INSTAL_WORD=/INSTAL[·.]?L?ACI[OÓ]N?/;
 const RE_HAY_INSTALACION=new RegExp('UD\\.?\\s*'+RE_INSTAL_WORD.source+'|'+RE_INSTAL_WORD.source+'[^\\n]{0,40}ZONA\\s*:|'+RE_INSTAL_WORD.source+'\\s+(?:INCLU\\w*|INCLOS\\w*)','i');
 // Solo el bloque con zona/dirección propia (para localizar dónde buscar nombre/tfno/dirección).
 const RE_INSTALACION_ZONA=new RegExp('UD\\.?\\s*'+RE_INSTAL_WORD.source+'|'+RE_INSTAL_WORD.source+'[^\\n]{0,40}ZONA\\s*:','i');
-const STATE={cortinas:[],lineas:[],pcnt:0,lcnt:0,svgUid:0,objectUrl:null,corteObjectUrl:null,liveActive:true,_liveTimer:null,_corteLiveTimer:null,instZona:'',instRef:'',instNombre:'',instDireccion:'',instTel:'',hayInstalacion:false,_instRawHit:false,_instRawZona:'',_instRawRef:''};
+const STATE={cortinas:[],lineas:[],pcnt:0,lcnt:0,svgUid:0,objectUrl:null,liveActive:true,_liveTimer:null,_corteLiveTimer:null,instZona:'',instRef:'',instNombre:'',instDireccion:'',instTel:'',hayInstalacion:false,_instRawHit:false,_instRawZona:'',_instRawRef:''};
 /* ─── LIVE PREVIEW ─── */
 function scheduleLiveRefresh(){
   if(!STATE.liveActive)return;
@@ -2116,9 +2125,8 @@ function rerenderAllCards(){
   updateBadge();
 }
 function rerenderAllLineas(){$('lineas').innerHTML='';STATE.lineas.forEach((l,i)=>renderLinea(l,i));}
-function limpiarTodo(){['cnom','ctel','cdir','cpob','cpre','cfec','notas','kref','kfec'].forEach(id=>{const el=$(id);if(el)el.value='';});resetCortinas();resetInstalacion();addCortina();$('main').innerHTML='<div class="empty-state" id="emptyState"><div class="ei">📂</div><p>Arrastra un PDF o imagen<br>y elige el tipo de documento</p></div>';setSt('','Esperando archivo…');clearDbg();revokeObjUrl();revokeCorteObjUrl();fileInput.value='';}
+function limpiarTodo(){['cnom','ctel','cdir','cpob','cpre','cfec','notas','kref','kfec'].forEach(id=>{const el=$(id);if(el)el.value='';});resetCortinas();resetInstalacion();addCortina();$('main').innerHTML='<div class="empty-state" id="emptyState"><div class="ei">📂</div><p>Arrastra un PDF o imagen<br>y elige el tipo de documento</p></div>';setSt('','Esperando archivo…');clearDbg();revokeObjUrl();fileInput.value='';}
 function revokeObjUrl(){if(STATE.objectUrl){URL.revokeObjectURL(STATE.objectUrl);STATE.objectUrl=null;}}
-function revokeCorteObjUrl(){if(STATE.corteObjectUrl){URL.revokeObjectURL(STATE.corteObjectUrl);STATE.corteObjectUrl=null;}}
 
 /* ═══ SVG ═══ */
 const SV={W:310,H:205,ML:14,MR:62,MT:46,MB:14};
@@ -3871,6 +3879,148 @@ function calcularSoportes(sistemaStr, ancho){
   return ''; // supera el límite → en blanco
 }
 
+// Calcula los 11 valores de una línea de corte (sistema, medida, envío
+// partido, color, soportes, confección, correderas, manual/cuerda, mando,
+// observaciones, unidades) — se usa tanto para dibujar el PDF
+// (buildCortePDFBytes) como para la vista previa en vivo (buildCorteHTML),
+// para no mantener la misma lógica de cálculo en dos sitios.
+function calcularDatosLineaCorte(l){
+  // Correderas: mostrar tipo seleccionado
+  const tl0=(l.tipo||'').toLowerCase();
+  const isPaq=tl0.includes('paquetto')||(tl0.includes('estor')&&!tl0.includes('enroll'));
+  const paqData=isPaq?calcularPaquetto(l.ancho):{caidas:null,soportes:null};
+  // Ganchos onda perfecta: floor(ancho/paso); si el cociente es par → +2, si impar → +3.
+  // Ancho compuesto "158-142" o "158+142" → cada parte es una hoja, ganchos por separado.
+  const anchoStr=String(l.ancho||'');
+  const partesOP=anchoStr.split(/[-+]/).map(x=>parseFloat(x.replace(',','.'))||0).filter(x=>x>0);
+  const nHojasOP=Math.min(20,Math.max(1,parseInt(l.hojas)||1));
+  // Misma fórmula que calcularCorrederas (usada en la ficha): un único
+  // sitio para el cálculo de ganchos de la Onda Perfecta.
+  function ganchosOP(paso){
+    if(!partesOP.length)return'—';
+    if(partesOP.length>=2){
+      // Una medida por hoja: cada una por separado
+      return partesOP.map(a=>calcularCorrederas(a,paso)+'gch').join('-');
+    }
+    // Medida única
+    if(nHojasOP>=2){
+      // Repartir el ancho entre las hojas y calcular cada una
+      const porHoja=partesOP[0]/nHojasOP;
+      return Array(nHojasOP).fill(0).map(()=>calcularCorrederas(porHoja,paso)+'gch').join('-');
+    }
+    return calcularCorrederas(partesOP[0],paso)+'gch';
+  }
+  const corrLabel=isPaq
+    ?(paqData.caidas+' caídas')
+    :(l.correderas==='OP8'?('//OP8 '+ganchosOP(8))
+    :l.correderas==='OP6'?('//OP6 '+ganchosOP(6))
+    :'CONV.');
+  // Partida: 2 si ancho > 270, si no 1
+  const anchNum=parseFloat((l.ancho||'0').replace(',','.'));
+  const partida=anchNum>270?'2':'1';
+
+  // Color: campo color del operario; si está vacío, extraer color del sistema
+  const colorSistema=normalizaColorSis(l.sistema)||normalizaColorSis(l.tejido)||'';
+  const colorFinal=l.color||colorSistema||'';
+
+  // Sistema limpio: sin el color si lo extrajimos
+  const sistemaLimpio=(()=>{
+    let s=l.sistema||'';
+    // "Mando cadena ..." es un valor de respaldo para el campo Sistema de
+    // la ficha (Paquetto/Estor sin sistema real en el presupuesto); no es
+    // un sistema real, así que no debe aparecer en TIPO DE SISTEMA del
+    // corte (el lado del mando ya tiene su propia columna).
+    if(/^Mando\s+cadena\s+\w+$/i.test(s.trim()))return'';
+    // Quitar palabras de color del nombre del sistema (ya van en su columna)
+    s=s.replace(/\b(blanco|blanca|bco|bca|negro|negra|ngr|plata|plt|marr[oó]n|gris|grs|beige|crema|aluminio|alu|dorado|oro|bronce|cobre|inox|acero|cromo|n[ií]quel|nikel|antracita|grafito|plomo|marfil|hueso|n[aá]car|arena|anodizado)\b/gi,'').replace(/\s{2,}/g,' ').trim();
+    return s.substring(0,16);
+  })();
+
+  // Estor: nº de varillas ((alto-5)/20 - 1) para observaciones
+  const _tlE=(l.tipo||'').toLowerCase();
+  const esEstorC=_tlE.includes('estor')&&!_tlE.includes('enroll');
+  let obsFinal=l.obs||'';
+  if(esEstorC){
+    const _nvE=calcularVarillas(l.alto);
+    if(_nvE){
+      const _txtV=_nvE+' varillas';
+      obsFinal=obsFinal?obsFinal+' · '+_txtV:_txtV;
+    }
+  }
+  // Nº de soportes + dónde van (techo o frente/pared). PARED/FRONTAL/FRENTE → Frente;
+  // cualquier otro valor (vacío, TECHO, TECHO CLIC, RAP, CLIC…) → Techo, que es el caso
+  // por defecto también al leer el presupuesto (ver estrategiaCanotex, soporte||'T').
+  const numSoportes=isPaq?String(paqData.soportes):(calcularSoportes(l.sistema,l.ancho)||(l.soportes||''));
+  const esFrente=/PARED|FRONTAL|FRENTE/i.test(l.soporte||'');
+  const soportesTxt=numSoportes?(numSoportes+' '+(esFrente?'Frente':'Techo')):'';
+
+  return{
+    // sistema: "Estor"/"Paquetto" si es uno de los dos (no llevan sistema
+    // real, solo el mando, así que sin esto se quedaba en blanco para
+    // Paquetto — inconsistente con Estor, que sí lo mostraba), si no el sistema
+    sistema: esEstorC?'Estor':(isPaq?'Paquetto':sistemaLimpio),
+    medida: (l.ancho&&l.alto)?l.ancho+'x'+l.alto+'H':(l.ancho||l.alto||''),
+    partida,
+    color: colorFinal,
+    soportes: soportesTxt,
+    confeccion:(()=>{
+      const t=(l.tipo||'').toLowerCase();
+      const s=(l.sistema||'').toLowerCase();
+      if(t.includes('estor')&&!t.includes('enroll'))return'Estor varillas';
+      if(t.includes('paquetto')){
+        return s.includes('varilla')||s.includes('estor')?'Estor varillas':'Paquetto';
+      }
+      if(t.includes('gusanillo'))return'Gusanillo '+(l.pestana==='sin'?'sin pestaña':l.pestana==='con'?'con pestaña':'¿pestaña?');
+      return l.tipo?l.tipo.substring(0,16):'';
+    })(),
+    correderas: corrLabel,
+    manual: l.manual==='CUERDA'?'Cuerda':'Manual',
+    mando: (l.recogida?{'D':'Derecha','IZQ':'Izquierda','CEN':'Central'}[l.recogida]||l.recogida:''),
+    observaciones: obsFinal,
+    unidades: l.unidades||'1',
+  };
+}
+// Igual que buildInstHTML() para Instalación: construye la hoja de corte
+// como HTML real (misma "hoja" de papel, mismos cálculos que el PDF vía
+// calcularDatosLineaCorte) en vez de depender del visor de PDF del
+// navegador para la vista previa en vivo — así se ve integrada en la app
+// en lugar de abrir un plugin de PDF genérico dentro de un iframe.
+function buildCorteHTML(){
+  const ref=$('kref').value,fec=$('kfec').value;
+  const lineasValidas=STATE.lineas.filter(l=>l.ancho||l.alto||l.estancia);
+  if(!lineasValidas.length)return null;
+  const hoy=new Date().toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const filas=lineasValidas.map(l=>{
+    const d=calcularDatosLineaCorte(l);
+    return`<tr>
+      <td>${he(d.sistema)||'—'}</td>
+      <td class="corte-medida">${he(d.medida)||'—'}</td>
+      <td>${he(d.partida)}</td>
+      <td>${he(d.color)||'—'}</td>
+      <td>${he(d.soportes)||'—'}</td>
+      <td>${he(d.confeccion)||'—'}</td>
+      <td>${he(d.correderas)||'—'}</td>
+      <td>${he(d.manual)}</td>
+      <td>${he(d.mando)||'—'}</td>
+      <td>${he(d.observaciones)||'—'}</td>
+      <td>${he(d.unidades)}</td>
+    </tr>`;
+  }).join('');
+  return`<div class="hoja">
+    <div class="hoja-corte-tit">
+      <b>Ficha de corte y envío</b>
+      <div class="hoja-docref" style="margin-top:0"><strong>Ref. ${he(ref)||'—'}</strong> &nbsp;·&nbsp; ${fec?he(fec):hoy} &nbsp;·&nbsp; ${lineasValidas.length} línea(s)</div>
+    </div>
+    <div class="corte-tbl-wrap">
+      <table class="corte-tbl">
+        <thead><tr>
+          <th>Tipo de<br>sistema</th><th>Medida</th><th>Envío<br>partido</th><th>Color</th><th>Soportes<br>techo/frente</th><th>Tipo<br>confección</th><th>Correderas</th><th>Manual<br>/ cuerda</th><th>Mando y<br>recogido</th><th>Observaciones</th><th>Uds</th>
+        </tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
 async function buildCortePDFBytes(){
   const ref=$('kref').value,fec=$('kfec').value;
   const lineasValidas=STATE.lineas.filter(l=>l.ancho||l.alto||l.estancia);
@@ -3979,101 +4129,8 @@ async function buildCortePDFBytes(){
       const rowBaseY=tablY+dataH-(i+1)*rowH;
       if(rowBaseY<tablY)return;
       const textY=rowBaseY+rowH/2-3.5;
-      // Correderas: mostrar tipo seleccionado
-      const tl0=(l.tipo||'').toLowerCase();
-      const isPaq=tl0.includes('paquetto')||(tl0.includes('estor')&&!tl0.includes('enroll'));
-      const paqData=isPaq?calcularPaquetto(l.ancho):{caidas:null,soportes:null};
-      // Ganchos onda perfecta: floor(ancho/paso); si el cociente es par → +2, si impar → +3.
-      // Ancho compuesto "158-142" o "158+142" → cada parte es una hoja, ganchos por separado.
-      const anchoStr=String(l.ancho||'');
-      const partesOP=anchoStr.split(/[-+]/).map(x=>parseFloat(x.replace(',','.'))||0).filter(x=>x>0);
-      const nHojasOP=Math.min(20,Math.max(1,parseInt(l.hojas)||1));
-      // Misma fórmula que calcularCorrederas (usada en la ficha): un único
-      // sitio para el cálculo de ganchos de la Onda Perfecta.
-      function ganchosOP(paso){
-        if(!partesOP.length)return'—';
-        if(partesOP.length>=2){
-          // Una medida por hoja: cada una por separado
-          return partesOP.map(a=>calcularCorrederas(a,paso)+'gch').join('-');
-        }
-        // Medida única
-        if(nHojasOP>=2){
-          // Repartir el ancho entre las hojas y calcular cada una
-          const porHoja=partesOP[0]/nHojasOP;
-          return Array(nHojasOP).fill(0).map(()=>calcularCorrederas(porHoja,paso)+'gch').join('-');
-        }
-        return calcularCorrederas(partesOP[0],paso)+'gch';
-      }
-      const corrLabel=isPaq
-        ?(paqData.caidas+' caídas')
-        :(l.correderas==='OP8'?('//OP8 '+ganchosOP(8))
-        :l.correderas==='OP6'?('//OP6 '+ganchosOP(6))
-        :'CONV.');
-      // Partida: 2 si ancho > 270, si no 1
-      const anchNum=parseFloat((l.ancho||'0').replace(',','.'));
-      const partida=anchNum>270?'2':'1';
-
-      // Color: campo color del operario; si está vacío, extraer color del sistema
-      const colorSistema=normalizaColorSis(l.sistema)||normalizaColorSis(l.tejido)||'';
-      const colorFinal=l.color||colorSistema||'';
-
-      // Sistema limpio: sin el color si lo extrajimos
-      const sistemaLimpio=(()=>{
-        let s=l.sistema||'';
-        // "Mando cadena ..." es un valor de respaldo para el campo Sistema de
-        // la ficha (Paquetto/Estor sin sistema real en el presupuesto); no es
-        // un sistema real, así que no debe aparecer en TIPO DE SISTEMA del
-        // corte (el lado del mando ya tiene su propia columna).
-        if(/^Mando\s+cadena\s+\w+$/i.test(s.trim()))return'';
-        // Quitar palabras de color del nombre del sistema (ya van en su columna)
-        s=s.replace(/\b(blanco|blanca|bco|bca|negro|negra|ngr|plata|plt|marr[oó]n|gris|grs|beige|crema|aluminio|alu|dorado|oro|bronce|cobre|inox|acero|cromo|n[ií]quel|nikel|antracita|grafito|plomo|marfil|hueso|n[aá]car|arena|anodizado)\b/gi,'').replace(/\s{2,}/g,' ').trim();
-        return s.substring(0,16);
-      })();
-
-      // Estor: nº de varillas ((alto-5)/20 - 1) para observaciones
-      const _tlE=(l.tipo||'').toLowerCase();
-      const esEstorC=_tlE.includes('estor')&&!_tlE.includes('enroll');
-      let obsFinal=l.obs||'';
-      if(esEstorC){
-        const _nvE=calcularVarillas(l.alto);
-        if(_nvE){
-          const _txtV=_nvE+' varillas';
-          obsFinal=obsFinal?obsFinal+' · '+_txtV:_txtV;
-        }
-      }
-      // Nº de soportes + dónde van (techo o frente/pared). PARED/FRONTAL/FRENTE → Frente;
-      // cualquier otro valor (vacío, TECHO, TECHO CLIC, RAP, CLIC…) → Techo, que es el caso
-      // por defecto también al leer el presupuesto (ver estrategiaCanotex, soporte||'T').
-      const numSoportes=isPaq?String(paqData.soportes):(calcularSoportes(l.sistema,l.ancho)||(l.soportes||''));
-      const esFrente=/PARED|FRONTAL|FRENTE/i.test(l.soporte||'');
-      const soportesTxt=numSoportes?(numSoportes+' '+(esFrente?'Frente':'Techo')):'';
-      const vals=[
-        // Col 0: TIPO DE SISTEMA → "Estor"/"Paquetto" si es uno de los dos (no
-        // llevan sistema real, solo el mando, así que sin esto se quedaba en
-        // blanco para Paquetto — inconsistente con Estor, que sí lo mostraba),
-        // si no el sistema
-        esEstorC?'Estor':(isPaq?'Paquetto':sistemaLimpio),
-        (l.ancho&&l.alto)?l.ancho+'x'+l.alto+'H':(l.ancho||l.alto||''), // Medida
-        partida,                                                           // Envío Partido (2 si >270)
-        colorFinal,                                                        // Color (campo color + color sistema)
-        soportesTxt,                                                       // Soportes (nº + techo/frente)
-        // Col 5: TIPO CONFECCIÓN → tipo de cortina
-        (()=>{
-          const t=(l.tipo||'').toLowerCase();
-          const s=(l.sistema||'').toLowerCase();
-          if(t.includes('estor')&&!t.includes('enroll'))return'Estor varillas';
-          if(t.includes('paquetto')){
-            return s.includes('varilla')||s.includes('estor')?'Estor varillas':'Paquetto';
-          }
-          if(t.includes('gusanillo'))return'Gusanillo '+(l.pestana==='sin'?'sin pestaña':l.pestana==='con'?'con pestaña':'¿pestaña?');
-          return l.tipo?l.tipo.substring(0,16):'';
-        })(),
-        corrLabel,                                                        // Correderas / Caídas paquetto
-        l.manual==='CUERDA'?'Cuerda':'Manual',                           // Manual/Cuerda
-        (l.recogida?{'D':'Derecha','IZQ':'Izquierda','CEN':'Central'}[l.recogida]||l.recogida:''), // Mando
-        obsFinal,                                                         // Observaciones (+ varillas si estor)
-        l.unidades||'1',                                                  // Unidades
-      ];
+      const d=calcularDatosLineaCorte(l);
+      const vals=[d.sistema,d.medida,d.partida,d.color,d.soportes,d.confeccion,d.correderas,d.manual,d.mando,d.observaciones,d.unidades];
       vals.forEach((val,ci)=>{
         if(!val)return;
         const isBig=ci===1||ci===11;
@@ -4123,18 +4180,19 @@ async function generarCorte(){
   finally{STATE._generandoPDF=false;}
 }
 
-// Vista previa en vivo (barra superior + iframe), igual que la hoja de instalación.
-async function previewCorte(){
+// Vista previa en vivo (barra superior + hoja HTML), igual que generarInst()
+// para Instalación — ya no depende del visor de PDF del navegador (antes
+// un <iframe src="blob:...">, con su propia barra de herramientas ajena al
+// resto de la app; el PDF real para imprimir/guardar lo sigue generando
+// generarCorte() con pdf-lib, esta vista es solo para previsualizar en vivo).
+function previewCorte(){
   try{
-    const res=await buildCortePDFBytes();
-    if(!res)return;
+    const html=buildCorteHTML();
+    if(!html)return;
     hideEmptyState();
-    const blob=new Blob([res.bytes],{type:'application/pdf'});
-    revokeCorteObjUrl();
-    STATE.corteObjectUrl=URL.createObjectURL(blob);
     $('main').innerHTML=`<div class="toolbar">
       <button class="btn-tool btn-print" onclick="generarCorte()">🖨 Imprimir / Guardar PDF</button>
-    </div><iframe src="${STATE.corteObjectUrl}" class="corte-frame"></iframe>`;
+    </div>${html}`;
   }catch(err){setSt('er','Error: '+err.message);dbg('❌ '+err.message,'er');console.error(err);}
 }
 
