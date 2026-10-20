@@ -1083,8 +1083,13 @@ function estrategiaCanotex(txt){
         // registro mercantil…) cae por casualidad a la misma altura que esta
         // línea y el PDF lo antepone, dejando basura antes de "SISTEMA DE
         // INSTALACION:" en vez de al principio de la línea.
-        if(!sistema&&/SISTEMA\s+DE\s+INSTALACI[OÓ]N?:/i.test(nl)){
-          sistema=nl.replace(/^[\s\S]*?SISTEMA\s+DE\s+INSTALACI[OÓ]N?:\s*/i,'').trim();
+        // "SISTEMA DE INSTALACION:" es el caso normal, pero un Paquetto/Estor
+        // puede venir instalado sobre una barra guía real en vez de su cajetín
+        // propio con mando a cadena oculto: "MECANISMO INSTALADO EN SISTEMA DE
+        // BARRA GUIA D.28 NEGRO CON SOPORTES FRENTE." — sin "INSTALACION:" y sin
+        // ella se perdía del todo, cayendo siempre al "Mando cadena X" genérico.
+        if(!sistema&&/SISTEMA\s+DE\s+(?:INSTALACI[OÓ]N?:|BARRA\b)/i.test(nl)){
+          sistema=nl.replace(/^[\s\S]*?SISTEMA\s+DE\s+(?:INSTALACI[OÓ]N?:\s*)?/i,'').trim();
           // El sistema puede continuar en las líneas siguientes: el PDF corta la
           // frase donde le cuadra en la maquetación, no donde termina una idea
           // ("GUIA MANUAL 1 VIA, REFORZADA," + "EN COLOR BLANCO", "...- COLOR" +
@@ -3451,6 +3456,12 @@ function fichaFilas(p){
     rows+='<div class="fdat-row"><div class="fdat-k">'+(isEnroll(p.tipo)?'Diámetro':'Sistema')+'</div><div class="fdat-v sm">'+he(p.sistema||'—')+'</div></div>';
     const confVal=p.ondaCm?'Onda Perfecta '+p.ondaCm:he(p.tipo||'—');
     rows+='<div class="fdat-row"><div class="fdat-k">Confección</div><div class="fdat-v sm">'+confVal+'</div></div>';
+  }else if(/barra/i.test(p.sistema||'')){
+    // Paquetto/Estor normalmente no llevan fila de Sistema (van con mando a
+    // cadena oculto en su propio cajetín) — pero si el presupuesto dice que
+    // va instalado sobre una barra guía real, el instalador necesita verlo
+    // igual que en cualquier otra cortina, no solo en la hoja de corte.
+    rows+='<div class="fdat-row"><div class="fdat-k">Sistema</div><div class="fdat-v sm">'+he(p.sistema)+'</div></div>';
   }
   if(!isEnroll(p.tipo))rows+='<div class="fdat-row"><div class="fdat-k">Nº Hojas</div><div class="fdat-v">'+he(p.hojas||'1')+'</div></div>';
   rows+='<div class="fdat-row"><div class="fdat-k">'+(isEnroll(p.tipo)?'Mando':'Recogida')+'</div><div class="fdat-v">'+recLabel+'</div></div>';
@@ -3885,9 +3896,13 @@ function calcularSoportes(sistemaStr, ancho){
   const s = (sistemaStr||'').toLowerCase();
 
   let tabla = null;
-  if(s.includes('profesional'))           tabla = TABLAS_SOPORTES.guia_prof;
+  // "barra" va antes que "manual"/"guia": el nombre real más habitual para
+  // este sistema es "Barra Guía D.28..." (contiene las dos palabras a la
+  // vez), así que mirar "guia" primero lo mandaba siempre a la tabla de
+  // guía manual — nunca llegaba a usarse la tabla de barra en la práctica.
+  if(s.includes('barra'))                 tabla = TABLAS_SOPORTES.barra;
+  else if(s.includes('profesional'))      tabla = TABLAS_SOPORTES.guia_prof;
   else if(s.includes('manual') || s.includes('guia') || s.includes('guía')) tabla = TABLAS_SOPORTES.guia_manual;
-  else if(s.includes('barra'))            tabla = TABLAS_SOPORTES.barra;
   // Paquetto/Estor se calculan aparte con calcularPaquetto
   if(!tabla) return '';
 
@@ -3965,18 +3980,28 @@ function calcularDatosLineaCorte(l){
       obsFinal=obsFinal?obsFinal+' · '+_txtV:_txtV;
     }
   }
+  // Un Paquetto/Estor normalmente no lleva sistema propio (mando a cadena
+  // oculto en su propio cajetín, con sus propios soportes integrados según
+  // TABLA_PAQUETTO) — pero a veces el presupuesto dice que va instalado
+  // sobre una barra guía real ("SISTEMA DE BARRA GUIA D.28..."): en ese
+  // caso el nº de soportes es el de esa barra (TABLAS_SOPORTES.barra, por
+  // ancho), no el fijo de la tabla de Paquetto — son herrajes distintos.
+  const esPaqConBarra=isPaq&&/barra/i.test(l.sistema||'');
   // Nº de soportes + dónde van (techo o frente/pared). PARED/FRONTAL/FRENTE → Frente;
   // cualquier otro valor (vacío, TECHO, TECHO CLIC, RAP, CLIC…) → Techo, que es el caso
   // por defecto también al leer el presupuesto (ver estrategiaCanotex, soporte||'T').
-  const numSoportes=isPaq?String(paqData.soportes):(calcularSoportes(l.sistema,l.ancho)||(l.soportes||''));
+  const numSoportes=esPaqConBarra?(calcularSoportes(l.sistema,l.ancho)||String(paqData.soportes))
+    :isPaq?String(paqData.soportes):(calcularSoportes(l.sistema,l.ancho)||(l.soportes||''));
   const esFrente=/PARED|FRONTAL|FRENTE/i.test(l.soporte||'');
   const soportesTxt=numSoportes?(numSoportes+' '+(esFrente?'Frente':'Techo')):'';
 
   return{
-    // sistema: "Estor"/"Paquetto" si es uno de los dos (no llevan sistema
-    // real, solo el mando, así que sin esto se quedaba en blanco para
-    // Paquetto — inconsistente con Estor, que sí lo mostraba), si no el sistema
-    sistema: esEstorC?'Estor':(isPaq?'Paquetto':sistemaLimpio),
+    // sistema: "Estor"/"Paquetto" si es uno de los dos y no llevan sistema
+    // real (solo el mando, así que sin esto se quedaba en blanco para
+    // Paquetto — inconsistente con Estor, que sí lo mostraba); si va sobre
+    // una barra guía real, se muestra esa barra en vez del genérico
+    // "Paquetto" — el taller necesita saber qué guía preparar.
+    sistema: esEstorC?'Estor':(isPaq?(esPaqConBarra?sistemaLimpio:'Paquetto'):sistemaLimpio),
     medida: (l.ancho&&l.alto)?l.ancho+'x'+l.alto+'H':(l.ancho||l.alto||''),
     partida,
     color: colorFinal,

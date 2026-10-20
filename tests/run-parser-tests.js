@@ -927,6 +927,49 @@ test('calcularSoportes — ancho negativo devuelve vacío, no un nº de soportes
   assert.strictEqual(app.calcularSoportes('Guia Manual 1 Via', '-150'), '');
   assert.strictEqual(app.calcularSoportes('Barra Guia', '-1'), '');
 });
+test('calcularSoportes — "Barra Guía D.28" usa la tabla de barra, no la de guía manual', () => {
+  // El nombre real de este sistema en los presupuestos de Canotex es "Barra
+  // Guía D.28..." — contiene "barra" Y "guia" a la vez. Antes se miraba
+  // "guia" primero, así que nunca llegaba a usarse la tabla de barra en la
+  // práctica: a 260cm daba 4 soportes (tabla de guía manual) en vez de los
+  // 3 reales (tabla de barra), sin que nada avisara del error.
+  assert.strictEqual(app.calcularSoportes('BARRA GUIA D.28 NEGRA', '260'), '3');
+  assert.strictEqual(app.calcularSoportes('Guia Manual 1 Via', '260'), '4');
+});
+test('Paquetto instalado sobre una barra guía real (presupuesto real) se distingue del cajetín con cadena', () => {
+  // Caso real: un Paquetto normalmente no lleva sistema propio (mando a
+  // cadena oculto en su cajetín, con sus propios soportes según
+  // TABLA_PAQUETTO) — pero el presupuesto puede decir que va instalado sobre
+  // una barra guía real: "MECANISMO INSTALADO EN SISTEMA DE BARRA GUIA D.28
+  // NEGRO CON SOPORTES FRENTE." (texto real, sin "INSTALACION:" como en el
+  // caso normal). Antes se perdía del todo y cada línea caía al "Mando
+  // cadena X" genérico, con el nº de soportes fijo de la tabla de Paquetto
+  // (4 a este ancho) en vez del de la barra real (3).
+  const txt = [
+    'PRESUPUESTO DE VENTA',
+    'REF. 2601410 UXUE MONTOYA BALDUZ',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'DORMITORIO PRINCIPAL 1,00',
+    'PAQUETTO MEDIDA: 220X190 -MANDO:D 1,00 518,00 518,00',
+    'UD. ESTOR TIPO PAQUETTO CON MANDO A CADENA OCULTO.',
+    'TEJIDO: CALVI 202 HUESO.',
+    'MECANISMO INSTALADO EN SISTEMA DE BARRA GUIA D.28 ',
+    'NEGRO CON SOPORTES FRENTE .',
+  ].join('\n');
+  const out = app.estrategiaCanotex(txt);
+  assert.strictEqual(out.length, 1);
+  assert.strictEqual(out[0].sistema, 'BARRA GUIA D.28 NEGRO', 'debería capturar la barra real, no caer al "Mando cadena D" genérico');
+  assert.strictEqual(out[0].soporte, 'FRENTE');
+  assert.strictEqual(out[0].tipo, 'Paquetto');
+
+  app.resetCortinas();
+  app.addCortina(out[0]);
+  const linea = app.__internals.STATE.lineas[app.__internals.STATE.lineas.length - 1];
+  const d = app.calcularDatosLineaCorte(linea);
+  assert.strictEqual(d.sistema, 'BARRA GUIA D.28', 'la hoja de corte debe mostrar la barra real, no el genérico "Paquetto"');
+  assert.strictEqual(d.soportes, '3 Frente', 'debe usar la tabla de soportes de barra (3 a 220cm), no la fija de Paquetto (4)');
+  assert.strictEqual(d.confeccion, 'Paquetto', 'la confección (el tipo de tela/estor) no cambia por ir sobre una barra');
+});
 
 chain.then(() => {
   console.log(`\n${pass} OK, ${fail} fallo(s)`);
