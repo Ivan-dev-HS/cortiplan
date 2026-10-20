@@ -2654,7 +2654,14 @@ function svgConSop(p){
   // Ampliar el viewBox: 60px a la derecha (SOP) y una banda superior (sistema)
   let extraTop=0;
   const tLow=(p.tipo||'').toLowerCase();
-  const sinSistema=sinDibujo||['enroll','estor','roman','brisa','vertical','lama','paquetto','colcha','vánova','vanova','nórdica','nordica','tapic','tapiz','cojin','cojín','cabecer'].some(k=>tLow.includes(k));
+  // Un Paquetto/Estor normalmente no lleva sistema propio que mostrar junto
+  // al dibujo (mando a cadena oculto en su cajetín) — pero si el presupuesto
+  // dice que va instalado sobre una barra guía real, el instalador necesita
+  // verlo aquí también, igual que en cualquier otra cortina (ver
+  // fichaFilas/calcularDatosLineaCorte, mismo criterio).
+  const esPaqOEstor=tLow.includes('paquetto')||(tLow.includes('estor')&&!tLow.includes('enroll'));
+  const esPaqConBarra=esPaqOEstor&&/barra/i.test(p.sistema||'');
+  const sinSistema=sinDibujo||(esPaqOEstor?!esPaqConBarra:['enroll','roman','brisa','vertical','lama','colcha','vánova','vanova','nórdica','nordica','tapic','tapiz','cojin','cojín','cabecer'].some(k=>tLow.includes(k)));
   const conSistema=!sinSistema&&p.sistema;
   // Ampliación derecha mayor cuando hay sistema, para que quepa alineado con SOP
   const extraDer=conSistema?120:60;
