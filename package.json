@@ -1,0 +1,8 @@
+{
+  "name": "cortiplan",
+  "private": true,
+  "description": "Aplicación de Hoja de Instalación y Corte para Canotex Textil.",
+  "scripts": {
+    "test": "node tests/run-parser-tests.js"
+  }
+}

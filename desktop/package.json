@@ -1,0 +1,39 @@
+{
+  "name": "cortiplan-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CortiPlan (Canotex Textil) empaquetado como aplicación de escritorio para Windows.",
+  "author": "Canotex Textil, S.L.",
+  "main": "main.js",
+  "scripts": {
+    "prepare-vendor": "node scripts/fetch-vendor.js",
+    "copy-app": "node scripts/copy-app.js",
+    "start": "npm run prepare-vendor && electron .",
+    "dist": "npm run prepare-vendor && npm run copy-app && electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "3.11.174"
+  },
+  "build": {
+    "appId": "com.canotextextil.cortiplan",
+    "productName": "CortiPlan",
+    "publish": null,
+    "files": [
+      "main.js",
+      "vendor/**/*",
+      "app/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "app/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}
