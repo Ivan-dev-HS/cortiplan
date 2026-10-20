@@ -296,6 +296,45 @@ test('calcularVarillas da el mismo resultado que antes de consolidar la fórmula
 });
 
 console.log('\nParser: reconstruir SISTEMA cuando el PDF corta o contamina la línea');
+test('Soporte con variantes reales que antes se perdían: "LARGO PARED", "RADIADOR", "DOBLE", "DOBLE BARRA"', () => {
+  // Antes solo se reconocía una lista cerrada de palabras justo detrás de
+  // "SOPORTE"/"SOP." (TECHO, PARED, FRONTAL...): "SOPORTE LARGO PARED" no
+  // coincidía porque "LARGO" se interponía antes de "PARED", y "SOPORTE
+  // RADIADOR"/"SOPORTE DOBLE"/"SOPORTE DOBLE BARRA" no coincidían porque esas
+  // palabras no estaban en la lista — en los cuatro casos se perdía en
+  // silencio y quedaba el valor por defecto "T" (techo).
+  const base = sop => [
+    'PRESUPUESTO DE VENTA',
+    'REF. G700 CLIENTE SIETE',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'ESCALA 1,00',
+    'N04MO43 MEDIDA:99x220H - MOTOR: D -CAIDA: DEL 1,00 973,00 973,00',
+    'UD. CORTINA ENROLLABLE MOTORIZADA SISTEMA MEDIUM',
+    '(T43)-TEJIDO SUPER NILO 3% N04 BLANCO/GRIS. '+sop+'.',
+  ].join('\n');
+  assert.strictEqual(app.estrategiaCanotex(base('SOPORTE LARGO PARED'))[0].soporte, 'LARGO PARED');
+  assert.strictEqual(app.estrategiaCanotex(base('SOPORTE RADIADOR'))[0].soporte, 'RADIADOR');
+  assert.strictEqual(app.estrategiaCanotex(base('SOPORTE DOBLE'))[0].soporte, 'DOBLE');
+  assert.strictEqual(app.estrategiaCanotex(base('SOPORTE DOBLE BARRA'))[0].soporte, 'DOBLE BARRA');
+});
+test('Un "SOP." suelto que no es un soporte real (ruido de texto del PDF) no se cuela como si lo fuera', () => {
+  // Caso real (ver samples.js, "Enrollable motorizado..."): "...BLANCO/GRIS.
+  // SOP.GRIS" al final de la línea de tejido — "GRIS" no es ningún tipo de
+  // soporte reconocido, así que debe seguir cayendo al valor por defecto en
+  // vez de capturarse como si "GRIS" fuera el soporte. Guarda explícita del
+  // límite de la regex: admite una palabra de más delante de un tipo
+  // reconocido, no cualquier palabra suelta detrás de "SOP.".
+  const txt = [
+    'PRESUPUESTO DE VENTA',
+    'REF. G700 CLIENTE SIETE',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO',
+    'ESCALA 1,00',
+    'N04MO43 MEDIDA:99x220H - MOTOR: D -CAIDA: DEL 1,00 973,00 973,00',
+    'UD. CORTINA ENROLLABLE MOTORIZADA SISTEMA MEDIUM',
+    '(T43)-TEJIDO SUPER NILO 3% N04 BLANCO/GRIS. SOP.GRIS',
+  ].join('\n');
+  assert.strictEqual(app.estrategiaCanotex(txt)[0].soporte, 'T');
+});
 test('SISTEMA DE INSTALACION se une con la siguiente línea aunque el corte caiga a mitad de "- COLOR" / "BLANCO..."', () => {
   // Presupuesto real: el PDF corta la frase justo después de "COLOR", dejando
   // el nombre del color al principio de la línea siguiente en vez de después

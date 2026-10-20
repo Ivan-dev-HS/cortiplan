@@ -1115,8 +1115,17 @@ function estrategiaCanotex(txt){
               jj++;unidas++;
             }
           }
-          // Quitar el fragmento de soporte del sistema (va en su propio campo)
-          sistema=sistema.replace(/\s*(?:CON\s+)?SOP(?:ORTES?)?[\s.:]+(?:TECHO\s*CLIC|SOSTRE|TECHO|PARED|FRONTAL|FRENTE|RAPIDO|RAP|CLIC)\.?/gi,'').replace(/\s{2,}/g,' ').replace(/\s+\./g,'.').replace(/^[\s.]+|[\s.]+$/g,'').trim();
+          // Quitar el fragmento de soporte del sistema (va en su propio campo).
+          // Antes solo quitaba una lista cerrada de palabras ("TECHO", "PARED"…)
+          // justo detrás de "SOPORTE": con variantes reales de Canotex como
+          // "SOPORTE LARGO PARED" (palabra de más antes del tipo) no cortaba
+          // nada, y el fragmento se quedaba pegado al sistema. Ahora admite
+          // UNA palabra de más delante del tipo (LARGO, CORTO…), y la lista de
+          // tipos reconocidos incluye también RADIADOR y DOBLE (BARRA). No se
+          // abre a cualquier texto libre a propósito: un "SOP.GRIS" suelto al
+          // final de una línea de tejido (ruido real de algún PDF, no un
+          // soporte) seguiría sin coincidir, igual que antes.
+          sistema=sistema.replace(/\s*(?:CON\s+)?SOP(?:ORTES?)?[\s.:]+(?:[A-ZÀ-ÿ]+\s+)?(?:TECHO\s*CLIC|SOSTRE|TECHO|FRONTAL|FRENTE|RAPIDO|RAP|CLIC|RADIADOR|DOBLE\s*BARRA|DOBLE|PARED)\.?/gi,'').replace(/\s{2,}/g,' ').replace(/\s+\./g,'.').replace(/^[\s.]+|[\s.]+$/g,'').trim();
           // Quitar la coletilla de correderas ("CORR.OP", "CORR.CONVENCIONAL", "-CORR.OP",
           // "CORR.OP DE 6 CM"…) que no forma parte del sistema de instalación.
           sistema=sistema.replace(/[\s-]*CORR\.?\s*(?:OP|CONVENCIONAL|CONV\.?)?\.?(?:\s*DE\s*\d+\s*CM)?/gi,'').replace(/[\s-]+$/,'').replace(/\s{2,}/g,' ').trim();
@@ -1132,11 +1141,20 @@ function estrategiaCanotex(txt){
         // Tejido con "REF." → "TEJIDO REF. GRECIA 05"
         if(!tejido){const tRef=nl.match(/TEJIDO\s+REF\.?\s*([A-Z0-9][A-Z0-9\s\/%\-]*)/i);if(tRef&&tRef[1])tejido=('REF. '+tRef[1]).trim();}
         // Soporte en descripción: "SOPORTE TECHO CLIC", "SOP. FRONTAL", "SOP. SOSTRE",
-        // "CON SOP. FRENTE", "SOPORTE RAPIDO NEGRO", "SOPORTE PARED"…
+        // "CON SOP. FRENTE", "SOPORTE RAPIDO NEGRO", "SOPORTE PARED"… y también
+        // variantes que antes se perdían en silencio por no estar en la lista
+        // cerrada de palabras: "SOPORTE LARGO PARED" (palabra de más antes del
+        // tipo — la lista cerrada exigía que el tipo viniera justo detrás de
+        // "SOPORTE") ahora admite esa palabra de más, y la lista de tipos
+        // reconocidos incluye también RADIADOR y DOBLE (BARRA). No se abre a
+        // cualquier texto libre: solo captura si termina en uno de los tipos
+        // reconocidos, así que un "SOP.GRIS" suelto al final de una línea de
+        // tejido (ruido real de algún PDF, no un soporte) sigue sin
+        // coincidir, igual que antes.
         if(!sopDesc){
-          const sM=nl.match(/SOP(?:ORTES?)?[\s.:]+\s*(TECHO\s*CLIC|SOSTRE|TECHO|PARED|FRONTAL|FRENTE|RAPIDO|RAP|CLIC)/i);
+          const sM=nl.match(/SOP(?:ORTES?)?[\s.:]+\s*((?:[A-ZÀ-ÿ]+\s+)?(?:TECHO\s*CLIC|SOSTRE|TECHO|FRONTAL|FRENTE|RAPIDO|RAP|CLIC|RADIADOR|DOBLE\s*BARRA|DOBLE|PARED))/i);
           if(sM){
-            const v=sM[1].toUpperCase().replace(/\s+/g,' ');
+            const v=sM[1].trim().toUpperCase().replace(/\s+/g,' ');
             const MAPA_SOP={'TECHO CLIC':'T CLIC','TECHO':'T','SOSTRE':'T','PARED':'PARED','FRONTAL':'FRONTAL','FRENTE':'FRENTE','RAPIDO':'RAP','RAP':'RAP','CLIC':'CLIC'};
             sopDesc=MAPA_SOP[v]||v;
           }
