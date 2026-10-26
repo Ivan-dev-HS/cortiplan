@@ -194,6 +194,12 @@ input, select, textarea { font-family: inherit; }
 .debug-box .warn { color: #f59e0b; }
 .debug-box .er { color: var(--red); }
 
+/* Aviso de conflicto de datos (p.ej. soporte: descripción vs artículo) */
+.aviso-soporte { display: flex; flex-direction: column; gap: 7px; padding: 9px 10px; border-radius: var(--r2); background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.45); font-size: 11.5px; line-height: 1.5; color: var(--txt); }
+.aviso-soporte b { color: #b45309; }
+[data-theme="dark"] .aviso-soporte b { color: #fbbf24; }
+.aviso-soporte .av-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+
 /* Mode selector */
 .modo-sel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .modo-btn {
@@ -1060,7 +1066,7 @@ function estrategiaCanotex(txt){
       // Detectar si es enrollable por código ANTES de parsear descripción
       const esEnrollCodigo=CODIGOS_ENROLL.test(codigo);
 
-      let tejido='',sistema='',tipoDesc='';let sopDesc='';
+      let tejido='',sistema='',tipoDesc='';let sopDesc='',sopDescBase='';
       for(let nl of descLineas){
         // Descartar líneas que son SOLO basura lateral del registro mercantil
         // ("omoT", "oilof", "ajoH", "31846252B", ",16", ",29", ".FIC"…)
@@ -1157,11 +1163,16 @@ function estrategiaCanotex(txt){
         // tejido (ruido real de algún PDF, no un soporte) sigue sin
         // coincidir, igual que antes.
         if(!sopDesc){
-          const sM=nl.match(/SOP(?:ORTES?)?[\s.:]+\s*((?:[A-ZÀ-ÿ]+\s+)?(?:TECHO\s*CLIC|SOSTRE|TECHO|FRONTAL|FRENTE|RAPIDO|RAP|CLIC|RADIADOR|DOBLE\s*BARRA|DOBLE|PARED))/i);
+          // Además del tipo de soporte, algunas descripciones añaden un matiz
+          // final de color ("CON SOPORTE RAPIDO COLOR NEGRO"): se captura
+          // aparte (grupo 2) para no romper el mapeo a abreviatura del tipo.
+          const sM=nl.match(/SOP(?:ORTES?)?[\s.:]+\s*((?:[A-ZÀ-ÿ]+\s+)?(?:TECHO\s*CLIC|SOSTRE|TECHO|FRONTAL|FRENTE|RAPIDO|RAP|CLIC|RADIADOR|DOBLE\s*BARRA|DOBLE|PARED))(\s+COLOR\s+[A-ZÀ-ÿ]+)?/i);
           if(sM){
             const v=sM[1].trim().toUpperCase().replace(/\s+/g,' ');
+            const colorExtra=sM[2]?sM[2].trim().toUpperCase().replace(/\s+/g,' '):'';
             const MAPA_SOP={'TECHO CLIC':'T CLIC','TECHO':'T','SOSTRE':'T','PARED':'PARED','FRONTAL':'FRONTAL','FRENTE':'FRENTE','RAPIDO':'RAP','RAP':'RAP','CLIC':'CLIC'};
-            sopDesc=MAPA_SOP[v]||v;
+            sopDescBase=MAPA_SOP[v]||v;
+            sopDesc=colorExtra?(sopDescBase+' '+colorExtra):sopDescBase;
           }
         }
         // Sistema de mecanismo en línea de descripción enrollable: "SISTEMA MEDIUM"
@@ -1266,7 +1277,16 @@ function estrategiaCanotex(txt){
         sistema:esTap?'':sistemaFinal,
         tipo, codigo,
         caida:esTap?'':(caidaM&&caidaM[1]?caidaM[1]:''),
-        soporte:esTap?'':((sopM2&&sopM2[1]?sopM2[1]:(sopDesc||''))||'T'),
+        // El campo compacto de la línea MEDIDA ("SOP:T") es a veces solo un
+        // valor por defecto del propio PDF, mientras que la descripción
+        // ("CON SOPORTE RAPIDO COLOR NEGRO") trae el dato real y más
+        // detallado: por eso manda la descripción cuando hay las dos. Si
+        // además discrepan de verdad (no son el mismo tipo de soporte), se
+        // guarda el valor del artículo en soporteAlt y se marca el conflicto
+        // para que la ficha avise y deje elegir cuál usar.
+        soporte:esTap?'':((sopDesc||(sopM2&&sopM2[1]?sopM2[1].toUpperCase():''))||'T'),
+        soporteAlt:(!esTap&&sopM2&&sopM2[1]&&sopDescBase&&sopM2[1].toUpperCase()!==sopDescBase)?sopM2[1].toUpperCase():'',
+        soporteConflicto:!esTap&&!!(sopM2&&sopM2[1]&&sopDescBase&&sopM2[1].toUpperCase()!==sopDescBase),
         esTapiceria:esTap,
         ondaCm:ondaCm||'',
         apertura:apertura||'',
@@ -1627,7 +1647,7 @@ function addCortina(d={}){
   const tipo=normalizaTipo(d.tipo||'');
   const hojasIni=d.hojas||'1';
   const recIni=(parseInt(hojasIni)||1)>=2?'CEN':(d.recogida||'D');
-  const c={id,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',hojas:hojasIni,recogida:recIni,tejido:d.tejido||'',sistema:d.sistema||'',tipo,extra:d.extra||'',metros:d.metros||'',caida:d.caida||'',soporte:d.soporte||'',codigo:d.codigo||'',motorizada:d.motorizada||false,ondaCm:d.ondaCm||'',esTapiceria:d.esTapiceria||false,apertura:d.apertura||'',mandoBrisa:d.mandoBrisa||'cadena',colorGuia:d.colorGuia||'',pestana:d.pestana||'',
+  const c={id,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',hojas:hojasIni,recogida:recIni,tejido:d.tejido||'',sistema:d.sistema||'',tipo,extra:d.extra||'',metros:d.metros||'',caida:d.caida||'',soporte:d.soporte||'',soporteAlt:d.soporteAlt||'',soporteConflicto:d.soporteConflicto||false,codigo:d.codigo||'',motorizada:d.motorizada||false,ondaCm:d.ondaCm||'',esTapiceria:d.esTapiceria||false,apertura:d.apertura||'',mandoBrisa:d.mandoBrisa||'cadena',colorGuia:d.colorGuia||'',pestana:d.pestana||'',
   formaL:d.formaL||'',anchoL:d.anchoL||'',altoL:d.altoL||'',hojasL:d.hojasL||'1',recogidaL:d.recogidaL||'D',aperturaL:d.aperturaL||'',
   formaJunta:d.formaJunta||'',
   llucana:d.llucana||'',llucAnchoArriba:d.llucAnchoArriba||'',llucAltoCorto:d.llucAltoCorto||'',llucInclinada:d.llucInclinada||'',
@@ -1984,6 +2004,13 @@ function updCortina(id,field,val){
   }
   scheduleLiveRefresh();
 }
+function resolverConflictoSoporte(id,cual){
+  const c=STATE.cortinas.find(x=>x.id===id);if(!c)return;
+  if(cual==='articulo'){const tmp=c.soporte;c.soporte=c.soporteAlt;c.soporteAlt=tmp;}
+  c.soporteConflicto=false;
+  rerenderAllCards();
+  scheduleLiveRefresh();
+}
 function updLinea(id,field,val){const l=STATE.lineas.find(x=>x.id===id);if(!l)return;l[field]=val;const head=document.querySelector(`.pcard[data-lid="${id}"] .est`);if(head&&field==='estancia')head.textContent=val||'(sin nombre)';scheduleCorteLiveRefresh();}
 function renderPcard(c,idx){
   const div=document.createElement('div');div.className='pcard';div.dataset.id=c.id;
@@ -2123,6 +2150,9 @@ function renderPcard(c,idx){
         </select></div>
       </div>`:''}
       <div class="r3"><div class="fld"><label>Extra alto</label><input type="text" value="${he(c.extra||'')}" placeholder="+40" onchange="updCortina('${c.id}','extra',this.value)"></div><div class="fld"><label>Soporte</label><input type="text" value="${he(c.soporte||'')}" placeholder="T" onchange="updCortina('${c.id}','soporte',this.value)"></div><div class="fld"><label>Código</label><input type="text" value="${he(c.codigo||'')}" placeholder="CORTOP" onchange="updCortina('${c.id}','codigo',this.value)"></div></div>
+      ${c.soporteConflicto?`<div class="aviso-soporte">⚠️ El soporte no coincide: la descripción pone "<b>${he(c.soporte)}</b>" pero el artículo pone "<b>${he(c.soporteAlt)}</b>". Elige cuál usar:
+        <div class="av-btns"><button type="button" class="btn-sm" onclick="resolverConflictoSoporte('${c.id}','desc')">Usar "${he(c.soporte)}" (descripción)</button><button type="button" class="btn-sm" onclick="resolverConflictoSoporte('${c.id}','articulo')">Usar "${he(c.soporteAlt)}" (artículo)</button></div>
+      </div>`:''}
     </div>`;
   $('pcards').appendChild(div);
 }
@@ -2650,7 +2680,6 @@ function svgConSop(p){
   // pasa siempre por svgBase). Sirve para detectar "sin dibujo" en general,
   // no solo para los tipos ya conocidos que caen en él (p.ej. Tapicería).
   const sinDibujo=!s.includes('<defs');
-  const sop=he(p.soporte||'');
   // Ampliar el viewBox: 60px a la derecha (SOP) y una banda superior (sistema)
   let extraTop=0;
   const tLow=(p.tipo||'').toLowerCase();
@@ -2708,7 +2737,35 @@ function svgConSop(p){
   // (Colcha, Cojín, Cabecero: sí tienen dibujo, pero no soporte).
   const sinSoporte=sinDibujo||['colcha','vánova','vanova','nórdica','nordica','cojin','cojín','cabecer'].some(k=>tLow.includes(k));
   const sopY=conSistema?(typeof _sisH!=='undefined'?_sisH+2:30):14;
-  const txt=sinSoporte?'':`<text x="${sopX}" y="${sopY}" text-anchor="start" font-size="11" font-weight="bold" fill="#1c3a6e" font-family="Arial">SOP: ${sop||'____'}</text>`;
+  // El soporte normalmente es un código corto ("T", "RAP"), pero la
+  // descripción del presupuesto a veces trae un matiz más largo ("RAP COLOR
+  // NEGRO"): se reparte en hasta 2 líneas reduciendo la fuente, igual que ya
+  // se hace arriba con el sistema, para que no se salga del dibujo.
+  let txt='';
+  if(!sinSoporte){
+    const sopLabel='SOP: '+(p.soporte||'____');
+    const dispPxSop=(310+extraDer)-sopX-4;
+    function repartirSop(maxc){
+      const pal=sopLabel.split(/\s+/),ls=[];let ln='';
+      for(const w of pal){
+        if((ln+' '+w).trim().length<=maxc){ln=(ln+' '+w).trim();}
+        else{if(ln)ls.push(ln);ln=w;}
+      }
+      if(ln)ls.push(ln);
+      return ls;
+    }
+    let fsSop=11,lineasSop=null;
+    for(;fsSop>=7;fsSop-=0.5){
+      const cpl=Math.floor(dispPxSop/(fsSop*0.62));
+      const ls=repartirSop(cpl);
+      if(ls.length<=2&&ls.every(l=>l.length<=cpl)){lineasSop=ls;break;}
+    }
+    if(!lineasSop){fsSop=7;lineasSop=repartirSop(Math.floor(dispPxSop/(7*0.62))).slice(0,2);}
+    const lhSop=fsSop+2;
+    txt=lineasSop.map((l,i)=>
+      `<text x="${sopX}" y="${(sopY+i*lhSop).toFixed(1)}" text-anchor="start" font-size="${fsSop}" font-weight="bold" fill="#1c3a6e" font-family="Arial">${he(l)}</text>`
+    ).join('');
+  }
   return s.replace('</svg>',sisTxt+txt+'</svg>');
 }
 
