@@ -749,6 +749,12 @@ test('generarInst(): un fallo interno se muestra en el estado, no desaparece en 
   }
 });
 test('previewCorte(): un fallo interno se muestra en el estado, no solo en la consola', () => {
+  // previewCorte() se frena si el apartado activo no es "Corte Mecanismos"
+  // (ver guarda en el propio index.html): sin fijarlo aquí, la prueba no
+  // ejecutaría realmente la función.
+  const STATE = app.__internals.STATE;
+  const origModo = STATE.modo;
+  STATE.modo = 'corte';
   const origBuildCorteHTML = app.buildCorteHTML;
   app.buildCorteHTML = () => { throw new Error('fallo forzado de prueba 2'); };
   try {
@@ -757,7 +763,34 @@ test('previewCorte(): un fallo interno se muestra en el estado, no solo en la co
     assert.strictEqual(app.document.getElementById('stTxt').textContent, 'Error: fallo forzado de prueba 2');
   } finally {
     app.buildCorteHTML = origBuildCorteHTML;
+    STATE.modo = origModo;
   }
+});
+test('setModo(): cambiar de apartado actualiza STATE.modo (y no se queda forzado en "corte" tras la prueba anterior)', () => {
+  app.resetCortinas();
+  app.addCortina({ estancia: 'Salón', ancho: '150', alto: '200', tipo: 'Plana' });
+  const STATE = app.__internals.STATE;
+  app.setModo('corte');
+  assert.strictEqual(STATE.modo, 'corte');
+  app.setModo('inst');
+  assert.strictEqual(STATE.modo, 'inst');
+});
+test('generarInst()/previewCorte(): cada una solo pinta #main si su apartado es el activo (no fuerzan un cambio de pestaña al cargar datos)', () => {
+  app.resetCortinas();
+  app.addCortina({ estancia: 'Salón', ancho: '150', alto: '200', tipo: 'Plana' });
+  app.setModo('inst');
+  const mainTrasInst = app.document.getElementById('main').innerHTML;
+  assert.ok(mainTrasInst.includes('Imprimir') , 'con Instalación activa, generarInst() ya habrá pintado la ficha');
+  // Simula lo que hacía antes el refresco en vivo de Corte (p.ej. tras
+  // detectar un TIRADOR en el PDF): no debe pisar la ficha de instalación
+  // que el usuario tiene delante solo porque haya datos de corte también.
+  app.previewCorte();
+  assert.strictEqual(app.document.getElementById('main').innerHTML, mainTrasInst, 'previewCorte() no debe tocar #main mientras el apartado activo es Instalación');
+  app.setModo('corte');
+  const mainTrasCorte = app.document.getElementById('main').innerHTML;
+  assert.notStrictEqual(mainTrasCorte, mainTrasInst, 'tras cambiar a Corte, #main debe refrescarse con la hoja de corte');
+  app.generarInst(false);
+  assert.strictEqual(app.document.getElementById('main').innerHTML, mainTrasCorte, 'generarInst() no debe tocar #main mientras el apartado activo es Corte');
 });
 test('generarCorte(): ignora un clic mientras ya hay uno en marcha, y libera el guarda al terminar', async () => {
   // generarCorte() y generarInstPDF() comparten STATE.objectUrl: sin este

@@ -249,6 +249,65 @@ async function buildSamplePDF(pdfLib) {
     } finally { await page.close(); }
   });
 
+  console.log('\n6) El apartado activo (Instalación/Corte) se conserva al cargar un presupuesto');
+  await test('Subir un PDF con Corte Mecanismos ya seleccionado no fuerza el salto a Hoja Instalación (ni al revés)', async () => {
+    const pdfLib = require('pdf-lib');
+    // El texto incluye un accesorio TIRADOR (soloCorte): es el caso real que
+    // detonaba el bug — dispara addLinea(), cuyo refresco en vivo de la hoja
+    // de corte (scheduleCorteLiveRefresh) pisaba #main pasados 350ms, sin
+    // mirar qué apartado tenía el usuario abierto.
+    const doc = await pdfLib.PDFDocument.create();
+    const font = await doc.embedFont(pdfLib.StandardFonts.Helvetica);
+    const page0 = doc.addPage([595, 842]);
+    const lines = [
+      'PRESUPUESTO DE VENTA', 'REF. A691 CLIENTE PRUEBA',
+      'COMEDOR 1,00',
+      'CORTOP MEDIDA:150X250H CONFE:1 HOJAS RECOG:D COLOR GUIA:BCO',
+      'UD. CONFECCION ONDA PERFECTA (ONDA 8CM)',
+      'TEJIDO: SAURA C/02',
+      'SISTEMA DE INSTALACION: GUIA MANUAL 1 VIA, REFORZADA',
+      'TIRADORBCO', '2,00',
+    ];
+    let y = 780;
+    for (const l of lines) { page0.drawText(l, { x: 50, y, size: 10, font }); y -= 16; }
+    const pdfBytes = Buffer.from(await doc.save());
+    const tmpPdf = path.join(require('os').tmpdir(), 'cortiplan-e2e-modo.pdf');
+    fs.writeFileSync(tmpPdf, pdfBytes);
+
+    const localPdfjs = process.env.CORTIPLAN_PDFJS_VENDOR_DIR || path.join(ROOT, 'node_modules', 'pdfjs-dist', 'build');
+    const hasLocalPdfjs = fs.existsSync(path.join(localPdfjs, 'pdf.min.js'));
+
+    for (const startTab of ['inst', 'corte']) {
+      const p = await browser.newPage({ viewport: { width: 1200, height: 900 } });
+      try {
+        await p.addInitScript(() => { if (navigator.serviceWorker) navigator.serviceWorker.register = () => Promise.reject(new Error('x')); });
+        if (hasLocalPdfjs) {
+          await p.route('**cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', r =>
+            r.fulfill({ path: path.join(localPdfjs, 'pdf.min.js'), contentType: 'application/javascript' }));
+          await p.route('**cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js', r =>
+            r.fulfill({ path: path.join(localPdfjs, 'pdf.worker.min.js'), contentType: 'application/javascript' }));
+        }
+        await p.goto(`http://127.0.0.1:${PORT}/index.html`);
+        await p.waitForTimeout(400);
+        if (startTab === 'corte') { await p.click('#btnCorte'); await p.waitForTimeout(100); }
+
+        await p.setInputFiles('#fileInput', tmpPdf);
+        await p.waitForTimeout(2000); // deja correr el parseo y cualquier temporizador de refresco en vivo (350ms)
+
+        const activeBtn = await p.evaluate(() => document.getElementById('btnInst').classList.contains('active') ? 'inst' : 'corte');
+        const mainShows = await p.evaluate(() => {
+          const t = document.getElementById('main').textContent || '';
+          if (t.includes('Ficha de corte y envío')) return 'corte';
+          if (document.querySelector('#main .btn-print')) return 'inst';
+          return '(vacío/otro)';
+        });
+        if (activeBtn !== startTab) throw new Error(`Empezando en "${startTab}", el botón activo pasó a "${activeBtn}"`);
+        if (mainShows !== startTab) throw new Error(`Empezando en "${startTab}", el contenido mostrado en #main es "${mainShows}" (debería seguir siendo "${startTab}")`);
+      } finally { await p.close(); }
+    }
+    fs.unlinkSync(tmpPdf);
+  });
+
   await browser.close();
   server.close();
 

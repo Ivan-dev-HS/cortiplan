@@ -613,7 +613,7 @@ const RE_INSTAL_WORD=/INSTAL[·.]?L?ACI[OÓ]N?/;
 const RE_HAY_INSTALACION=new RegExp('UD\\.?\\s*'+RE_INSTAL_WORD.source+'|'+RE_INSTAL_WORD.source+'[^\\n]{0,40}ZONA\\s*:|'+RE_INSTAL_WORD.source+'\\s+(?:INCLU\\w*|INCLOS\\w*)','i');
 // Solo el bloque con zona/dirección propia (para localizar dónde buscar nombre/tfno/dirección).
 const RE_INSTALACION_ZONA=new RegExp('UD\\.?\\s*'+RE_INSTAL_WORD.source+'|'+RE_INSTAL_WORD.source+'[^\\n]{0,40}ZONA\\s*:','i');
-const STATE={cortinas:[],lineas:[],pcnt:0,lcnt:0,svgUid:0,objectUrl:null,liveActive:true,_liveTimer:null,_corteLiveTimer:null,instZona:'',instRef:'',instNombre:'',instDireccion:'',instTel:'',hayInstalacion:false,_instRawHit:false,_instRawZona:'',_instRawRef:''};
+const STATE={modo:'inst',cortinas:[],lineas:[],pcnt:0,lcnt:0,svgUid:0,objectUrl:null,liveActive:true,_liveTimer:null,_corteLiveTimer:null,instZona:'',instRef:'',instNombre:'',instDireccion:'',instTel:'',hayInstalacion:false,_instRawHit:false,_instRawZona:'',_instRawRef:''};
 /* ─── LIVE PREVIEW ─── */
 function scheduleLiveRefresh(){
   if(!STATE.liveActive)return;
@@ -649,6 +649,7 @@ $('btnMenu').addEventListener('click',openSidebar);
 $('btnCloseSb').addEventListener('click',closeSidebar);
 $('overlay').addEventListener('click',closeSidebar);
 function setModo(m){
+  STATE.modo=m;
   const isInst=m==='inst';
   $('btnInst').classList.toggle('active',isInst);
   $('btnCorte').classList.toggle('active',!isInst);
@@ -958,8 +959,14 @@ function parsear(rawLines,skipClientExtract=false){
     // ficha de instalador, solo su línea en la hoja de corte.
     cortinas.forEach(c=>c.soloCorte?addLinea({estancia:c.estancia,sistema:c.sistema,color:c.color,unidades:c.unidades}):addCortina(c));
     rerenderAllCards();dbg(`📦 ${cortinas.length} cortina(s)`,'ok');
-    // Previsualizar automáticamente: no hace falta pulsar "Vista previa"
+    // Previsualizar automáticamente: no hace falta pulsar "Vista previa". Se
+    // llama a las dos funciones de refresco a propósito (cada una se frena
+    // sola si su apartado no es el activo, ver guarda al inicio de
+    // generarInst()/previewCorte()): así se repinta siempre la vista del
+    // apartado en el que el usuario ya estuviera (Instalación o Corte), sin
+    // forzar un cambio de pestaña al cargar un presupuesto.
     generarInst();
+    previewCorte();
   }
   else{addCortina();dbg('⚠️ Sin cortinas detectadas.','warn');}
 }
@@ -3610,6 +3617,12 @@ function ajustarTextosFicha(rootDoc){
 }
 
 function generarInst(preserveScroll){
+  // Si el apartado activo es "Corte Mecanismos", no tocar #main: antes esta
+  // función (llamada, p.ej., tras cargar un presupuesto, o por su propio
+  // temporizador scheduleLiveRefresh) pintaba siempre la ficha de
+  // instalación ahí, aunque el usuario estuviera viendo Corte — y al revés
+  // con previewCorte() — forzando saltos de pestaña no pedidos.
+  if(STATE.modo!=='inst')return;
   // La vista previa en vivo se dispara sola (carga inicial, cada edición
   // con scheduleLiveRefresh…): sin este try/catch, un error aquí dentro
   // (p.ej. un dibujo SVG con datos que no esperaba) se perdía en la consola
@@ -4449,6 +4462,9 @@ async function generarCorte(){
 // resto de la app; el PDF real para imprimir/guardar lo sigue generando
 // generarCorte() con pdf-lib, esta vista es solo para previsualizar en vivo).
 function previewCorte(){
+  // Guarda simétrica a la de generarInst(): si el apartado activo es
+  // "Hoja Instalación", no pisar #main con la hoja de corte.
+  if(STATE.modo!=='corte')return;
   try{
     const html=buildCorteHTML();
     if(!html)return;
