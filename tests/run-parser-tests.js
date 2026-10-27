@@ -557,6 +557,25 @@ test('Un accesorio TIRADOR no genera ficha de instalador, solo línea en la hoja
   assert.ok(lineaTirador, 'debería existir una línea de corte para el tirador');
   assert.strictEqual(lineaTirador.color, 'Blanco');
 });
+test('Caso real: una cortina de 2 hojas con 2 tiradores (TIRADORBCO ... 2,00) marca la cantidad real, no siempre 1', () => {
+  app.resetInstalacion();
+  app.parsear([
+    'PEDIDO DE VENTA',
+    'REF. O600 CLIENTE QUINCE',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO % DTO TOTAL',
+    'SALON 1,00',
+    'CORTOP MEDIDA:544x255H -CONFE:2 HOJAS- RECOG:LAT 1,00 881,28 50,00 440,64',
+    'UD. CORTINA CONFECCIONADA TIPO ONDA PERFECTA. (ONDA 6cm.)',
+    'TEJIDO:MORITZ 01 BLANCO',
+    'SISTEMA DE INSTALACION:GUIA MANUAL 1 VIA -COLOR BLANCOCORR.OP',
+    'SOPORTE TECHO',
+    'TIRADORBCO UD. TIRADOR METALICO COLOR BLANCO 2,00 5,90 50,00 5,90',
+  ], true);
+  const STATE = app.__internals.STATE;
+  const lineaTirador = STATE.lineas.find(l => l.sistema === 'Tirador');
+  assert.ok(lineaTirador, 'debería existir una línea de corte para el tirador');
+  assert.strictEqual(lineaTirador.unidades, '2', 'el presupuesto pide 2 tiradores (uno por hoja), no 1');
+});
 
 console.log('\nCortinas juntas (dos rectas, una al lado de la otra)');
 test('unirJuntas fusiona la siguiente cortina como 2º tramo recto, sin inclinarla', () => {

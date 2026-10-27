@@ -925,7 +925,7 @@ function parsear(rawLines,skipClientExtract=false){
   if(cortinas.length){
     // Un accesorio "soloCorte" (p.ej. TIRADOR) no es una cortina: no lleva
     // ficha de instalador, solo su línea en la hoja de corte.
-    cortinas.forEach(c=>c.soloCorte?addLinea({estancia:c.estancia,sistema:c.sistema,color:c.color}):addCortina(c));
+    cortinas.forEach(c=>c.soloCorte?addLinea({estancia:c.estancia,sistema:c.sistema,color:c.color,unidades:c.unidades}):addCortina(c));
     rerenderAllCards();dbg(`📦 ${cortinas.length} cortina(s)`,'ok');
     // Previsualizar automáticamente: no hace falta pulsar "Vista previa"
     generarInst();
@@ -1363,8 +1363,17 @@ function estrategiaCanotex(txt){
       }
       const color=normalizaColorSis(bloque)||'';
       const est=currentEstancia||'';
-      results.push({estancia:est,ancho:'',alto:'',hojas:'1',recogida:'D',tejido:'',sistema:'Tirador',color,tipo:'',soloCorte:true});
-      dbg(`  🪢 #${results.length} [${est}] Tirador${color?' '+color:''} → solo hoja de corte`,'warn');
+      // Cantidad real de tiradores (p.ej. "2,00" cuando una cortina de 2
+      // hojas lleva un tirador por hoja): antes siempre se marcaba 1 en la
+      // hoja de corte, aunque el presupuesto dijera más unidades.
+      const numsTiradorM=bloque.match(/(?:\s+\d+[,.]\d{2}){2,}\s*$/);
+      let cantidadTirador=1;
+      if(numsTiradorM){
+        const primerNum=parseInt(numsTiradorM[0].trim().split(/\s+/)[0]);
+        if(primerNum>0)cantidadTirador=primerNum;
+      }
+      results.push({estancia:est,ancho:'',alto:'',hojas:'1',recogida:'D',tejido:'',sistema:'Tirador',color,tipo:'',soloCorte:true,unidades:String(cantidadTirador)});
+      dbg(`  🪢 #${results.length} [${est}] Tirador${color?' '+color:''}${cantidadTirador>1?' x'+cantidadTirador:''} → solo hoja de corte`,'warn');
       i+=consumed;continue;
     }
     // Formato alterno de medidas: un artículo con código reconocido (p.ej.
