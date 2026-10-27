@@ -1339,10 +1339,6 @@ function estrategiaCanotex(txt){
         motorizada,
         pestana:pestana||'',
         accesorioMando:esTap?'':(accesorioMando||''),
-        // Se rellenan después (ver bloque de TIRADOR más abajo) si el
-        // presupuesto trae un artículo de tirador justo a continuación de
-        // esta cortina; por defecto no lleva.
-        tiradorCantidad:'',tiradorColor:'',
       });
       dbg(`  ✅ #${results.length} [${currentEstancia||'?'}] ${tipo} ${ancho}×${alto}${cantidad>1?' ×'+cantidad:''}`,'ok');
       i=j;continue;
@@ -1377,17 +1373,6 @@ function estrategiaCanotex(txt){
         if(primerNum>0)cantidadTirador=primerNum;
       }
       results.push({estancia:est,ancho:'',alto:'',hojas:'1',recogida:'D',tejido:'',sistema:'Tirador',color,tipo:'',soloCorte:true,unidades:String(cantidadTirador)});
-      // El tirador acompaña a la cortina real que tiene justo antes (la
-      // última de "results" que no sea a su vez otro accesorio soloCorte):
-      // se anota también ahí para que su ficha/dibujo lo muestre, además de
-      // la línea propia en la hoja de corte.
-      for(let k=results.length-2;k>=0;k--){
-        if(!results[k].soloCorte){
-          results[k].tiradorCantidad=String(cantidadTirador);
-          results[k].tiradorColor=color;
-          break;
-        }
-      }
       dbg(`  🪢 #${results.length} [${est}] Tirador${color?' '+color:''}${cantidadTirador>1?' x'+cantidadTirador:''} → solo hoja de corte`,'warn');
       i+=consumed;continue;
     }
@@ -1725,7 +1710,7 @@ function addCortina(d={}){
   const tipo=normalizaTipo(d.tipo||'');
   const hojasIni=d.hojas||'1';
   const recIni=(parseInt(hojasIni)||1)>=2?'CEN':(d.recogida||'D');
-  const c={id,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',hojas:hojasIni,recogida:recIni,tejido:d.tejido||'',sistema:d.sistema||'',tipo,extra:d.extra||'',metros:d.metros||'',caida:d.caida||'',soporte:d.soporte||'',soporteAlt:d.soporteAlt||'',soporteConflicto:d.soporteConflicto||false,codigo:d.codigo||'',motorizada:d.motorizada||false,ondaCm:d.ondaCm||'',esTapiceria:d.esTapiceria||false,apertura:d.apertura||'',mandoBrisa:d.mandoBrisa||'cadena',colorGuia:d.colorGuia||'',pestana:d.pestana||'',accesorioMando:d.accesorioMando||'',tiradorCantidad:d.tiradorCantidad||'',tiradorColor:d.tiradorColor||'',
+  const c={id,estancia:d.estancia||'',ancho:d.ancho||'',alto:d.alto||'',hojas:hojasIni,recogida:recIni,tejido:d.tejido||'',sistema:d.sistema||'',tipo,extra:d.extra||'',metros:d.metros||'',caida:d.caida||'',soporte:d.soporte||'',soporteAlt:d.soporteAlt||'',soporteConflicto:d.soporteConflicto||false,codigo:d.codigo||'',motorizada:d.motorizada||false,ondaCm:d.ondaCm||'',esTapiceria:d.esTapiceria||false,apertura:d.apertura||'',mandoBrisa:d.mandoBrisa||'cadena',colorGuia:d.colorGuia||'',pestana:d.pestana||'',accesorioMando:d.accesorioMando||'',
   formaL:d.formaL||'',anchoL:d.anchoL||'',altoL:d.altoL||'',hojasL:d.hojasL||'1',recogidaL:d.recogidaL||'D',aperturaL:d.aperturaL||'',
   formaJunta:d.formaJunta||'',
   llucana:d.llucana||'',llucAnchoArriba:d.llucAnchoArriba||'',llucAltoCorto:d.llucAltoCorto||'',llucInclinada:d.llucInclinada||'',
@@ -2336,26 +2321,7 @@ function svgOndaPerfecta(p,u){
       if(t)gchTxt=`<text x="${(ML+CW/2).toFixed(1)}" y="${(MT+CH*0.32).toFixed(1)}" text-anchor="middle" font-size="14.3" font-weight="bold" fill="#555" font-family="Arial">${t}</text>`;
     }catch(e){}
   }
-  // Tirador: si el presupuesto trae tirador para esta cortina, se marca con
-  // una flecha + anilla hacia el borde de cada hoja que lo lleva (una por
-  // hoja), igual que se anotaba a mano en la hoja de instalador — uno por
-  // cada hoja con tirador, hasta el nº de hojas reales.
-  let tiradorSvg='';
-  const nTir=Math.min(parseInt(p.tiradorCantidad)||0,nH);
-  if(nTir>0){
-    const ringY=MT+CH*0.32-9;
-    let minX=Infinity,maxX=-Infinity;
-    for(let h=0;h<nTir;h++){
-      const hjCenterX=ML+(h+0.5)*(CW/nH);
-      const x1=hjCenterX-7,y1=MT+CH*0.52,x2=hjCenterX+3,y2=ringY;
-      minX=Math.min(minX,x2);maxX=Math.max(maxX,x2);
-      tiradorSvg+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#111" stroke-width="1.1"/>`;
-      tiradorSvg+=`<circle cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="2.6" fill="none" stroke="#111" stroke-width="1.2"/>`;
-    }
-    const midX=((minX+maxX)/2).toFixed(1);
-    tiradorSvg+=`<text x="${midX}" y="${(ringY-6).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="bold" fill="#111" font-family="Arial">TIRADOR</text>`;
-  }
-  return svgBase(u,`${rail}${sopL}${sopR}${tL}${tR}${tela}${divs}${ondas}${gchTxt}${tiradorSvg}${recArrow(u,p.recogida,p.hojas)}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);}
+  return svgBase(u,`${rail}${sopL}${sopR}${tL}${tR}${tela}${divs}${ondas}${gchTxt}${recArrow(u,p.recogida,p.hojas)}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);}
 
 function svgPalas(p,u){
   const{ML,MT,CW,CH}=SV,n=Math.max(1,parseInt(p.hojas)||1);
