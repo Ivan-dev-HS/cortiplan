@@ -23,7 +23,7 @@ module.exports = [
       codigo: 'CORTOP', caida: '', soporte: 'T', soporteAlt: '',
       soporteConflicto: false, esTapiceria: false,
       ondaCm: '8cm', apertura: '', mandoBrisa: '', colorGuia: 'BCO',
-      motorizada: false, pestana: '', accesorioMando: '',
+      motorizada: false, pestana: '', accesorioMando: '', tiradorCantidad: '', tiradorColor: '',
     }],
   },
   {
@@ -43,7 +43,7 @@ module.exports = [
       caida: '', soporte: 'RAP', soporteAlt: '', soporteConflicto: false,
       esTapiceria: false, ondaCm: '', apertura: '',
       mandoBrisa: '', colorGuia: '',
-      motorizada: false, pestana: '', accesorioMando: '',
+      motorizada: false, pestana: '', accesorioMando: '', tiradorCantidad: '', tiradorColor: '',
     }],
   },
   {
@@ -64,7 +64,7 @@ module.exports = [
       soporte: 'RAP', soporteAlt: '', soporteConflicto: false,
       esTapiceria: false, ondaCm: '', apertura: '',
       mandoBrisa: '', colorGuia: '',
-      motorizada: false, pestana: '', accesorioMando: '',
+      motorizada: false, pestana: '', accesorioMando: '', tiradorCantidad: '', tiradorColor: '',
     }],
   },
   {
@@ -85,7 +85,7 @@ module.exports = [
       soporteAlt: '', soporteConflicto: false,
       esTapiceria: false, ondaCm: '', apertura: '3', mandoBrisa: '',
       colorGuia: 'BCO',
-      motorizada: false, pestana: '', accesorioMando: '',
+      motorizada: false, pestana: '', accesorioMando: '', tiradorCantidad: '', tiradorColor: '',
     }],
   },
   {
@@ -108,7 +108,7 @@ module.exports = [
       caida: '', soporte: 'T', soporteAlt: '', soporteConflicto: false,
       esTapiceria: false, ondaCm: '', apertura: '',
       mandoBrisa: '', colorGuia: '',
-      motorizada: false, pestana: '', accesorioMando: '',
+      motorizada: false, pestana: '', accesorioMando: '', tiradorCantidad: '', tiradorColor: '',
     }],
   },
   {
@@ -134,7 +134,7 @@ module.exports = [
       soporte: 'T', soporteAlt: '', soporteConflicto: false,
       esTapiceria: false, ondaCm: '', apertura: '',
       mandoBrisa: '', colorGuia: '',
-      motorizada: true, pestana: '', accesorioMando: '',
+      motorizada: true, pestana: '', accesorioMando: '', tiradorCantidad: '', tiradorColor: '',
     }],
   },
   {
@@ -160,7 +160,7 @@ module.exports = [
       soporte: 'T', soporteAlt: '', soporteConflicto: false,
       esTapiceria: false, ondaCm: '', apertura: '',
       mandoBrisa: '', colorGuia: '',
-      motorizada: false, pestana: '', accesorioMando: '',
+      motorizada: false, pestana: '', accesorioMando: '', tiradorCantidad: '', tiradorColor: '',
     }],
   },
   {
@@ -185,7 +185,7 @@ module.exports = [
       soporte: 'T CLIC', soporteAlt: '', soporteConflicto: false,
       esTapiceria: false, ondaCm: '', apertura: '2',
       mandoBrisa: '', colorGuia: 'BCO',
-      motorizada: false, pestana: '', accesorioMando: '',
+      motorizada: false, pestana: '', accesorioMando: '', tiradorCantidad: '', tiradorColor: '',
     }],
   },
   {
@@ -207,7 +207,7 @@ module.exports = [
       caida: '', soporte: 'T', soporteAlt: '', soporteConflicto: false,
       esTapiceria: false, ondaCm: '', apertura: '',
       mandoBrisa: '', colorGuia: 'BCO',
-      motorizada: false, pestana: '', accesorioMando: '',
+      motorizada: false, pestana: '', accesorioMando: '', tiradorCantidad: '', tiradorColor: '',
     }],
   },
   {
@@ -238,7 +238,7 @@ module.exports = [
       soporte: 'RAP COLOR NEGRO', soporteAlt: 'T', soporteConflicto: true,
       esTapiceria: false, ondaCm: '', apertura: '',
       mandoBrisa: '', colorGuia: '',
-      motorizada: false, pestana: '', accesorioMando: '',
+      motorizada: false, pestana: '', accesorioMando: '', tiradorCantidad: '', tiradorColor: '',
     }],
   },
   {
@@ -274,7 +274,7 @@ module.exports = [
       soporte: 'T', soporteAlt: '', soporteConflicto: false,
       esTapiceria: false, ondaCm: '', apertura: '',
       mandoBrisa: '', colorGuia: '',
-      motorizada: true, pestana: '', accesorioMando: '',
+      motorizada: true, pestana: '', accesorioMando: '', tiradorCantidad: '', tiradorColor: '',
     }, {
       estancia: 'SALON', ancho: '225', alto: '266', hojas: '1', extra: '',
       metros: '4.50', recogida: 'D', tejido: 'MERCEDES 5',
@@ -283,6 +283,42 @@ module.exports = [
       esTapiceria: false, ondaCm: '', apertura: '',
       mandoBrisa: '', colorGuia: '',
       motorizada: true, pestana: '', accesorioMando: 'Incluye mando 6 canales AOK',
+      tiradorCantidad: '', tiradorColor: '',
+    }],
+  },
+  {
+    // Caso real: Onda Perfecta de 2 hojas con un tirador POR HOJA
+    // ("TIRADORBCO UD. TIRADOR METALICO COLOR BLANCO 2,00 ..." — la columna
+    // CANTIDAD real del presupuesto, no una línea de tirador suelta). El
+    // tirador debe anotarse en la cortina real que lo precede
+    // (tiradorCantidad/tiradorColor) además de generar su propia línea
+    // "soloCorte" con la cantidad real (2), no siempre 1.
+    name: 'Onda Perfecta de 2 hojas con 2 tiradores (uno por hoja) — cantidad real, no fija a 1',
+    txt: [
+      'PEDIDO: 2600817',
+      'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO % DTO TOTAL',
+      'SALON 1,00',
+      'CORTOP MEDIDA:544x255H -CONFE:2 HOJAS- RECOG:LAT 1,00 881,28 50,00 440,64',
+      'UD. CORTINA CONFECCIONADA TIPO ONDA PERFECTA. (ONDA 6cm.)',
+      'TEJIDO:MORITZ 01 BLANCO',
+      'SISTEMA DE INSTALACION:GUIA MANUAL 1 VIA -COLOR BLANCOCORR.OP',
+      'SOPORTE TECHO',
+      '*EL SISTEMA SE ENVIA PARTIDO CON EMPALME*',
+      'TIRADORBCO UD. TIRADOR METALICO COLOR BLANCO 2,00 5,90 50,00 5,90',
+    ].join('\n'),
+    expected: [{
+      estancia: 'SALON', ancho: '544', alto: '255', hojas: '2', extra: '',
+      metros: '13.06', recogida: 'CEN', tejido: 'MORITZ 01 BLANCO',
+      sistema: 'GUIA MANUAL 1 VIA -COLOR BLANCO', tipo: 'Onda Perfecta',
+      codigo: 'CORTOP', caida: '', soporte: 'T', soporteAlt: '',
+      soporteConflicto: false, esTapiceria: false, ondaCm: '6cm', apertura: '',
+      mandoBrisa: '', colorGuia: '',
+      motorizada: false, pestana: '', accesorioMando: '',
+      tiradorCantidad: '2', tiradorColor: 'Blanco',
+    }, {
+      estancia: 'SALON', ancho: '', alto: '', hojas: '1', recogida: 'D',
+      tejido: '', sistema: 'Tirador', color: 'Blanco', tipo: '',
+      soloCorte: true, unidades: '2',
     }],
   },
 ];
