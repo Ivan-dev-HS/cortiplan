@@ -25,7 +25,13 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="manifest" href="./manifest.json">
 <title>CortiPlan · Instalación &amp; Corte</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- Hash SRI calculado sobre el paquete npm pdfjs-dist@3.11.174 (mismo build
+     que sirve cdnjs): si cdnjs sirviera en algún momento unos bytes distintos
+     para esta misma versión, el script fallará al cargar en vez de ejecutar
+     algo no verificado; el catch de handleFile() ya convierte ese fallo en un
+     mensaje de error visible ("pdfjsLib is not defined"), no en un cuelgue
+     silencioso. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
 <style>
 
 /* ═══ CSS VARIABLES ═══ */
@@ -43,7 +49,12 @@
   --blu2: #2550a0;
   --txt: #1e2a3b;
   --txt2: #5a6a82;
-  --txt3: #8fa0b8;
+  /* Antes #8fa0b8: 2.41:1 de contraste sobre --bg, por debajo del mínimo
+     WCAG AA (4.5:1) para texto normal — y se usa para las propias
+     etiquetas de los campos (.fld label, .slbl) a 9px, no solo para texto
+     decorativo. #5f7089 da 4.56:1, pasa el mínimo y mantiene el mismo tono
+     azulado, más claro que --txt2, para no perder la jerarquía visual. */
+  --txt3: #5f7089;
   --red: #dc2626;
   --grn: #16a34a;
   --r: 10px;
@@ -66,7 +77,10 @@
   --blu2: #bfdbfe;
   --txt: #e2eaf6;
   --txt2: #8fa5c8;
-  --txt3: #5a7090;
+  /* Mismo arreglo de contraste que en modo claro: antes #5a7090 (3.58:1
+     sobre --bg oscuro), por debajo del mínimo WCAG AA de 4.5:1 para texto
+     normal. #7488ab da 5.05:1. */
+  --txt3: #7488ab;
   --red: #f87171;
   --grn: #4ade80;
   --shadow: 0 2px 20px rgba(0,0,0,.4);
@@ -579,7 +593,17 @@ input, select, textarea { font-family: inherit; }
 <div class="offline-banner" id="offlineBanner">📡 Sin conexión — la app sigue funcionando</div>
 <script>
 'use strict';
-pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+// CRÍTICO: si pdf.js no llega a cargar (CDN caído, sin conexión, bloqueador
+// de anuncios…) "pdfjsLib" no existe y esta línea, sin guarda, lanzaba
+// ReferenceError AQUÍ MISMO, en lo primero que ejecuta este bloque de
+// script — lo que paraba TODO el resto del archivo: no se enlazaba ni
+// siquiera el input de archivo, no se inicializaba nada. La app se quedaba
+// con la interfaz quieta y sin ningún aviso, pasara lo que pasara después.
+// Con la guarda, si pdf.js falla al cargar el resto de la app arranca
+// igual: el error real (y entendible, "pdfjsLib is not defined") solo
+// aparece al intentar abrir un PDF, ya capturado por el try/catch de
+// handleFile() y mostrado en el estado y en el registro.
+if(typeof pdfjsLib!=='undefined')pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const CFG={EMPRESA_TELS:new Set(['973235776','900100200']),MAX_LINEAS_CORTE:10,OCR_SCALE:2.8,CORTINAS_POR_HOJA:4};
 // Palabra "instalación", en español o catalán ("instal·lació"/"instal·lacio", con o sin
 // el punto volado, con o sin la N final): Canotex emite presupuestos en los dos idiomas.
@@ -815,8 +839,15 @@ async function pdfToOCR(file){
 }
 async function processImage(file){setSt('spin','OCR imagen…');const bmp=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=bmp.width;canvas.height=bmp.height;canvas.getContext('2d').drawImage(bmp,0,0);const text=await runOCR(preprocessImage(canvas));const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);dbg(`🔍 OCR: ${lines.length} líneas`,'ok');resetInstalacion();parsear(lines,false);setSt('ok','✓ '+file.name);}
 function preprocessImage(srcCanvas){const minDim=1200;let sw=srcCanvas.width;const scale=sw<minDim?minDim/sw:1;const canvas=document.createElement('canvas');canvas.width=Math.round(sw*scale);canvas.height=Math.round(srcCanvas.height*scale);const ctx=canvas.getContext('2d');ctx.drawImage(srcCanvas,0,0,canvas.width,canvas.height);const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);const data=imgData.data;for(let i=0;i<data.length;i+=4){const gray=0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];const c=Math.min(255,Math.max(0,(gray-128)*1.4+128));data[i]=data[i+1]=data[i+2]=c>145?255:0;}ctx.putImageData(imgData,0,0);return canvas;}
-async function runOCR(canvas){if(!window.Tesseract){setSt('spin','Cargando OCR…');await loadScript('https://unpkg.com/tesseract.js@4/dist/tesseract.min.js');}const{data:{text}}=await Tesseract.recognize(canvas,'spa+eng',{logger:m=>{if(m.status==='recognizing text')setSt('spin','OCR: '+Math.round((m.progress||0)*100)+'%');}});return text;}
-function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('No se pudo cargar: '+src));document.head.appendChild(s);});}
+async function runOCR(canvas){if(!window.Tesseract){setSt('spin','Cargando OCR…');
+  // Versión exacta (antes "@4", un rango que unpkg resuelve a la última 4.x.x
+  // del momento: no reproducible, y el hash de integridad no tendría sentido
+  // contra un fichero que puede cambiar). Pinned a 4.1.4, con su SRI real.
+  await loadScript('https://unpkg.com/tesseract.js@4.1.4/dist/tesseract.min.js','sha384-+56qagDlzJ3YYkDcyAXRdhrP7/+ai8qJcS6HpjACl2idDoCyCqRf5VVi7E/XkGae');}const{data:{text}}=await Tesseract.recognize(canvas,'spa+eng',{logger:m=>{if(m.status==='recognizing text')setSt('spin','OCR: '+Math.round((m.progress||0)*100)+'%');}});return text;}
+// integrity opcional: cuando se pasa, el navegador descarta el script si los
+// bytes no coinciden (lo trata como fallo de carga igual que un error de red,
+// así que cae por el mismo camino de error ya probado, no por uno nuevo).
+function loadScript(src,integrity){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;if(integrity){s.integrity=integrity;s.crossOrigin='anonymous';}s.onload=res;s.onerror=()=>rej(new Error('No se pudo cargar: '+src));document.head.appendChild(s);});}
 const OCR_FIXES=[[/\bCORTOF\b/gi,'CORTOP'],[/MEDJDA/gi,'MEDIDA'],[/MEDlDA/gi,'MEDIDA'],[/TEJJDO/gi,'TEJIDO'],[/TEJlDO/gi,'TEJIDO'],[/SlSTEMA/gi,'SISTEMA']];
 function fixOCR(str){if(!str)return'';let s=str;for(const[from,to]of OCR_FIXES)s=s.replace(from,to);return s;}
 function limpiarLinea(s){
@@ -1473,7 +1504,10 @@ function estrategiaCanotex(txt){
 }
 
 function calcularMetrosTela(tipo,ancho,extra){
-  const a=parseFloat(ancho)||0;if(!a||a<0)return null;
+  // "125,5" (coma decimal, formato español) se truncaba a 125 porque
+  // parseFloat corta en la primera coma: igual que ya se hace en
+  // calcularSoportes/calcularPaquetto, se normaliza a punto antes.
+  const a=parseFloat(String(ancho||'0').replace(',','.'))||0;if(!a||a<0)return null;
   const t=(tipo||'').toLowerCase();let metros=0;
   if(t.includes('onda'))metros=a*2.4;
   else if(t.includes('paquetto'))metros=(a+40)/100;
@@ -2310,11 +2344,11 @@ function recArrow(u,rec,hojas){
   if(recEff==='CEN'){const pL=pila(ML+2,ML+CW*0.22),pR=pila(ML+CW*0.78,ML+CW-2),x1=(ML+CW*0.14).toFixed(1),x2=(ML+CW*0.86).toFixed(1);return`${pL}${pR}<line x1="${x1}" y1="${ry}" x2="${x2}" y2="${ry}" stroke="#222" stroke-width="1.5" marker-start="url(#al${u})" marker-end="url(#ar${u})"/>`;}
   if(recEff==='IZQ'){const p=pila(ML+2,ML+CW*0.22),x1=(ML+CW*0.10).toFixed(1),x2=cx.toFixed(1);return`${p}<line x1="${x1}" y1="${ry}" x2="${x2}" y2="${ry}" stroke="#222" stroke-width="1.5" marker-start="url(#al${u})"/>`;}
   const p=pila(ML+CW*0.78,ML+CW-2),x1=cx.toFixed(1),x2=(ML+CW*0.90).toFixed(1);return`${p}<line x1="${x1}" y1="${ry}" x2="${x2}" y2="${ry}" stroke="#222" stroke-width="1.5" marker-end="url(#ar${u})"/>`;}
-function svgBase(u,inner){const{W,H}=SV;return`<svg width="100%" height="auto" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;max-height:100%">${mkDefs(u)}${inner}</svg>`;}
+function svgBase(u,inner){const{W,H}=SV;return`<svg width="100%" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;max-height:100%">${mkDefs(u)}${inner}</svg>`;}
 
 function svgBlanco(p,u){
   const{W,H}=SV;
-  return`<svg width="100%" height="auto" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;max-height:100%"></svg>`;
+  return`<svg width="100%" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;max-height:100%"></svg>`;
 }
 
 function svgOndaPerfecta(p,u){
@@ -2490,10 +2524,10 @@ function svgEnrollable(p,u){
   <text x="${mx}" y="${(parseFloat(aY)-4).toFixed(1)}" text-anchor="middle" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${fmtCm(p.ancho)}</text>
   <line x1="${rx}" y1="${MT}" x2="${rx}" y2="${(MT+CH).toFixed(1)}" stroke="#111" stroke-width="1.2" marker-start="url(#arv${u})" marker-end="url(#ar${u})"/>
   <text x="${rx2}" y="${(parseFloat(vy)+4).toFixed(1)}" text-anchor="start" font-size="16" fill="#111" font-family="Arial" font-weight="bold">${fmtCm((p.alto||'')+(p.extra?' '+p.extra:''))}</text>`;
-  return`<svg width="100%" height="auto" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;max-height:100%">${mkDefs(u)}${tube}${sopL}${sopR}${tSopL}${tSopR}${tela}${barra}${cadena}${cotasStr}</svg>`;
+  return`<svg width="100%" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;max-height:100%">${mkDefs(u)}${tube}${sopL}${sopR}${tSopL}${tSopR}${tela}${barra}${cadena}${cotasStr}</svg>`;
 }
 function svgOllados(p,u){
-  const{ML,MT,CW,CH}=SV,n=Math.max(5,Math.min(12,Math.round(parseFloat(p.ancho||200)/22))),step=CW/(n-1);
+  const{ML,MT,CW,CH}=SV,n=Math.max(5,Math.min(12,Math.round(parseFloat(String(p.ancho||200).replace(',','.'))/22))),step=CW/(n-1);
   let oll='';for(let i=0;i<n;i++){const ox=ML+i*step;oll+=`<circle cx="${ox.toFixed(1)}" cy="${(MT-2).toFixed(1)}" r="5.5" fill="none" stroke="#111" stroke-width="1.6"/><circle cx="${ox.toFixed(1)}" cy="${(MT-2).toFixed(1)}" r="1.5" fill="#111"/>`;}
   const barraY=MT-10;
   const barra=`<line x1="${(ML-10).toFixed(1)}" y1="${barraY}" x2="${(ML+CW+10).toFixed(1)}" y2="${barraY}" stroke="#111" stroke-width="3.5" stroke-linecap="round"/>`;
@@ -2503,7 +2537,7 @@ function svgOllados(p,u){
   return svgBase(u,`${barra}${finL}${finR}${tela}${oll}${recArrow(u,p.recogida,p.hojas)}${cotas(u,p.ancho,(p.alto||'')+(p.extra?' '+p.extra:''))}`);}
 
 function svgBarraAnillas(p,u){
-  const{ML,MT,CW,CH}=SV,n=Math.max(6,Math.min(14,Math.round(parseFloat(p.ancho||200)/20))),step=CW/(n-1),barraY=MT-6;
+  const{ML,MT,CW,CH}=SV,n=Math.max(6,Math.min(14,Math.round(parseFloat(String(p.ancho||200).replace(',','.'))/20))),step=CW/(n-1),barraY=MT-6;
   let anil='';for(let i=0;i<n;i++){const ax=ML+i*step;anil+=`<ellipse cx="${ax.toFixed(1)}" cy="${barraY}" rx="5" ry="4" fill="none" stroke="#111" stroke-width="1.8"/>`;}
   const barra=`<rect x="${(ML-8).toFixed(1)}" y="${(barraY-3).toFixed(1)}" width="${(CW+16).toFixed(1)}" height="4.5" fill="none" stroke="#111" stroke-width="1.6"/>`;
   const sopH=barraY-12;
@@ -4046,7 +4080,17 @@ window.onload=function(){ajustarTextosFicha();setTimeout(function(){window.print
 // Tabla Paquetto/Estor Plegable: ancho → [caídas, soportes]
 const TABLA_PAQUETTO=[[75,2,2],[100,2,2],[125,3,2],[150,3,3],[175,3,3],[200,3,3],[225,4,4],[250,4,4],[275,5,4],[300,5,4]];
 function calcularPaquetto(ancho){
-  const a=parseFloat(ancho)||0;
+  // Bug real: un ancho con coma decimal ("125,5") se truncaba a 125 (parseFloat
+  // corta en la primera coma), pudiendo dar el nº de caídas/soportes del tramo
+  // de tabla equivocado justo en un límite. Mismo arreglo que calcularSoportes.
+  const a=parseFloat(String(ancho||'0').replace(',','.'))||0;
+  // Otro bug real, de la misma familia que ya se arregló en calcularSoportes:
+  // "!a" solo descarta 0/NaN, así que un ancho vacío, negativo o con texto
+  // (tecleado a mano) era truthy-falso a la vez y caía en el primer tramo de
+  // la tabla, devolviendo "2 caídas, 2 soportes" con apariencia válida para
+  // una medida que no existe. Los llamadores ya comprueban "pq&&pq.caidas"
+  // antes de usarlo, así que devolver null aquí es seguro y no rompe nada.
+  if(!a||a<=0)return{caidas:null,soportes:null};
   for(const[lim,c,s]of TABLA_PAQUETTO){if(a<=lim)return{caidas:c,soportes:s};}
   return{caidas:5,soportes:4};
 }
@@ -4120,7 +4164,7 @@ function calcularDatosLineaCorte(l){
     return calcularCorrederas(partesOP[0],paso)+'gch';
   }
   const corrLabel=isPaq
-    ?(paqData.caidas+' caídas')
+    ?(paqData.caidas?paqData.caidas+' caídas':'')
     :(l.correderas==='OP8'?('//OP8 '+ganchosOP(8))
     :l.correderas==='OP6'?('//OP6 '+ganchosOP(6))
     :'CONV.');
@@ -4166,8 +4210,8 @@ function calcularDatosLineaCorte(l){
   // Nº de soportes + dónde van (techo o frente/pared). PARED/FRONTAL/FRENTE → Frente;
   // cualquier otro valor (vacío, TECHO, TECHO CLIC, RAP, CLIC…) → Techo, que es el caso
   // por defecto también al leer el presupuesto (ver estrategiaCanotex, soporte||'T').
-  const numSoportes=esPaqConBarra?(calcularSoportes(l.sistema,l.ancho)||String(paqData.soportes))
-    :isPaq?String(paqData.soportes):(calcularSoportes(l.sistema,l.ancho)||(l.soportes||''));
+  const numSoportes=esPaqConBarra?(calcularSoportes(l.sistema,l.ancho)||(paqData.soportes?String(paqData.soportes):''))
+    :isPaq?(paqData.soportes?String(paqData.soportes):''):(calcularSoportes(l.sistema,l.ancho)||(l.soportes||''));
   const esFrente=/PARED|FRONTAL|FRENTE/i.test(l.soporte||'');
   const soportesTxt=numSoportes?(numSoportes+' '+(esFrente?'Frente':'Techo')):'';
 
@@ -4415,7 +4459,7 @@ function previewCorte(){
   }catch(err){setSt('er','Error: '+err.message);dbg('❌ '+err.message,'er');console.error(err);}
 }
 
-async function ensurePDFLib(){if(!window.PDFLib){try{await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js');}catch(e){await loadScript('https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js');}}}
+async function ensurePDFLib(){if(!window.PDFLib){const sri='sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI';try{await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',sri);}catch(e){await loadScript('https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js',sri);}}}
 
 addCortina();
 bindClientLive();

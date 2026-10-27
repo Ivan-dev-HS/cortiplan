@@ -939,6 +939,61 @@ test('calcularMetrosTela — ancho negativo devuelve null, no metros negativos',
   assert.strictEqual(app.calcularMetrosTela('Onda Perfecta', '-150', ''), null);
   assert.strictEqual(app.calcularMetrosTela('Paquetto', '-100', ''), null);
 });
+test('calcularMetrosTela — casos límite: 0, vacío, texto y enorme no lanzan excepción', () => {
+  assert.strictEqual(app.calcularMetrosTela('Onda Perfecta', '0', ''), null);
+  assert.strictEqual(app.calcularMetrosTela('Onda Perfecta', undefined, ''), null);
+  assert.strictEqual(app.calcularMetrosTela('Onda Perfecta', 'abc', ''), null);
+  assert.doesNotThrow(() => app.calcularMetrosTela('Onda Perfecta', '99999999999', ''));
+});
+test('calcularMetrosTela — admite coma decimal igual que punto (bug real: se truncaba)', () => {
+  // "125,5" se truncaba a 125 (parseFloat corta en la primera coma): con
+  // "onda" el factor es x2.4, así que 125 vs 125,5 cm sí cambia el resultado
+  // (300.00 vs 301.20 → /100 → 3.00 vs 3.012, redondeado a 3.01).
+  const conPunto = app.calcularMetrosTela('Onda Perfecta', '125.5', '');
+  const conComa = app.calcularMetrosTela('Onda Perfecta', '125,5', '');
+  assert.strictEqual(conComa, conPunto);
+  assert.notStrictEqual(Math.round(conComa * 100), Math.round(app.calcularMetrosTela('Onda Perfecta', '125', '') * 100));
+});
+
+console.log('\ncalcularPaquetto — nº de caídas/soportes del cajetín Paquetto/Estor');
+test('calcularPaquetto — tabla real por tramos de ancho', () => {
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(app.calcularPaquetto('75'))), { caidas: 2, soportes: 2 });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(app.calcularPaquetto('125'))), { caidas: 3, soportes: 2 });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(app.calcularPaquetto('300'))), { caidas: 5, soportes: 4 });
+});
+test('calcularPaquetto — por encima del último tramo de la tabla (>300) usa el máximo, no se cae', () => {
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(app.calcularPaquetto('301'))), { caidas: 5, soportes: 4 });
+  assert.doesNotThrow(() => JSON.parse(JSON.stringify(app.calcularPaquetto('99999999999'))));
+});
+test('calcularPaquetto — admite coma decimal: "125,5" NO es lo mismo que "125" (cambia de tramo)', () => {
+  // Bug real: "125,5" se truncaba a 125 (parseFloat corta en la coma) y caía
+  // en el tramo "≤125" (3 caídas, 2 soportes) en vez del tramo real "≤150"
+  // (3 caídas, 3 soportes) — un soporte de menos en la hoja de corte.
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(app.calcularPaquetto('125'))), { caidas: 3, soportes: 2 });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(app.calcularPaquetto('125,5'))), { caidas: 3, soportes: 3 });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(app.calcularPaquetto('125.5'))), { caidas: 3, soportes: 3 });
+});
+test('calcularPaquetto — ancho 0, negativo, vacío o con texto no da un resultado con apariencia válida', () => {
+  // Misma familia de bug ya arreglada en calcularSoportes: "!a" solo
+  // descarta 0/NaN, así que un ancho inválido (vacío, negativo, texto
+  // tecleado a mano) caía en el primer tramo de la tabla y devolvía "2
+  // caídas, 2 soportes" como si fuera una medida real de 0-75cm.
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(app.calcularPaquetto('0'))), { caidas: null, soportes: null });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(app.calcularPaquetto('-50'))), { caidas: null, soportes: null });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(app.calcularPaquetto(''))), { caidas: null, soportes: null });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(app.calcularPaquetto('abc'))), { caidas: null, soportes: null });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(app.calcularPaquetto(undefined))), { caidas: null, soportes: null });
+});
+test('calcularSoportes — casos límite: 0, vacío, texto y enorme no lanzan excepción ni inventan un nº', () => {
+  assert.strictEqual(app.calcularSoportes('Guia Manual 1 Via', '0'), '');
+  assert.strictEqual(app.calcularSoportes('Guia Manual 1 Via', ''), '');
+  assert.strictEqual(app.calcularSoportes('Guia Manual 1 Via', 'abc'), '');
+  assert.strictEqual(app.calcularSoportes('Guia Manual 1 Via', undefined), '');
+  assert.doesNotThrow(() => app.calcularSoportes('Guia Manual 1 Via', '99999999999'));
+  // Por encima del último tramo de la tabla: cae a '' (sin dato), no un
+  // número inventado del último tramo.
+  assert.strictEqual(app.calcularSoportes('Guia Manual 1 Via', '99999999999'), '');
+});
 test('calcularSoportes — ancho negativo devuelve vacío, no un nº de soportes inventado', () => {
   // "!a" solo descarta 0/NaN: un ancho negativo (p.ej. tecleado a mano) es
   // truthy y antes caía en el primer tramo de la tabla, devolviendo un nº de
