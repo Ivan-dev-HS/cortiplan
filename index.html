@@ -2337,18 +2337,28 @@ function svgOndaPerfecta(p,u){
     }catch(e){}
   }
   // Tirador: plano técnico (no icono) — una línea fina inclinada que nace
-  // del sistema/riel arriba (de dentro hacia abajo, como en la referencia)
-  // y termina en una pequeña pieza romboidal (contorno fino, interior
-  // blanco) a la altura del número de correderas, alineada con la propia
-  // línea para formar un único trazo continuo. Centrada en cada hoja que
-  // lleva tirador, una por hoja.
+  // del sistema/riel arriba (de dentro hacia abajo) y termina en una
+  // pequeña pieza romboidal (contorno fino, interior blanco) a la altura
+  // del número de correderas, alineada con la propia línea para formar un
+  // único trazo continuo.
+  // No va centrado en la hoja, sino en el lado donde arranca/se junta el
+  // recogido real (la "pila" que ya dibuja recArrow): con 2 hojas el
+  // recogido siempre es central (una pila a cada lado, 1er tirador = lado
+  // izquierdo, 2º = lado derecho); con 1 hoja el lado lo marca la propia
+  // recogida (Izquierda/Derecha). El 2º tirador (lado derecho) lleva la
+  // inclinación invertida — la punta del romboide mira a la izquierda en
+  // vez de a la derecha — para que los dos converjan hacia dentro.
   let tiradorSvg='';
   const nTir=Math.min(parseInt(p.tiradorCantidad)||0,nH);
   if(nTir>0){
     const labelY=MT+CH*0.32;
+    const recEffT=nH>=2?'CEN':(p.recogida||'D');
+    const pilaIzqX=ML+CW*0.12,pilaDerX=ML+CW*0.89;
     for(let h=0;h<nTir;h++){
-      const hjCenterX=ML+(h+0.5)*(CW/nH);
-      const x1=hjCenterX-6,y1=MT+2,x2=hjCenterX+6,y2=labelY;
+      const esLadoDer=nTir>1?h>=Math.ceil(nTir/2):recEffT==='D';
+      const baseX=recEffT==='IZQ'?pilaIzqX:recEffT==='CEN'?(esLadoDer?pilaDerX:pilaIzqX):pilaDerX;
+      const lean=esLadoDer?-6:6;
+      const x1=baseX-lean,y1=MT+2,x2=baseX+lean,y2=labelY;
       const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1,ux=dx/len,uy=dy/len,px=-uy,py=ux;
       const L=5.5,W=2.1;
       const p1x=(x2-ux*L).toFixed(1),p1y=(y2-uy*L).toFixed(1);
