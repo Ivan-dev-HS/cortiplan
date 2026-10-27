@@ -2337,17 +2337,18 @@ function svgOndaPerfecta(p,u){
     }catch(e){}
   }
   // Tirador: plano técnico (no icono) — una línea fina inclinada que nace
-  // en la zona de los pliegues de la hoja y termina en una pequeña pieza
-  // romboidal (contorno fino, interior blanco), alineada con la propia
-  // línea para formar un único trazo continuo. Uno por cada hoja que lleva
-  // tirador, junto al número de correderas.
+  // del sistema/riel arriba (de dentro hacia abajo, como en la referencia)
+  // y termina en una pequeña pieza romboidal (contorno fino, interior
+  // blanco) a la altura del número de correderas, alineada con la propia
+  // línea para formar un único trazo continuo. Centrada en cada hoja que
+  // lleva tirador, una por hoja.
   let tiradorSvg='';
   const nTir=Math.min(parseInt(p.tiradorCantidad)||0,nH);
   if(nTir>0){
     const labelY=MT+CH*0.32;
     for(let h=0;h<nTir;h++){
       const hjCenterX=ML+(h+0.5)*(CW/nH);
-      const x1=hjCenterX-9,y1=MT+CH*0.55,x2=hjCenterX+2,y2=labelY-8;
+      const x1=hjCenterX-6,y1=MT+2,x2=hjCenterX+6,y2=labelY;
       const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1,ux=dx/len,uy=dy/len,px=-uy,py=ux;
       const L=5.5,W=2.1;
       const p1x=(x2-ux*L).toFixed(1),p1y=(y2-uy*L).toFixed(1);
