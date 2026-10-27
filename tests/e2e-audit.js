@@ -208,7 +208,34 @@ async function buildSamplePDF(pdfLib) {
     } finally { await page.close(); }
   });
 
-  console.log('\n4) Viewport móvil');
+  console.log('\n4) Aviso antes de cerrar con trabajo sin guardar');
+  await test('No avisa con la ficha en blanco inicial, pero sí en cuanto hay datos reales', async () => {
+    const page = await browser.newPage({ viewport: { width: 1200, height: 900 } });
+    try {
+      await page.addInitScript(() => { if (navigator.serviceWorker) navigator.serviceWorker.register = () => Promise.reject(new Error('x')); });
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`);
+      await page.waitForTimeout(400);
+      const sinDatos = await page.evaluate(() => {
+        const ev = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(ev);
+        return ev.defaultPrevented;
+      });
+      if (sinDatos) throw new Error('Avisó de cierre con la ficha en blanco inicial (sin datos reales)');
+
+      const anchoInput = page.locator('#pcards input[onchange*="\'ancho\'"]').first();
+      await anchoInput.fill('150');
+      await anchoInput.dispatchEvent('change');
+      await page.waitForTimeout(200);
+      const conDatos = await page.evaluate(() => {
+        const ev = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(ev);
+        return ev.defaultPrevented;
+      });
+      if (!conDatos) throw new Error('No avisó de cierre habiendo rellenado un ancho real');
+    } finally { await page.close(); }
+  });
+
+  console.log('\n5) Viewport móvil');
   await test('La interfaz es usable en un tamaño de pantalla de móvil (390x844, iPhone 12)', async () => {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
     try {

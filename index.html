@@ -4556,6 +4556,23 @@ bindCorteLive();
   window.addEventListener('offline', updateOnlineStatus);
   updateOnlineStatus();
 
+  // Aviso antes de cerrar/recargar con trabajo sin guardar: la app no
+  // guarda el proyecto en curso en ningún sitio (solo el tema claro/oscuro
+  // en localStorage), así que un cierre de pestaña accidental o el
+  // navegador colgándose en obra borra todo sin más. Solo avisa si hay
+  // datos reales (igual criterio que usan buildInstHTML/buildCorteHTML
+  // para decidir si hay algo que generar), no con la ficha en blanco
+  // inicial. El texto del aviso lo pone el propio navegador: los
+  // navegadores modernos ignoran cualquier mensaje personalizado aquí.
+  window.addEventListener('beforeunload', e => {
+    const hayDatos =
+      STATE.cortinas.some(c => c.ancho || c.alto || c.estancia) ||
+      STATE.lineas.some(l => l.ancho || l.alto || l.estancia);
+    if (!hayDatos) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
 })();
 </script>
 
