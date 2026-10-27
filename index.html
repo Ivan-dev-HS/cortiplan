@@ -2353,7 +2353,7 @@ function svgOndaPerfecta(p,u){
   if(nTir>0){
     const labelY=MT+CH*0.32;
     const recEffT=nH>=2?'CEN':(p.recogida||'D');
-    const pilaIzqX=ML+CW*0.12,pilaDerX=ML+CW*0.89;
+    const pilaIzqX=ML+CW*0.28,pilaDerX=ML+CW*0.72;
     for(let h=0;h<nTir;h++){
       const esLadoDer=nTir>1?h>=Math.ceil(nTir/2):recEffT==='D';
       const baseX=recEffT==='IZQ'?pilaIzqX:recEffT==='CEN'?(esLadoDer?pilaDerX:pilaIzqX):pilaDerX;
