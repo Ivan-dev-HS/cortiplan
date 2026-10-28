@@ -609,6 +609,31 @@ test('svgFormaJuntas dibuja los dos tramos rectos (sin incline) y respeta las ca
   assert.ok(!/<path d="M[\d.]+,[\d.]+ L[\d.]+,[\d.]+ L[\d.]+,[\d.]+ L[\d.]+,[\d.]+ Z" fill="none" stroke="#111" stroke-width="1.8"\/>/.test(svg),
     'no debería usar el riel inclinado en forma de paralelogramo de la L');
 });
+test('svgFormaJuntas con dos Enrollables dibuja la barra enrollada de cada tramo, no el aspecto de Plana/Palas', () => {
+  // Bug real: cuerpoConfeccion() no tenía ninguna rama para "Enrollable", así
+  // que dos enrollables unidas como "cortinas juntas" caían en el "else" de
+  // PLANA y resto (tela + líneas discontinuas de hoja) en vez del rollo con
+  // barra inferior que dibuja svgEnrollable() para una enrollable suelta.
+  const svg = app.svgFormaJuntas({
+    tipo: 'Enrollable', ancho: '120', alto: '150', hojas: '1', recogida: 'D',
+    formaJunta: 'dcha', anchoL: '100', altoL: '140', hojasL: '1', recogidaL: 'IZQ',
+  }, 'tjenr');
+  const barras = [...svg.matchAll(/rx="2\.5" fill="none" stroke="#111" stroke-width="1\.6"/g)];
+  assert.strictEqual(barras.length, 2, 'cada uno de los dos tramos debe dibujar su propia barra enrollada');
+  assert.ok(!svg.includes('stroke-dasharray="3,3"'), 'un enrollable es un único rollo: no debe llevar líneas de "hoja" (eso es Plana/Palas)');
+  const cadenas = [...svg.matchAll(/stroke-dasharray="2\.5,2"/g)];
+  assert.strictEqual(cadenas.length, 2, 'cada tramo debe llevar su propia cadena de mando lateral');
+});
+test('svgFormaL con un tramo Enrollable (inclinado) dibuja la barra enrollada en vez de Plana/Palas', () => {
+  const svg = app.svgFormaL({
+    tipo: 'Enrollable', ancho: '120', alto: '150', hojas: '1', recogida: 'D',
+    formaL: 'dcha', anchoL: '100', altoL: '140', hojasL: '1', recogidaL: 'IZQ',
+  }, 'tlenr');
+  // El tramo recto (cuerpoConfeccion) debe llevar su barra; el tramo inclinado
+  // (cuerpoInclinado) no debe llevar las líneas de "hoja" de PLANA/PALAS.
+  assert.ok(/rx="2\.5" fill="none" stroke="#111" stroke-width="1\.6"/.test(svg), 'el tramo recto debe dibujar su barra enrollada');
+  assert.ok(!svg.includes('stroke-dasharray="3,3"'), 'ningún tramo debe llevar líneas de "hoja" (ninguno de los dos es Plana/Palas)');
+});
 test('setForma alterna entre Recta / En L / Juntas de forma mutuamente excluyente', () => {
   app.resetCortinas();
   app.addCortina({ estancia: 'C1', ancho: '150', alto: '250', tipo: 'Plana' });
