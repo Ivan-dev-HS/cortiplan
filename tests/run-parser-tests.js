@@ -576,6 +576,39 @@ test('Caso real: una cortina de 2 hojas con 2 tiradores (TIRADORBCO ... 2,00) ma
   assert.ok(lineaTirador, 'debería existir una línea de corte para el tirador');
   assert.strictEqual(lineaTirador.unidades, '2', 'el presupuesto pide 2 tiradores (uno por hoja), no 1');
 });
+test('Bug real: 2 cortinas SEPARADAS de 1 hoja con la misma medida y un TIRADOR x2 — a ambas les toca su tirador, no solo a la última', () => {
+  // Antes el reparto se paraba en la primera cortina no-soloCorte encontrada
+  // yendo hacia atrás y le metía TODA la cantidad del tirador ahí (break
+  // inmediato): correcto si eran 2 hojas de la MISMA cortina, pero si eran
+  // dos cortinas distintas de 1 hoja cada una (dos ventanas iguales), la 2ª
+  // cortina (la de más arriba en el presupuesto) se quedaba sin tirador en
+  // su ficha/dibujo aunque el presupuesto pidiera 2 (uno por ventana).
+  app.resetInstalacion();
+  app.parsear([
+    'PEDIDO DE VENTA',
+    'REF. O601 CLIENTE DIECISEIS',
+    'ARTÍCULO DESCRIPCIÓN CANTIDAD PRECIO % DTO TOTAL',
+    'SALON 1,00',
+    'CORTOP MEDIDA:150x250H -CONFE:1 HOJA- RECOG:D 1,00 400,00 50,00 200,00',
+    'UD. CORTINA CONFECCIONADA TIPO ONDA PERFECTA. (ONDA 6cm.)',
+    'TEJIDO:MORITZ 01 BLANCO',
+    'SISTEMA DE INSTALACION:GUIA MANUAL 1 VIA -COLOR BLANCOCORR.OP',
+    'SOPORTE TECHO',
+    'COMEDOR 1,00',
+    'CORTOP MEDIDA:150x250H -CONFE:1 HOJA- RECOG:D 1,00 400,00 50,00 200,00',
+    'UD. CORTINA CONFECCIONADA TIPO ONDA PERFECTA. (ONDA 6cm.)',
+    'TEJIDO:MORITZ 01 BLANCO',
+    'SISTEMA DE INSTALACION:GUIA MANUAL 1 VIA -COLOR BLANCOCORR.OP',
+    'SOPORTE TECHO',
+    'TIRADORBCO UD. TIRADOR METALICO COLOR BLANCO 2,00 5,90 50,00 5,90',
+  ], true);
+  const STATE = app.__internals.STATE;
+  assert.strictEqual(STATE.cortinas.length, 2, 'deben quedar las 2 cortinas, no fundirse en una');
+  assert.strictEqual(STATE.cortinas[0].tiradorCantidad, '1', 'la 1ª cortina (SALON) también debe llevar su tirador');
+  assert.strictEqual(STATE.cortinas[1].tiradorCantidad, '1', 'la 2ª cortina (COMEDOR) debe llevar el suyo');
+  const lineaTirador = STATE.lineas.find(l => l.sistema === 'Tirador');
+  assert.strictEqual(lineaTirador.unidades, '2', 'la línea de corte del tirador sigue mostrando el total pedido (2)');
+});
 
 console.log('\nCortinas juntas (dos rectas, una al lado de la otra)');
 test('unirJuntas fusiona la siguiente cortina como 2º tramo recto, sin inclinarla', () => {

@@ -1440,16 +1440,23 @@ function estrategiaCanotex(txt){
         if(primerNum>0)cantidadTirador=primerNum;
       }
       results.push({estancia:est,ancho:'',alto:'',hojas:'1',recogida:'D',tejido:'',sistema:'Tirador',color,tipo:'',soloCorte:true,unidades:String(cantidadTirador)});
-      // El tirador acompaña a la cortina real que tiene justo antes (la
-      // última de "results" que no sea a su vez otro accesorio soloCorte):
-      // se anota también ahí para que su ficha/dibujo lo muestre, además de
-      // la línea propia en la hoja de corte.
-      for(let k=results.length-2;k>=0;k--){
-        if(!results[k].soloCorte){
-          results[k].tiradorCantidad=String(cantidadTirador);
-          results[k].tiradorColor=color;
-          break;
-        }
+      // El tirador acompaña a la(s) cortina(s) real(es) justo antes. Antes
+      // se anotaba TODA la cantidad en la última cortina de "results" y se
+      // paraba ahí (break) — si eran 2 hojas de UNA misma cortina, 2
+      // tiradores en esa cortina es justo lo correcto; pero si eran 2
+      // cortinas SEPARADAS de 1 hoja cada una con la misma medida (p.ej. dos
+      // ventanas iguales), toda la cantidad se colaba en la última y la
+      // anterior se quedaba sin tirador en su dibujo. Ahora se reparte: cada
+      // cortina absorbe como máximo sus propias hojas (1 tirador por hoja) y
+      // lo que sobra pasa a la cortina anterior, hasta agotar la cantidad.
+      let tiradoresRestantes=cantidadTirador;
+      for(let k=results.length-2;k>=0&&tiradoresRestantes>0;k--){
+        if(results[k].soloCorte)continue;
+        const hojasK=Math.max(1,parseInt(results[k].hojas)||1);
+        const tirK=Math.min(tiradoresRestantes,hojasK);
+        results[k].tiradorCantidad=String(tirK);
+        results[k].tiradorColor=color;
+        tiradoresRestantes-=tirK;
       }
       dbg(`  🪢 #${results.length} [${est}] Tirador${color?' '+color:''}${cantidadTirador>1?' x'+cantidadTirador:''} → solo hoja de corte`,'warn');
       i+=consumed;continue;
