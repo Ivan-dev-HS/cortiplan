@@ -248,6 +248,52 @@ async function buildSamplePDF(pdfLib) {
       if (overflowX) throw new Error('Hay scroll horizontal en móvil (algo se sale del ancho de pantalla)');
     } finally { await page.close(); }
   });
+  await test('La barra fija inferior ("+ Añadir" / "Imprimir") aparece en móvil y actúa sobre el apartado activo', async () => {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    try {
+      page.on('dialog', d => d.dismiss());
+      await page.addInitScript(() => { if (navigator.serviceWorker) navigator.serviceWorker.register = () => Promise.reject(new Error('x')); });
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`);
+      await page.waitForTimeout(400);
+
+      const barVisible = await page.locator('#mobileBar').isVisible();
+      if (!barVisible) throw new Error('La barra fija inferior no aparece en viewport móvil');
+
+      // "+ Añadir" con Hoja Instalación activa debe añadir una ficha (addCortina())
+      const antes = await page.evaluate(() => document.querySelectorAll('#pcards .pcard').length);
+      await page.click('#mobileBar >> text=Añadir');
+      await page.waitForTimeout(200);
+      const despues = await page.evaluate(() => document.querySelectorAll('#pcards .pcard').length);
+      if (despues !== antes + 1) throw new Error(`"+ Añadir" en Instalación no añadió una ficha (${antes} -> ${despues})`);
+
+      // Cambiando a Corte Mecanismos, el mismo botón debe usar addLinea() en vez de addCortina()
+      await page.click('#btnMenu'); await page.waitForTimeout(150);
+      await page.click('#btnCorte'); await page.waitForTimeout(150);
+      await page.click('#overlay').catch(() => {});
+      await page.waitForTimeout(150);
+      const lineasAntes = await page.evaluate(() => document.querySelectorAll('#lineas .pcard').length);
+      await page.click('#mobileBar >> text=Añadir');
+      await page.waitForTimeout(200);
+      const lineasDespues = await page.evaluate(() => document.querySelectorAll('#lineas .pcard').length);
+      if (lineasDespues !== lineasAntes + 1) throw new Error(`"+ Añadir" en Corte no añadió una línea (${lineasAntes} -> ${lineasDespues})`);
+
+      // No debe solaparse con el toolbar interno de #main cuando hay una ficha con datos reales
+      await page.click('#btnMenu'); await page.waitForTimeout(150);
+      await page.click('#btnInst'); await page.waitForTimeout(150);
+      const anchoInput = page.locator('#pcards input[onchange*="\'ancho\'"]').first();
+      await anchoInput.fill('150'); await anchoInput.dispatchEvent('change');
+      await page.click('#btnCloseSb');
+      await page.waitForTimeout(600);
+      const overlap = await page.evaluate(() => {
+        const bar = document.getElementById('mobileBar').getBoundingClientRect();
+        const innerPrint = document.querySelector('#main .btn-print');
+        if (!innerPrint) return null;
+        const r = innerPrint.getBoundingClientRect();
+        return !(r.bottom <= bar.top || r.top >= bar.bottom);
+      });
+      if (overlap) throw new Error('La barra fija inferior se solapa con el botón Imprimir de dentro de #main');
+    } finally { await page.close(); }
+  });
 
   console.log('\n6) El apartado activo (Instalación/Corte) se conserva al cargar un presupuesto');
   await test('Subir un PDF con Corte Mecanismos ya seleccionado no fuerza el salto a Hoja Instalación (ni al revés)', async () => {
